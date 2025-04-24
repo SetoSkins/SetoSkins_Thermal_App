@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <com.hchen.himiuix.MiuiPreferenceCategory
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app   ="http://schemas.android.com/apk/res-auto">
+
+        <com.hchen.himiuix.MiuiCardPreference
+            android:key="prefs_card"
+            app:backgroundColor="@color/card_background_waring"
+            app:customCardView="@layout/card_custom_view"
+            app:iconCancel="true"
+            app:iconColor="@color/cancel_background_waring"
+            app:summary="焕晨卡片" />
+
+        <com.hchen.himiuix.MiuiCardPreference
+            android:key="prefs_card2"
+            app:backgroundColor="@color/card_background"
+            app:customCardView="@layout/card_custom_view_no"
+            app:iconArrowRight="true"
+            app:iconColor="@color/cancel_background" />
+        <com.hchen.himiuix.MiuiCardPreference
+            android:key="prefs_card3"
+            app:backgroundColor="@color/card_background"
+            app:customCardView="@layout/card_custom_view_no2"
+            app:iconArrowRight="true"
+            app:iconColor="@color/cancel_background" />
+    </com.hchen.himiuix.MiuiPreferenceCategory>
+
+<!--    <com.hchen.himiuix.MiuiPreferenceCategory android:title="MiuiPreference">-->
+<!--        <com.hchen.himiuix.MiuiPreference-->
+<!--            android:key="pref_a"-->
+<!--            android:summary="我是 Summary"-->
+<!--            android:title="普通 Preference" />-->
+
+<!--        <com.hchen.himiuix.MiuiPreference-->
+<!--            android:key="pref_b"-->
+<!--            android:icon="@drawable/ic_default_icon"-->
+<!--            android:title="带 icon 的" />-->
+
+<!--        <com.hchen.himiuix.MiuiPreference-->
+<!--            android:key="pref_c"-->
+<!--            android:icon="@drawable/ic_default_icon"-->
+<!--            android:summary="我有一个一个 icon 哎！"-->
+<!--            android:title="带 icon 的" />-->
+
+        <com.hchen.himiuix.MiuiPreference
+            android:key="pref_intent"
+            android:summary="点我点我点我！"
+            android:title="带意图的"
+            app:tip="会弹出一个小 Toast！" />
+
+        <com.hchen.himiuix.MiuiPreference
+            android:key="pref_disabld"
+            android:enabled="false"
+            android:fragment="com.hchen.thermal.BasePreferenceFragment$PrefsHome"
+            android:icon="@drawable/ic_default_icon"
+            android:summary="我被禁用了，呜呜呜~"
+            android:title="被禁用的"
+            app:tip="再点也没用" />
+<!--    </com.hchen.himiuix.MiuiPreferenceCategory>-->
+
+    <com.hchen.himiuix.MiuiPreferenceCategory android:title="配置">
+        <com.hchen.himiuix.MiuiSwitchPreference
+            android:key="prefs_locked_switch"
+            android:defaultValue="true"
+            android:summary="目前无法更改"
+            android:summaryOff="别关了我，呜呜呜"
+            android:title="简洁版配置"
+            android:enabled="false" /> <!-- 关键点 -->
+        <com.hchen.himiuix.MiuiSwitchPreference
+            android:key="pref_normal"
+            android:title="快充模式" />
+        <com.hchen.himiuix.MiuiSwitchPreference
+            android:key="pref_thermal"
+            android:summary="非必要可不开启此选项"
+            android:title="温控空挂载模式" />
+
+        <com.hchen.himiuix.MiuiSwitchPreference
+                android:key="pref_child"
+                android:title="修改最大电流数" />
+
+        <com.hchen.himiuix.MiuiPreference
+            android:key="prefs_edit_dialog"
+            app:dependency="pref_child"
+                android:title="最大电流数" />
+    </com.hchen.himiuix.MiuiPreferenceCategory>
+
+<!--    <com.hchen.himiuix.MiuiPreferenceCategory android:title="MiuiCheckBoxPreference">-->
+<!--        <com.hchen.himiuix.MiuiCheckBoxPreference-->
+<!--            android:defaultValue="true"-->
+<!--            android:enabled="true"-->
+<!--            android:key="checkbox_1"-->
+<!--            android:summaryOff="关闭"-->
+<!--            android:summaryOn="开启"-->
+<!--            android:title="我是小 CheckBox" />-->
+
+<!--        <com.hchen.himiuix.MiuiCheckBoxPreference-->
+<!--            android:enabled="true"-->
+<!--            android:key="checkbox_2"-->
+<!--            android:title="被控制的 CheckBox"-->
+<!--            app:dependency="checkbox_1" />-->
+
+<!--        <com.hchen.himiuix.MiuiCheckBoxPreference-->
+<!--            android:enabled="false"-->
+<!--            android:summary="我被禁用了"-->
+<!--            android:title="我是小 CheckBox" />-->
+
+<!--        <com.hchen.himiuix.MiuiCheckBoxPreference-->
+<!--            android:defaultValue="true"-->
+<!--            android:enabled="false"-->
+<!--            android:summary="选中，但被禁用"-->
+<!--            android:title="我是小 CheckBox" />-->
+
+<!--        <com.hchen.himiuix.MiuiCheckBoxPreference-->
+<!--            android:enabled="true"-->
+<!--            android:summaryOff="关闭"-->
+<!--            android:summaryOn="开启"-->
+<!--            android:title="CheckBox Start"-->
+<!--            app:buttonLocation="start" />-->
+
+<!--        <com.hchen.himiuix.MiuiCheckBoxPreference-->
+<!--            android:defaultValue="true"-->
+<!--            android:enabled="false"-->
+<!--            android:title="CheckBox Start"-->
+<!--            app:buttonLocation="start" />-->
+
+<!--        <com.hchen.himiuix.MiuiCheckBoxPreference-->
+<!--            android:enabled="false"-->
+<!--            android:title="CheckBox Start"-->
+<!--            app:buttonLocation="start" />-->
+
+<!--    </com.hchen.himiuix.MiuiPreferenceCategory>-->
+</androidx.preference.PreferenceScreen>

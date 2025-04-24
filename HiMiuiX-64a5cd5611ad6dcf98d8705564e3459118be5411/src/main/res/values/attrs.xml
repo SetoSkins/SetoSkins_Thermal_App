@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="MiuiPreference">
+        <attr name="tip" format="string" />
+        <attr name="disableDependentsState" format="boolean" /> <!--false: 在 false 状态下禁用家属。反之亦然。-->
+        <attr name="android:disableDependentsState" /> <!--false: 在 false 状态下禁用家属。反之亦然。-->
+    </declare-styleable>
+
+    <declare-styleable name="MiuiSwitchPreference">
+        <attr name="summaryOn" format="string" />
+        <attr name="summaryOff" format="string" />
+        <attr name="android:summaryOn" />
+        <attr name="android:summaryOff" />
+        <attr name="disableDependentsState" />
+        <attr name="android:disableDependentsState" />
+    </declare-styleable>
+
+    <declare-styleable name="MiuiTextView">
+        <attr name="focusable" format="boolean" />
+        <attr name="singeLineCenter" format="boolean" />
+    </declare-styleable>
+
+    <declare-styleable name="MiuiDropDownPreference">
+        <attr name="entries" format="reference" />
+        <attr name="android:entries" />
+
+        <attr name="entryValues" format="reference" />
+        <attr name="android:entryValues" />
+
+        <attr name="defaultValue" format="string|boolean|integer|reference|float" />
+        <attr name="android:defaultValue" />
+
+        <attr name="showOnSummary" format="boolean" /> <!--选择结果显示在 summary 上-->
+    </declare-styleable>
+
+    <declare-styleable name="MiuiSeekBarPreference">
+        <attr name="maxValue" format="integer" />
+        <attr name="minValue" format="integer" />
+        <attr name="format" format="string" /> <!--可以理解为单位-->
+        <attr name="stepValue" format="integer" /> <!--跳跃值-->
+        <attr name="android:defaultValue" />
+        <attr name="defaultValue" />
+        <attr name="showDefTip" format="boolean" /> <!--是否显示默认值位置提示标-->
+        <attr name="defValueString" format="string" /> <!--处于默认值时显示的字符-->
+        <attr name="dialogEnabled" format="boolean" />
+        <attr name="showSeekBarValue" format="boolean" />
+        <attr name="displayDividerValue" format="integer" /> <!--可用于显示小数-->
+    </declare-styleable>
+
+    <declare-styleable name="MiuiCardPreference">
+        <attr name="customCardView" format="reference" />
+        <attr name="backgroundColor" format="color" /> <!--更改卡片背景色-->
+        <attr name="iconArrowRight" format="boolean" /> <!--使用向右图标-->
+        <attr name="iconCancel" format="boolean" /> <!--使用默认关闭图标-->
+        <attr name="iconColor" format="color" /> <!--图标背景-->
+    </declare-styleable>
+
+    <declare-styleable name="MiuiPreferenceCategory">
+        <attr name="goneDivider" format="boolean" /> <!--不需要分割线-->
+    </declare-styleable>
+
+    <declare-styleable name="MiuiEditTextPreference">
+        <attr name="hint" format="string" />
+        <attr name="android:hint" />
+        <attr name="android:inputType" />
+    </declare-styleable>
+
+    <declare-styleable name="MiuiColorPickerPreference">
+        <attr name="defaultColor" format="color" />
+    </declare-styleable>
+
+    <declare-styleable name="MiuiCheckBoxPreference">
+        <attr name="buttonLocation">
+            <enum name="start" value="0" />
+            <enum name="end" value="1" />
+        </attr>
+    </declare-styleable>
+
+    <declare-styleable name="SpringBackLayout">
+        <attr name="scrollableView" format="reference" />
+        <attr name="scrollOrientation" format="integer" />
+        <attr name="springBackMode" format="integer" />
+    </declare-styleable>
+
+</resources>
