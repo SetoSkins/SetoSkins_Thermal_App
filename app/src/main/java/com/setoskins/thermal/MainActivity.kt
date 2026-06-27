@@ -449,6 +449,8 @@ fun HomeScreen(
     var switch4 by remember { mutableStateOf(prefs.getBoolean("switch4", false)) }
     // 模块简介显示充电信息(快充模式下追加的子项)
     var switch5 by remember { mutableStateOf(prefs.getBoolean("switch5", false)) }
+    // 还原均衡模式温控(温控空挂载模式下追加的子项)
+    var switch15 by remember { mutableStateOf(prefs.getBoolean("switch15", false)) }
     // 还原性能模式温控(温控空挂载模式下追加的子项)
     var switch6 by remember { mutableStateOf(prefs.getBoolean("switch6", false)) }
     // 游戏均衡式性能温控(温控空挂载模式下追加的子项)
@@ -546,6 +548,7 @@ fun HomeScreen(
             syncSwitch("温控空挂载模式", switch3, { switch3 = it }, "switch3")
             syncSwitch("修改最大电流数", switch4, { switch4 = it }, "switch4")
             syncSwitch("模块简介显示充电信息", switch5, { switch5 = it }, "switch5")
+            syncSwitch("还原均衡模式温控", switch15, { switch15 = it }, "switch15")
             syncSwitch("还原性能模式温控", switch6, { switch6 = it }, "switch6")
             syncSwitch("游戏均衡式性能温控", switch7, { switch7 = it }, "switch7")
             syncSwitch("系统均衡式性能温控", switch14, { switch14 = it }, "switch14")
@@ -745,17 +748,40 @@ fun HomeScreen(
                     )
 
                     BasicComponent(
-                        title = "还原性能模式温控",
+                        title = "还原均衡模式温控",
+                        enabled = switch15 || !switch6,
                         endActions = {
                             ThemedSwitch(
-                                checked = switch6,
+                                checked = switch15,
                                 onCheckedChange = null,
+                                enabled = switch15 || !switch6,
                                 useMonet = useMonet
                             )
                         },
                         onClick = {
-                            updateSwitch("switch6", "还原性能模式温控", !switch6) { switch6 = it }
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (switch15 || !switch6) {
+                                updateSwitch("switch15", "还原均衡模式温控", !switch15) { switch15 = it }
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        }
+                    )
+
+                    BasicComponent(
+                        title = "还原性能模式温控",
+                        enabled = switch6 || !switch15,
+                        endActions = {
+                            ThemedSwitch(
+                                checked = switch6,
+                                onCheckedChange = null,
+                                enabled = switch6 || !switch15,
+                                useMonet = useMonet
+                            )
+                        },
+                        onClick = {
+                            if (switch6 || !switch15) {
+                                updateSwitch("switch6", "还原性能模式温控", !switch6) { switch6 = it }
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
                         }
                     )
 
