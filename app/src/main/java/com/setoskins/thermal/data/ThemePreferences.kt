@@ -1,4 +1,4 @@
-package com.seto.myapplication.data
+package com.setoskins.thermal.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore

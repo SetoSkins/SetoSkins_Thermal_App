@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace = "com.seto.myapplication"
+    namespace = "com.setoskins.thermal"
     compileSdk = 37
 
 
     defaultConfig {
-        applicationId = "com.seto.myapplication"
+        applicationId = "com.setoskins.thermal"
         minSdk = 32
         targetSdk = 37
         versionCode = 1
