@@ -587,7 +587,10 @@ fun HomeScreen(
     fun updateSwitch(prefKey: String, configKey: String, newValue: Boolean, setter: (Boolean) -> Unit) {
         setter(newValue)
         prefs.edit().putBoolean(prefKey, newValue).apply()
-        scope.launch { ModuleDetector.updateConfig(configKey, newValue) }
+        scope.launch {
+            ModuleDetector.updateConfig(configKey, newValue)
+            ModuleDetector.executeThermalScript()
+        }
     }
 
     fun updateText(prefKey: String, configKey: String, newValue: String, setter: (String) -> Unit) {
@@ -824,7 +827,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             SmallTitle(
-                text = "调速 (22A＝22000mA＝22000000)",
+                text = "调速 (22000mA＝22000000μA)(重启生效)",
                 modifier = Modifier.compactSmallTitle()
             )
         }
@@ -1940,9 +1943,17 @@ fun FavoritesScreen(modifier: Modifier = Modifier) {
     var logContent by remember { mutableStateOf("正在加载日志...") }
     val isCenterText = logContent == "日志文件为空" || logContent == "无法读取日志文件" || logContent == "正在加载日志..."
 
-    // 每次进入页面刷新日志
+    // 首次加载日志，之后充电时每 3 秒刷新一次
     LaunchedEffect(Unit) {
-        logContent = ModuleDetector.readLog()
+        while (true) {
+            logContent = ModuleDetector.readLog()
+            val batteryInfo = ModuleDetector.readBatteryInfo()
+            if (batteryInfo.status == "Charging") {
+                kotlinx.coroutines.delay(15000)
+            } else {
+                break
+            }
+        }
     }
 
     LazyColumn(

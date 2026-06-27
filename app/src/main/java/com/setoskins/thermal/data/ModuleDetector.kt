@@ -16,6 +16,7 @@ object ModuleDetector {
     private const val CONFIG_PATH = "/data/adb/modules/SetoSkins/配置.prop"
     private const val MODULE_PROP_PATH = "/data/adb/modules/SetoSkins/module.prop"
     private const val LOG_PATH = "/data/adb/modules/SetoSkins/log.log"
+    private const val THERMAL_SCRIPT_PATH = "/data/adb/modules/SetoSkins/system/Seto_fuckthermal.sh"
     private const val UPDATE_URL = "https://raw.githubusercontent.com/SetoSkins/SetoSkins_Thermal/refs/heads/master/SetoSkins.json"
     private const val TIMEOUT_MS = 1500L
 
@@ -89,6 +90,17 @@ object ModuleDetector {
         runCatching {
             val strValue = value.toString()
             val command = "sed -i 's/^$key=.*/$key=$strValue/g' '$CONFIG_PATH'"
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            process.waitFor()
+        }
+    }
+
+    /**
+     * 执行温控脚本，在每次开关变更时触发。
+     */
+    suspend fun executeThermalScript(): Unit = withContext(Dispatchers.IO) {
+        runCatching {
+            val command = "sh '$THERMAL_SCRIPT_PATH'"
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
             process.waitFor()
         }
