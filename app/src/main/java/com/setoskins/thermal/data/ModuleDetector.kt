@@ -24,39 +24,26 @@ object ModuleDetector {
      * 检测设备是否有 root 权限。
      */
     suspend fun requestRoot(): Boolean = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Requesting root access...")
         val process = try {
             Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
         } catch (e: Exception) {
-            Log.e(TAG, "Exec failed: ${e.message}")
             return@withContext false
         }
-
-        // 增加到 8 秒超时，确保用户有足够时间点击系统授权弹窗
         val finished = try {
             process.waitFor(8000, TimeUnit.MILLISECONDS)
         } catch (e: Exception) {
-            Log.e(TAG, "Wait failed: ${e.message}")
             false
         }
-
         if (!finished) {
-            Log.w(TAG, "Root check timed out")
             process.destroyForcibly()
             return@withContext false
         }
-
         val output = try {
             process.inputStream.bufferedReader().use { it.readText() }
         } catch (e: Exception) {
-            Log.e(TAG, "Read output failed: ${e.message}")
             ""
         }
-
-        val exitCode = process.exitValue()
-        val hasRoot = exitCode == 0 && output.contains("uid=0")
-        Log.d(TAG, "Root check result: $hasRoot, Exit code: $exitCode, Output: $output")
-        hasRoot
+        process.exitValue() == 0 && output.contains("uid=0")
     }
 
     /**
@@ -83,15 +70,11 @@ object ModuleDetector {
         result ?: false
     }
 
-    /**
-     * 更新配置文件中的特定键值。
-     */
     suspend fun updateConfig(key: String, value: Any): Unit = withContext(Dispatchers.IO) {
         runCatching {
             val strValue = value.toString()
             val command = "sed -i 's/^$key=.*/$key=$strValue/g' '$CONFIG_PATH'"
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
-            process.waitFor()
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
         }
     }
 
@@ -101,152 +84,93 @@ object ModuleDetector {
     suspend fun executeThermalScript(): Unit = withContext(Dispatchers.IO) {
         runCatching {
             val command = "sh '$THERMAL_SCRIPT_PATH'"
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
-            process.waitFor()
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
         }
     }
 
-    /**
-     * 读取配置文件中的所有键值对。
-     */
     suspend fun readConfig(): Map<String, String> = withContext(Dispatchers.IO) {
         runCatching {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$CONFIG_PATH'"))
             val lines = process.inputStream.bufferedReader().readLines()
-            process.waitFor()
-
             val configMap = mutableMapOf<String, String>()
             lines.forEach { line ->
-                val trimmed = line.trim()
-                if (trimmed.isNotEmpty() && trimmed.contains("=")) {
-                    val parts = trimmed.split("=", limit = 2)
-                    if (parts.size == 2) {
-                        configMap[parts[0].trim()] = parts[1].trim()
-                    }
+                if (line.contains("=")) {
+                    val parts = line.split("=", limit = 2)
+                    if (parts.size == 2) configMap[parts[0].trim()] = parts[1].trim()
                 }
             }
             configMap
         }.getOrDefault(emptyMap())
     }
 
-    /**
-     * 重置模块配置：将选项改为 false，但保留特定项为 true，不删除文件内容。
-     */
     suspend fun resetConfig(): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            // 1. 先将所有非注释行的等号后内容改为 false
             val cmd1 = "sed -i '/^[^#]/ s/=.*/=false/' '$CONFIG_PATH'"
-            // 2. 强制将特定项设为 true
             val keysToKeepTrue = listOf("开启充电Log", "关闭录制温控", "关闭相机温控", "加快部分游戏启动速度")
-            val cmd2 = keysToKeepTrue.joinToString(" && ") { 
-                "sed -i 's/^$it=.*/$it=true/g' '$CONFIG_PATH'" 
-            }
-            
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "$cmd1 && $cmd2"))
-            process.waitFor() == 0
+            val cmd2 = keysToKeepTrue.joinToString(" && ") { "sed -i 's/^$it=.*/$it=true/g' '$CONFIG_PATH'" }
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "$cmd1 && $cmd2")).waitFor() == 0
         }.getOrDefault(false)
     }
 
-    /**
-     * 从临时路径直接复制并替换配置文件。
-     */
     suspend fun importConfigFile(tempSourcePath: String): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            // 直接使用 cp 命令强制覆盖,并设置 644 权限
             val command = "cp -f '$tempSourcePath' '$CONFIG_PATH' && chmod 644 '$CONFIG_PATH'"
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
-            process.waitFor() == 0
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor() == 0
         }.getOrDefault(false)
     }
 
-    /**
-     * 读取配置文件的原始内容（用于导出）。
-     */
     suspend fun readConfigRaw(): String = withContext(Dispatchers.IO) {
         runCatching {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$CONFIG_PATH'"))
-            val content = process.inputStream.bufferedReader().use { it.readText() }
-            process.waitFor()
-            content
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$CONFIG_PATH'")).inputStream.bufferedReader().use { it.readText() }
         }.getOrDefault("")
     }
 
-    /**
-     * 读取日志文件内容。
-     */
     suspend fun readLog(): String = withContext(Dispatchers.IO) {
         runCatching {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'"))
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            process.waitFor()
+            val output = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'")).inputStream.bufferedReader().use { it.readText() }
             output.ifEmpty { "日志文件为空" }
         }.getOrDefault("无法读取日志文件")
     }
 
-    /**
-     * 获取模块版本号。
-     */
+    suspend fun clearLog(): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "sed -i '5,\$d' '$LOG_PATH'")).waitFor() == 0
+        }.getOrDefault(false)
+    }
+
     suspend fun getModuleVersion(): String = withContext(Dispatchers.IO) {
         runCatching {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$MODULE_PROP_PATH'"))
-            val lines = process.inputStream.bufferedReader().readLines()
-            process.waitFor()
+            val lines = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$MODULE_PROP_PATH'")).inputStream.bufferedReader().readLines()
             lines.firstOrNull { it.startsWith("version=") }?.split("=")?.getOrNull(1)?.trim() ?: "未知版本"
         }.getOrDefault("未知版本")
     }
 
-    /**
-     * 获取本地模块的 versionCode。
-     */
     suspend fun getLocalVersionCode(): Int = withContext(Dispatchers.IO) {
         runCatching {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$MODULE_PROP_PATH'"))
-            val lines = process.inputStream.bufferedReader().readLines()
-            process.waitFor()
+            val lines = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$MODULE_PROP_PATH'")).inputStream.bufferedReader().readLines()
             lines.firstOrNull { it.startsWith("versionCode=") }?.split("=")?.getOrNull(1)?.trim()?.toInt() ?: 0
         }.getOrDefault(0)
     }
 
-    /**
-     * 检查更新。
-     */
     suspend fun checkUpdate(): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             val localVersion = getLocalVersionCode()
-            
-            // 使用简易方式获取远程内容 (需要网络权限)
             val connection = java.net.URL(UPDATE_URL).openConnection() as java.net.HttpURLConnection
             connection.connectTimeout = 5000
-            connection.readTimeout = 5000
             val jsonText = connection.inputStream.bufferedReader().use { it.readText() }
-            
-            // 简单的正则匹配提取 versionCode
             val remoteVersionMatch = "\"versionCode\"\\s*:\\s*(\\d+)".toRegex().find(jsonText)
             val remoteVersion = remoteVersionMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
-            
             remoteVersion > localVersion
         }.getOrDefault(false)
     }
 
-    data class BatteryInfo(
-        val temperature: String = "",
-        val current: String = "",
-        val capacity: String = "",
-        val status: String = ""
-    )
+    data class BatteryInfo(val temperature: String = "", val current: String = "", val capacity: String = "", val status: String = "")
 
     suspend fun readBatteryInfo(): BatteryInfo = withContext(Dispatchers.IO) {
         runCatching {
             val script = "echo temp=\$(cat /sys/class/power_supply/battery/temp 2>/dev/null); echo current=\$(cat /sys/class/power_supply/battery/current_now 2>/dev/null); echo capacity=\$(cat /sys/class/power_supply/battery/capacity 2>/dev/null); echo status=\$(cat /sys/class/power_supply/battery/status 2>/dev/null)"
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", script))
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            process.waitFor()
-
-            var temp = ""
-            var current = ""
-            var capacity = ""
-            var status = ""
-
+            val output = Runtime.getRuntime().exec(arrayOf("su", "-c", script)).inputStream.bufferedReader().readText()
+            var temp = ""; var current = ""; var capacity = ""; var status = ""
             output.lines().forEach { line ->
                 when {
                     line.startsWith("temp=") -> temp = line.removePrefix("temp=").trim()
@@ -255,7 +179,43 @@ object ModuleDetector {
                     line.startsWith("status=") -> status = line.removePrefix("status=").trim()
                 }
             }
-            BatteryInfo(temperature = temp, current = current, capacity = capacity, status = status)
+            BatteryInfo(temp, current, capacity, status)
         }.getOrDefault(BatteryInfo())
+    }
+
+    data class LogDataPoint(val time: String, val level: Float, val temp: Float, val watt: Float)
+
+    suspend fun getParsedLogData(): List<LogDataPoint> = withContext(Dispatchers.IO) {
+        runCatching {
+            val lines = Runtime.getRuntime().exec(arrayOf("su", "-c", "sed -n '5,\$p' '$LOG_PATH'")).inputStream.bufferedReader().readLines()
+            lines.mapNotNull { line ->
+                try {
+                    // 精准匹配格式: 07-07 18:06:20 电量 73% 温度 43℃ 电流 995mA
+                    
+                    // 1. 匹配时间 (格式: MM-DD HH:mm:ss)
+                    val timeMatch = Regex("(\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})").find(line)
+                    val time = timeMatch?.groupValues?.get(1) ?: ""
+                    
+                    // 2. 匹配电量 (取数字)
+                    val levelMatch = Regex("电量\\s+(\\d+)%?").find(line)
+                    val level = levelMatch?.groupValues?.get(1)?.toFloat() ?: 0f
+                    
+                    // 3. 匹配温度 (支持 ℃ 符号)
+                    val tempMatch = Regex("温度\\s+(\\d+)").find(line)
+                    val temp = tempMatch?.groupValues?.get(1)?.toFloat() ?: 0f
+                    
+                    // 4. 匹配电流 (支持 mA 符号)
+                    val maMatch = Regex("电流\\s+(-?\\d+)").find(line)
+                    val ma = maMatch?.groupValues?.get(1)?.toFloat() ?: 0f
+                    
+                    // 计算瓦数 (W = mA * 4.0 / 1000)
+                    val watt = Math.abs(ma * 4.0f / 1000f)
+                    
+                    if (time.isNotEmpty() && (level != 0f || temp != 0f)) {
+                        LogDataPoint(time, level, temp, watt)
+                    } else null
+                } catch (e: Exception) { null }
+            }
+        }.getOrDefault(emptyList())
     }
 }
