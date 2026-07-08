@@ -538,7 +538,7 @@ fun HomeScreen(
             syncSwitch("温控空挂载模式", switch3, { switch3 = it }, "switch3")
             syncSwitch("修改最大电流数", switch4, { switch4 = it }, "switch4")
             syncSwitch("模块简介显示充电信息", switch5, { switch5 = it }, "switch5")
-            syncSwitch("充电时显示超级岛", switch16, { switch16 = it }, "switch16")
+            // 灵动岛是纯软件选项，不与 config.prop 同步
             syncSwitch("还原均衡模式温控", switch15, { switch15 = it }, "switch15")
             syncSwitch("还原性能模式温控", switch6, { switch6 = it }, "switch6")
             syncSwitch("游戏均衡式性能温控", switch7, { switch7 = it }, "switch7")
@@ -581,12 +581,12 @@ fun HomeScreen(
         scope.launch { ModuleDetector.updateConfig(configKey, newValue) }
     }
 
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         item { if (!moduleInstalled) RedNotInstalledCard() else if (hasUpdate) YellowUpdateCard() else GreenActivatedCard(useMonet = useMonet, version = moduleVersion) }
         item { SmallTitle(text = "配置", modifier = Modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 8.dp.roundToPx()) { placeable.place(0, 0) } }) }
         item { MiuixCard { Column(modifier = Modifier.padding(vertical = 4.dp)) { BasicComponent(title = "简洁版配置", summary = "目前无法更改", endActions = { ThemedSwitch(checked = false, onCheckedChange = null, enabled = false, useMonet = useMonet) })
                     BasicComponent(title = "模块简介显示充电信息", summary = "Magisk/KSU里显示电流、电量等充电信息,可能耗一丢丢电", endActions = { ThemedSwitch(checked = switch5, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch5", "模块简介显示充电信息", !switch5) { switch5 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
-                    BasicComponent(title = "充电时显示灵动岛", summary = "充电时在屏幕显示灵动岛风格充电信息（需后台运行）", endActions = { ThemedSwitch(checked = switch16, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch16", "充电时显示超级岛", !switch16) { switch16 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } } }
+                    BasicComponent(title = "充电时显示灵动岛", summary = "充电时在屏幕显示灵动岛风格充电信息（需后台运行）", endActions = { ThemedSwitch(checked = switch16, onCheckedChange = null, useMonet = useMonet) }, onClick = { switch16 = !switch16; prefs.edit().putBoolean("switch16", switch16).apply(); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } } }
         item { Spacer(modifier = Modifier.height(12.dp)); SmallTitle(text = "温控", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } }) }
         item { MiuixCard { BasicComponent(title = "快充模式", endActions = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = if (switch2) "True" else "False", fontSize = 17.sp, color = if (switch2) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceSecondary); Spacer(modifier = Modifier.width(8.dp)); ThemedSwitch(checked = switch2, onCheckedChange = null, useMonet = useMonet) } }, onClick = { updateSwitch("switch2", "快充模式", !switch2) { switch2 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                 Column(modifier = Modifier.padding(vertical = 4.dp)) { BasicComponent(title = "温控空挂载模式", summary = "非必要建议不开启此选项", endActions = { ThemedSwitch(checked = switch3, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch3", "温控空挂载模式", !switch3) { switch3 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
@@ -681,7 +681,7 @@ fun FavoritesScreen(reloadTrigger: Int = 0, modifier: Modifier = Modifier) {
         }
     }
 
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
         item { BatteryInfoCard() }
         item { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (8).dp)) } }
         item { MiuixCard(modifier = Modifier.padding(top = 11.dp)) { WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() }) } }
