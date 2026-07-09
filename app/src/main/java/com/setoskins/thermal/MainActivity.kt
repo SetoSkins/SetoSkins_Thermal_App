@@ -73,16 +73,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode as ComposeBlendMode
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -127,6 +130,7 @@ import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.rounded.Check
@@ -164,6 +168,7 @@ import com.setoskins.thermal.data.ThemePreferences
 import com.setoskins.thermal.ui.theme.MyApplicationTheme
 import com.setoskins.thermal.R
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.app.NotificationManager
 import android.provider.Settings
@@ -233,7 +238,35 @@ fun MyApplicationApp(
     var reloadTrigger by remember { mutableIntStateOf(0) }
     var logReloadTrigger by remember { mutableIntStateOf(0) }
     var rootState by remember { mutableStateOf<Boolean?>(null) }
+    var showDonatePage by remember { mutableStateOf(false) }
+    var showDonateLayer by remember { mutableStateOf(false) }
+    val transitionProgress = remember { Animatable(0f) }
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
+
+    LaunchedEffect(showDonatePage) {
+        if (showDonatePage) {
+            showDonateLayer = true
+            transitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+        } else {
+            transitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            showDonateLayer = false
+        }
+    }
+
+    PredictiveBackHandler(enabled = showDonatePage) { progress ->
+        try {
+            progress.collect { backEvent ->
+                // Map gesture 0..1 to transition 1..0
+                transitionProgress.snapTo(1f - backEvent.progress)
+            }
+            showDonatePage = false
+        } catch (e: Exception) {
+            // Cancelled: animate back to 1
+            scope.launch {
+                transitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         rootState = ModuleDetector.requestRoot()
@@ -242,12 +275,19 @@ fun MyApplicationApp(
     val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val backdrop = rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
-    val showBlur = useMonet && shaderSupported && backdrop != null
+    val reduceExpensiveEffects = showDonatePage || showDonateLayer
+    val showBlur = useMonet && shaderSupported && backdrop != null && !reduceExpensiveEffects
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedBackground(useMonet = useMonet)
         Scaffold(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        // Previous page slides out to the left as overlay opens
+                        translationX = -screenWidth.toPx() * 0.18f * transitionProgress.value
+                    },
                 topBar = {
                     if (currentDestination != AppDestinations.PROFILE) {
                         BlurredBar(backdrop, showBlur) {
@@ -320,12 +360,25 @@ fun MyApplicationApp(
                                 useMonet = useMonet,
                                 onUseMonetChange = onUseMonetChange,
                                 onConfigImported = { reloadTrigger++ },
+                                onNavigateToDonate = { showDonatePage = true },
+                                reduceEffects = reduceExpensiveEffects,
                                 modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection)
                             )
                         }
                     }
                 }
             }
+
+        if (showDonateLayer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = 0.22f * transitionProgress.value
+                    }
+                    .background(Color.Black)
+            )
+        }
 
         if (rootState == false) {
             OverlayDialog(
@@ -341,6 +394,13 @@ fun MyApplicationApp(
                         }
                     }
                 }
+            )
+        }
+        if (showDonateLayer) {
+            DonatePage(
+                useMonet = useMonet,
+                onDismiss = { showDonatePage = false },
+                progressProvider = { transitionProgress.value }
             )
         }
     }
@@ -366,7 +426,7 @@ fun ThemedNavigationBar(
                     icon = { Icon(imageVector = destination.icon, contentDescription = destination.label) },
                     label = { androidx.compose.material3.Text(text = destination.label) },
                     selected = destination == currentDestination,
-                    onClick = { onDestinationSelected(destination) },
+                    onClick = { if (destination != currentDestination) onDestinationSelected(destination) },
                     colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                         selectedIconColor = miuixColors.primary,
                         selectedTextColor = miuixColors.primary,
@@ -380,7 +440,7 @@ fun ThemedNavigationBar(
     } else {
         MiuixNavigationBar(modifier = modifier.fillMaxWidth(), color = MiuixTheme.colorScheme.surface.copy(alpha = barAlpha)) {
             AppDestinations.entries.forEach { destination ->
-                MiuixNavigationBarItem(icon = destination.icon, label = destination.label, selected = destination == currentDestination, onClick = { onDestinationSelected(destination) })
+                MiuixNavigationBarItem(icon = destination.icon, label = destination.label, selected = destination == currentDestination, onClick = { if (destination != currentDestination) onDestinationSelected(destination) })
             }
         }
     }
@@ -1070,7 +1130,7 @@ fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLogPathZone(values: Lis
 }
 
 @Composable
-fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, modifier: Modifier = Modifier) {
     val context = LocalContext.current; val packageInfo = remember { context.packageManager.getPackageInfo(context.packageName, 0) }
     val appName = remember { context.applicationInfo.loadLabel(context.packageManager).toString() }; val versionName = packageInfo.versionName ?: "1.0"; val versionCode = packageInfo.longVersionCode
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"; val scope = rememberCoroutineScope(); val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
@@ -1079,13 +1139,13 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConf
     val listState = rememberLazyListState(); val density = LocalDensity.current; var logoHeightDp by remember { mutableStateOf(300.dp) }; val fadeDistancePx = remember(density) { with(density) { 360.dp.toPx() } }
     val progress by remember { derivedStateOf { val idx = listState.firstVisibleItemIndex; val offset = listState.firstVisibleItemScrollOffset.toFloat(); val scrollPx = if (idx <= 0) offset else fadeDistancePx; (scrollPx / fadeDistancePx).coerceIn(0f, 1f) } }
     val spacerHeightPx = remember(density) { with(density) { 170.dp.toPx() } }; val aboutProgress by remember { derivedStateOf { val idx = listState.firstVisibleItemIndex; val offset = listState.firstVisibleItemScrollOffset.toFloat(); if (idx <= 0) (offset / spacerHeightPx).coerceIn(0f, 1f) else 1f } }
-    val shaderSupported = remember { isRuntimeShaderSupported() }; val backdrop = rememberBlurBackdrop(); val dynamicBackground = remember { shaderSupported }; val isInDark = isSystemInDarkTheme(); var noiseCoefficient by remember { mutableFloatStateOf(BlurDefaults.NoiseCoefficient) }
+    val shaderSupported = remember { isRuntimeShaderSupported() }; val backdrop = rememberBlurBackdrop(); val dynamicBackground = shaderSupported && !reduceEffects; val isInDark = isSystemInDarkTheme(); var noiseCoefficient by remember { mutableFloatStateOf(BlurDefaults.NoiseCoefficient) }
     val logoBlend = remember(isInDark) { if (isInDark) listOf(BlendColorEntry(Color(0xe6a1a1a1), BlurBlendMode.ColorDodge), BlendColorEntry(Color(0x4de6e6e6), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af500), BlurBlendMode.Lab)) else listOf(BlendColorEntry(Color(0xcc4a4a4a), BlurBlendMode.ColorBurn), BlendColorEntry(Color(0xff4f4f4f), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af200), BlurBlendMode.Lab)) }
-    BgEffectBackground(dynamicBackground = dynamicBackground, isOs3Effect = true, isFullSize = true, modifier = Modifier.fillMaxSize(), bgModifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier, alpha = { 1f - progress }) {
+    BgEffectBackground(dynamicBackground = dynamicBackground, isOs3Effect = true, isFullSize = true, modifier = Modifier.fillMaxSize(), bgModifier = if (backdrop != null && !reduceEffects) Modifier.layerBackdrop(backdrop) else Modifier, alpha = { 1f - progress }) {
         Box(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(top = 12.dp).align(Alignment.TopCenter).graphicsLayer { alpha = aboutProgress }, contentAlignment = Alignment.Center) { Text(text = "关于", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.onBackground) }
         Column(modifier = Modifier.fillMaxWidth().padding(top = 170.dp).onSizeChanged { size -> with(density) { logoHeightDp = size.height.toDp() } }, horizontalAlignment = Alignment.CenterHorizontally) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(88.dp).graphicsLayer { val iconProgress = ((progress - 0.35f) / 0.15f).coerceIn(0f, 1f); clip = true; shape = RoundedCornerShape(24.dp); alpha = 1 - iconProgress; scaleX = 1 - (iconProgress * 0.05f); scaleY = 1 - (iconProgress * 0.05f) }.background(Color.White).padding(15.dp)) { Icon(imageVector = MiuixIcons.Contacts, contentDescription = "App Icon", modifier = Modifier.fillMaxSize(), tint = Color(0xFF9C27B0)) }
-            Text(modifier = Modifier.padding(top = 16.dp).fillMaxWidth().graphicsLayer { val projectNameProgress = ((progress - 0.20f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - projectNameProgress; scaleX = 1 - (projectNameProgress * 0.05f); scaleY = 1 - (projectNameProgress * 0.05f) }.then(if (backdrop != null) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(16.dp), blurRadius = 150f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier), text = appName, color = MiuixTheme.colorScheme.onBackground, fontWeight = FontWeight.ExtraBold, fontSize = 42.sp, textAlign = TextAlign.Center)
+            Text(modifier = Modifier.padding(top = 16.dp).fillMaxWidth().graphicsLayer { val projectNameProgress = ((progress - 0.20f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - projectNameProgress; scaleX = 1 - (projectNameProgress * 0.05f); scaleY = 1 - (projectNameProgress * 0.05f) }.then(if (backdrop != null && !reduceEffects) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(16.dp), blurRadius = 96f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier), text = appName, color = MiuixTheme.colorScheme.onBackground, fontWeight = FontWeight.ExtraBold, fontSize = 42.sp, textAlign = TextAlign.Center)
             Text(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().graphicsLayer { val versionCodeProgress = ((progress - 0.05f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - versionCodeProgress; scaleX = 1 - (versionCodeProgress * 0.05f); scaleY = 1 - (versionCodeProgress * 0.05f) }, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, text = "$versionName ($versionCode) | release", fontSize = 15.sp, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(80.dp))
         }
@@ -1100,8 +1160,118 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConf
                     ArrowPreference(title = if (isZh) "重置模块配置" else "Reset Module Config", onClick = { showResetDialog = true })
                     OverlayDialog(show = showResetDialog, title = if (isZh) "重置模块配置" else "Reset Module Config", summary = if (isZh) "确定要重置模块配置吗？所有开关将被关闭。" else "Are you sure you want to reset the module config? All switches will be turned off.", onDismissRequest = { showResetDialog = false }, content = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) { Button(onClick = { showResetDialog = false }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) { Text(if (isZh) "取消" else "Cancel") }; Button(onClick = { scope.launch { val success = ModuleDetector.resetConfig(); if (success) { prefs.edit().clear().apply(); kotlinx.coroutines.delay(200); onConfigImported(); Toast.makeText(context, if (isZh) "已重置并关闭所有开关" else "All configs reset and turned off", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "重置失败" else "Reset Failed", Toast.LENGTH_SHORT).show() } }; showResetDialog = false }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) { Text(if (isZh) "确定" else "Confirm") } } })
                 } }
-            item { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "检查更新" else "Check Update") } }
+            item { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate) } }
+            item { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "检查更新" else "Check Update", onClick = { Toast.makeText(context, if (isZh) "功能正在开发" else "Feature is under development", Toast.LENGTH_SHORT).show() }) } }
         }
+    }
+}
+
+@Composable
+fun DonatePage(
+    useMonet: Boolean,
+    onDismiss: () -> Unit,
+    progressProvider: () -> Float,
+    modifier: Modifier = Modifier
+) {
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
+    val scrollState = rememberScrollState()
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                val transitionProgress = progressProvider()
+                // Donation page slides out to the right (0 to screenWidth)
+                translationX = (1f - transitionProgress) * size.width
+                
+                // No scaling or rounding for a clean push transition
+                scaleX = 1f
+                scaleY = 1f
+            }
+            .background(MiuixTheme.colorScheme.background)
+    ) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Text(text = if (isZh) "捐赠" else "Donate", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(scrollState).padding(horizontal = 20.dp)) {
+                Spacer(Modifier.height(16.dp))
+                Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(80.dp).clip(CircleShape).align(Alignment.CenterHorizontally))
+                Spacer(Modifier.height(12.dp))
+                Text(text = "SetoSkins", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                Text(text = if (isZh) "温度调控模块" else "Thermal Control Module", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                Spacer(Modifier.height(24.dp))
+                Card(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(text = if (isZh) "支持项目" else "Support the Project", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(text = if (isZh) "如果你喜欢这个项目，欢迎通过以下方式支持我" else "If you like this project, feel free to support us:", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    cornerRadius = 24.dp,
+                    colors = CardDefaults.defaultColors(
+                        color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f),
+                        contentColor = MiuixTheme.colorScheme.onSurface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        DonateQrImage(
+                            title = if (isZh) "微信" else "WeChat",
+                            imageRes = R.drawable.weixin,
+                            contentDescription = "WeChat QR Code",
+                            height = 480.dp,
+                            imageOffsetY = (-120).dp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        DonateQrImage(
+                            title = if (isZh) "支付宝" else "Alipay",
+                            imageRes = R.drawable.zfb,
+                            contentDescription = "Alipay QR Code",
+                            height = 320.dp,
+                            imageOffsetY = (-40).dp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DonateQrImage(
+    title: String,
+    imageRes: Int,
+    contentDescription: String,
+    height: androidx.compose.ui.unit.Dp,
+    imageOffsetY: androidx.compose.ui.unit.Dp = 0.dp,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(12.dp))
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+                .offset(y = imageOffsetY)
+                .clip(RoundedCornerShape(18.dp))
+        )
     }
 }
 
