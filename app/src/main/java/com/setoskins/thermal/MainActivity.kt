@@ -12,6 +12,7 @@ import androidx.core.view.WindowCompat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
@@ -74,6 +75,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode as ComposeBlendMode
 import androidx.compose.ui.layout.ContentScale
@@ -1174,7 +1176,35 @@ fun DonatePage(
     modifier: Modifier = Modifier
 ) {
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
+    val isDark = isSystemInDarkTheme()
+    val colors = MiuixTheme.colorScheme
     val scrollState = rememberScrollState()
+    val donateCardShape = RoundedCornerShape(24.dp)
+    val donateCardColor = if (isDark) {
+        colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
+    } else {
+        colors.surface.copy(alpha = if (useMonet) 0.72f else 0.62f)
+    }
+    val donateCardBorderColor = if (isDark) {
+        colors.primary.copy(alpha = if (useMonet) 0.30f else 0.22f)
+    } else {
+        colors.outline.copy(alpha = if (useMonet) 0.18f else 0.12f)
+    }
+    val donateCardShadowColor = if (isDark) {
+        colors.primary.copy(alpha = if (useMonet) 0.18f else 0.10f)
+    } else {
+        Color.Black.copy(alpha = 0.08f)
+    }
+    val donateCardModifier = Modifier
+        .fillMaxWidth()
+        .shadow(
+            elevation = if (isDark) 10.dp else 4.dp,
+            shape = donateCardShape,
+            clip = false,
+            ambientColor = donateCardShadowColor,
+            spotColor = donateCardShadowColor
+        )
+        .border(1.dp, donateCardBorderColor, donateCardShape)
 
     Box(
         modifier = modifier
@@ -1204,7 +1234,7 @@ fun DonatePage(
                 Text(text = "SetoSkins", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 Text(text = if (isZh) "温度调控模块" else "Thermal Control Module", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 Spacer(Modifier.height(24.dp))
-                Card(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) {
+                Card(modifier = donateCardModifier, cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = donateCardColor, contentColor = colors.onSurface)) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(text = if (isZh) "支持项目" else "Support the Project", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
@@ -1213,34 +1243,32 @@ fun DonatePage(
                 }
                 Spacer(Modifier.height(16.dp))
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = donateCardModifier,
                     cornerRadius = 24.dp,
                     colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f),
-                        contentColor = MiuixTheme.colorScheme.onSurface
+                        color = donateCardColor,
+                        contentColor = colors.onSurface
                     )
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         DonateQrImage(
                             title = if (isZh) "微信" else "WeChat",
                             imageRes = R.drawable.weixin,
                             contentDescription = "WeChat QR Code",
-                            height = 480.dp,
-                            imageOffsetY = (-120).dp,
-                            modifier = Modifier.weight(1f)
+                            height = 180.dp,
+                            modifier = Modifier.fillMaxWidth()
                         )
                         DonateQrImage(
                             title = if (isZh) "支付宝" else "Alipay",
                             imageRes = R.drawable.zfb,
                             contentDescription = "Alipay QR Code",
-                            height = 320.dp,
-                            imageOffsetY = (-40).dp,
-                            modifier = Modifier.weight(1f)
+                            height = 260.dp,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -1260,7 +1288,20 @@ private fun DonateQrImage(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(MiuixTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MiuixTheme.colorScheme.onPrimaryContainer
+            )
+        }
         Spacer(modifier = Modifier.height(12.dp))
         Image(
             painter = painterResource(id = imageRes),
