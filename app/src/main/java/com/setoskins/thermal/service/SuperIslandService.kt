@@ -18,7 +18,9 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.setoskins.thermal.MainActivity
 import com.setoskins.thermal.R
@@ -28,7 +30,16 @@ class SuperIslandService : Service() {
 
     private val CHANNEL_ID = "super_island_channel"
     private val NOTIFICATION_ID = 1001
+    private val UPDATE_INTERVAL_MS = 2000L
     private var appIconCircular: Icon? = null
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private val updateRunnable = object : Runnable {
+        override fun run() {
+            if (updateNotification()) {
+                updateHandler.postDelayed(this, UPDATE_INTERVAL_MS)
+            }
+        }
+    }
 
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -44,6 +55,7 @@ class SuperIslandService : Service() {
         appIconCircular = createCircularIconFromResource(R.mipmap.ic_launcher)
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         startForeground(NOTIFICATION_ID, buildNotification(BatteryMonitor.getBatteryState(this)))
+        startRealtimeUpdates()
     }
 
     private fun createCircularIconFromResource(resId: Int): Icon? {
@@ -74,18 +86,25 @@ class SuperIslandService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         updateNotification()
+        startRealtimeUpdates()
         return START_STICKY
     }
 
-    private fun updateNotification() {
+    private fun startRealtimeUpdates() {
+        updateHandler.removeCallbacks(updateRunnable)
+        updateHandler.post(updateRunnable)
+    }
+
+    private fun updateNotification(): Boolean {
         val state = BatteryMonitor.getBatteryState(this)
         if (!state.isCharging) {
             stopSelf()
-            return
+            return false
         }
         val notification = buildNotification(state)
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(NOTIFICATION_ID, notification)
+        return true
     }
 
     private fun buildNotification(state: BatteryMonitor.BatteryState): Notification {
@@ -152,6 +171,7 @@ class SuperIslandService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        updateHandler.removeCallbacks(updateRunnable)
         unregisterReceiver(batteryReceiver)
         super.onDestroy()
     }
