@@ -263,7 +263,7 @@ fun MyApplicationApp(
             }
             showDonatePage = false
         } catch (e: Exception) {
-            // Cancelled: animate back to 1
+
             scope.launch {
                 transitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
             }
@@ -985,15 +985,29 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 val levelBase = 0f
                 val tempBase = zoneH + gap
                 val wattBase = 2f * (zoneH + gap)
+                
+                // No top/bottom margins — curves fill entire zone
+                val usableZoneH = zoneH
+                
+                fun normalizeY(value: Float, base: Float): Float {
+                    return base + (1f - value) * usableZoneH
+                }
+
                 for (i in 0..4) { val y = h - (i.toFloat() / 4 * h); drawLine(gridLineColor, Offset(0f, y), Offset(w, y), strokeWidth = 0.5.dp.toPx()) }
-                if (showWatt) drawLogPathZone(points.map { (it.watt / maxWatt).coerceIn(0f, 1f) }, sp, zoneH, wattBase, wattColor)
-                if (showLevel) drawLogPathZone(points.map { it.level / 100f }, sp, zoneH, levelBase, levelColor)
-                if (showTemp) drawLogPathZone(points.map { (it.temp / maxTemp).coerceIn(0f, 1f) }, sp, zoneH, tempBase, tempColor)
+                if (showWatt) drawLogPathZone(points.map { (it.watt / maxWatt).coerceIn(0f, 1f) }, sp, usableZoneH, wattBase, wattColor)
+                if (showLevel) drawLogPathZone(points.map { it.level / 100f }, sp, usableZoneH, levelBase, levelColor)
+                if (showTemp) drawLogPathZone(points.map { (it.temp / maxTemp).coerceIn(0f, 1f) }, sp, usableZoneH, tempBase, tempColor)
+                
+                // Global level label position: if ANY point's above-label would overlap, show ALL below
+                val levelLabelBelow = showLevel && points.any { p ->
+                    val y = normalizeY(p.level / 100f, levelBase)
+                    y - 10.dp.toPx() < levelBase || y + 22.dp.toPx() > levelBase + zoneH
+                }
+                
                 val animatedIndex = animatedTouchIndex.value
                 val lastRealTimeX = if (points.isNotEmpty()) points.lastIndex * sp else -1f
                 markerData.forEach { (index, _) ->
                     val x = index * sp
-                    // 充电时若marker与实时点距离过近则隐藏该marker（实时点始终显示）
                     if (isCharging && lastRealTimeX >= 0f && kotlin.math.abs(x - lastRealTimeX) < 30.dp.toPx()) return@forEach
                     val p = points[index]
                     drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
@@ -1003,71 +1017,65 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         textAlign = Paint.Align.CENTER
                     }
                     if (showWatt) {
-                        val y = wattBase + zoneH - (p.watt / maxWatt) * zoneH
+                        val y = normalizeY((p.watt / maxWatt).coerceIn(0f, 1f), wattBase)
                         drawCircle(wattColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
                         if (animatedIndex < 0f) {
                             textPaint.color = wattColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, (y - 12.dp.toPx()).coerceAtLeast(wattBase + 16.dp.toPx()), textPaint)
+                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), textPaint)
                         }
                     }
+                    // Temp: always below the data point
+                    val tempY = if (showTemp) normalizeY((p.temp / maxTemp).coerceIn(0f, 1f), tempBase) else 0f
+                    if (showTemp) {
+                        drawCircle(tempColor, radius = 4.5.dp.toPx(), center = Offset(x, tempY))
+                        if (animatedIndex < 0f) {
+                            textPaint.color = tempColor.toArgb()
+                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, tempY + 22.dp.toPx(), textPaint)
+                        }
+                    }
+                    // Level: global label position (above or below for entire line)
                     if (showLevel) {
-                        val y = levelBase + zoneH - (p.level / 100f) * zoneH
+                        val y = normalizeY(p.level / 100f, levelBase)
                         drawCircle(levelColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
                         if (animatedIndex < 0f) {
                             textPaint.color = levelColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, (y + 22.dp.toPx()).coerceAtMost(levelBase + zoneH - 8.dp.toPx()), textPaint)
-                        }
-                    }
-                    if (showTemp) {
-                        val y = tempBase + zoneH - (p.temp / maxTemp) * zoneH
-                        drawCircle(tempColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                        if (animatedIndex < 0f) {
-                            textPaint.color = tempColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, (y + 22.dp.toPx()).coerceAtMost(tempBase + zoneH - 8.dp.toPx()), textPaint)
+                            val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
+                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, textPaint)
                         }
                     }
                 }
-                // 充电时始终显示最右边数据点（圆点始终显示，文字与marker重叠时隐藏）
+                // 充电时始终显示最右边数据点
                 val isChargeTouching = animatedIndex >= 0f
                 if (isCharging && !isChargeTouching && points.isNotEmpty()) {
                     val lastIdx = points.lastIndex
                     val isLastPointMarker = markerData.any { it.first == lastIdx }
                     val x = lastIdx * sp
                     val p = points[lastIdx]
-                    // 圆点始终绘制
                     if (showWatt) {
-                        val y = wattBase + zoneH - (p.watt / maxWatt).coerceIn(0f, 1f) * zoneH
+                        val y = normalizeY((p.watt / maxWatt).coerceIn(0f, 1f), wattBase)
                         drawCircle(wattColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
+                        if (!isLastPointMarker) {
+                            val paint = Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER; color = wattColor.toArgb() }
+                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), paint)
+                        }
                     }
-                    if (showLevel) {
-                        val y = levelBase + zoneH - (p.level / 100f) * zoneH
-                        drawCircle(levelColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                    }
+                    // Temp: always below
                     if (showTemp) {
-                        val y = tempBase + zoneH - (p.temp / maxTemp).coerceIn(0f, 1f) * zoneH
+                        val y = normalizeY((p.temp / maxTemp).coerceIn(0f, 1f), tempBase)
                         drawCircle(tempColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
+                        if (!isLastPointMarker) {
+                            val paint = Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER; color = tempColor.toArgb() }
+                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y + 22.dp.toPx(), paint)
+                        }
                     }
-                    // 文字标注仅在非 marker 点时显示（避免同一个点绘制两次）
-                    if (!isLastPointMarker) {
-                        val pointPaint = Paint().apply {
-                            textSize = 32f
-                            typeface = android.graphics.Typeface.DEFAULT_BOLD
-                            textAlign = Paint.Align.CENTER
-                        }
-                        if (showWatt) {
-                            val y = wattBase + zoneH - (p.watt / maxWatt).coerceIn(0f, 1f) * zoneH
-                            pointPaint.color = wattColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, (y - 12.dp.toPx()).coerceAtLeast(wattBase + 16.dp.toPx()), pointPaint)
-                        }
-                        if (showLevel) {
-                            val y = levelBase + zoneH - (p.level / 100f) * zoneH
-                            pointPaint.color = levelColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, (y + 22.dp.toPx()).coerceAtMost(levelBase + zoneH - 8.dp.toPx()), pointPaint)
-                        }
-                        if (showTemp) {
-                            val y = tempBase + zoneH - (p.temp / maxTemp).coerceIn(0f, 1f) * zoneH
-                            pointPaint.color = tempColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, (y + 22.dp.toPx()).coerceAtMost(tempBase + zoneH - 8.dp.toPx()), pointPaint)
+                    // Level: global label position
+                    if (showLevel) {
+                        val y = normalizeY(p.level / 100f, levelBase)
+                        drawCircle(levelColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
+                        if (!isLastPointMarker) {
+                            val paint = Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER; color = levelColor.toArgb() }
+                            val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
+                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, paint)
                         }
                     }
                 }
@@ -1090,24 +1098,27 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     }
                     if (showWatt) {
                         val value = "%.1fW".format(p.watt)
-                        val y = wattBase + zoneH - (p.watt / maxWatt).coerceIn(0f, 1f) * zoneH
+                        val y = normalizeY((p.watt / maxWatt).coerceIn(0f, 1f), wattBase)
                         drawCircle(wattColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
                         textPaint.color = wattColor.copy(alpha = alpha).toArgb()
-                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), (y - 14.dp.toPx()).coerceAtLeast(wattBase + 16.dp.toPx()), textPaint)
+                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), y - 12.dp.toPx(), textPaint)
                     }
-                    if (showLevel) {
-                        val value = "${p.level.toInt()}%"
-                        val y = levelBase + zoneH - (p.level / 100f) * zoneH
-                        drawCircle(levelColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                        textPaint.color = levelColor.copy(alpha = alpha).toArgb()
-                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), (y + 22.dp.toPx()).coerceAtMost(levelBase + zoneH - 8.dp.toPx()), textPaint)
-                    }
+                    // Temp: always below the data point
                     if (showTemp) {
                         val value = "${p.temp.toInt()}°"
-                        val y = tempBase + zoneH - (p.temp / maxTemp).coerceIn(0f, 1f) * zoneH
+                        val y = normalizeY((p.temp / maxTemp).coerceIn(0f, 1f), tempBase)
                         drawCircle(tempColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
                         textPaint.color = tempColor.copy(alpha = alpha).toArgb()
-                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), (y - 14.dp.toPx()).coerceAtLeast(tempBase + 16.dp.toPx()), textPaint)
+                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), y + 22.dp.toPx(), textPaint)
+                    }
+                    // Level: global label position
+                    if (showLevel) {
+                        val value = "${p.level.toInt()}%"
+                        val y = normalizeY(p.level / 100f, levelBase)
+                        drawCircle(levelColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
+                        textPaint.color = levelColor.copy(alpha = alpha).toArgb()
+                        val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
+                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), labelY, textPaint)
                     }
                 }
             }
