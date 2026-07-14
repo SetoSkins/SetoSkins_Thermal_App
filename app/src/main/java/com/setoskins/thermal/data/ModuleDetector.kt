@@ -195,23 +195,21 @@ object ModuleDetector {
                     // 1. 匹配时间 (格式: MM-DD HH:mm:ss)
                     val timeMatch = Regex("(\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})").find(line)
                     val time = timeMatch?.groupValues?.get(1) ?: ""
-                    
+
                     // 2. 匹配电量 (取数字)
                     val levelMatch = Regex("电量\\s+(\\d+)%?").find(line)
-                    val level = levelMatch?.groupValues?.get(1)?.toFloat() ?: 0f
-                    
                     // 3. 匹配温度 (支持 ℃ 符号)
                     val tempMatch = Regex("温度\\s+(\\d+)").find(line)
-                    val temp = tempMatch?.groupValues?.get(1)?.toFloat() ?: 0f
-                    
                     // 4. 匹配电流 (支持 mA 符号)
                     val maMatch = Regex("电流\\s+(-?\\d+)").find(line)
-                    val ma = maMatch?.groupValues?.get(1)?.toFloat() ?: 0f
-                    
-                    // 计算瓦数 (W = mA * 4.0 / 1000)
-                    val watt = Math.abs(ma * 4.0f / 1000f)
-                    
-                    if (time.isNotEmpty() && (level != 0f || temp != 0f)) {
+
+                    // 如果缺少电量或电流数据，跳过这条记录，防止曲线归零
+                    if (time.isNotEmpty() && levelMatch != null && maMatch != null && tempMatch != null) {
+                        val level = levelMatch.groupValues[1].toFloat()
+                        val temp = tempMatch.groupValues[1].toFloat()
+                        val ma = maMatch.groupValues[1].toFloat()
+                        // 计算瓦数 (W = mA * 4.0 / 1000)
+                        val watt = Math.abs(ma * 4.0f / 1000f)
                         LogDataPoint(time, level, temp, watt)
                     } else null
                 } catch (e: Exception) { null }
