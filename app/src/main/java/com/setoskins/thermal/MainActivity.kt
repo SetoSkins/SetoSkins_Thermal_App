@@ -106,13 +106,11 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import com.setoskins.thermal.ui.component.AnimatedBackground
-import com.setoskins.thermal.ui.component.BlurredBar
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
@@ -127,8 +125,6 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import androidx.compose.material.icons.Icons
@@ -274,7 +270,6 @@ fun MyApplicationApp(
         rootState = ModuleDetector.requestRoot()
     }
 
-    val scrollBehavior = MiuixScrollBehavior(rememberTopAppBarState())
     val backdrop = rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
     val reduceExpensiveEffects = showDonatePage || showDonateLayer
@@ -290,39 +285,7 @@ fun MyApplicationApp(
                         // Previous page slides out to the left as overlay opens
                         translationX = -screenWidth.toPx() * 0.18f * transitionProgress.value
                     },
-                topBar = {
-                    if (currentDestination != AppDestinations.PROFILE) {
-                        BlurredBar(backdrop, showBlur) {
-                            TopAppBar(
-                                title = currentDestination.label,
-                                largeTitle = currentDestination.label,
-                                scrollBehavior = scrollBehavior,
-                                color = if (showBlur) Color.Transparent else MiuixTheme.colorScheme.surface,
-                                actions = {
-                                    if (currentDestination == AppDestinations.FAVORITES) {
-                                        val haptic = LocalHapticFeedback.current
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                scope.launch {
-                                                    if (ModuleDetector.clearLog()) {
-                                                        logReloadTrigger++
-                                                    }
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = MiuixIcons.Delete,
-                                                contentDescription = "Clear Log",
-                                                tint = MiuixTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                    }
-                },
+                
                 bottomBar = {
                     ThemedNavigationBar(
                         currentDestination = currentDestination,
@@ -348,13 +311,13 @@ fun MyApplicationApp(
                             HomeScreen(
                                 useMonet = useMonet,
                                 reloadTrigger = reloadTrigger,
-                                modifier = Modifier.padding(innerPadding).overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection)
+                                modifier = Modifier.padding(innerPadding).overScrollVertical()
                             )
                         }
                         AppDestinations.FAVORITES -> {
                             FavoritesScreen(
                                 reloadTrigger = logReloadTrigger,
-                                modifier = Modifier.padding(innerPadding).overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection)
+                                modifier = Modifier.padding(innerPadding).overScrollVertical()
                             )
                         }
                         AppDestinations.PROFILE -> {
@@ -364,12 +327,29 @@ fun MyApplicationApp(
                                 onConfigImported = { reloadTrigger++ },
                                 onNavigateToDonate = { showDonatePage = true },
                                 reduceEffects = reduceExpensiveEffects,
-                                modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection)
+                                modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
                             )
                         }
                     }
                 }
             }
+
+        if (currentDestination == AppDestinations.FAVORITES) {
+            val haptic = LocalHapticFeedback.current
+            IconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
+                },
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 60.dp, end = 6.dp)
+            ) {
+                Icon(
+                    imageVector = MiuixIcons.Delete,
+                    contentDescription = "Clear Log",
+                    tint = MiuixTheme.colorScheme.onSurface
+                )
+            }
+        }
 
         if (showDonateLayer) {
             Box(
@@ -643,9 +623,18 @@ fun HomeScreen(
         scope.launch { ModuleDetector.updateConfig(configKey, newValue) }
     }
 
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 60.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+        item {
+            Text(
+                text = "主页",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MiuixTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 7.dp)
+            )
+        }
         item { if (!moduleInstalled) RedNotInstalledCard() else if (hasUpdate) YellowUpdateCard() else GreenActivatedCard(useMonet = useMonet, version = moduleVersion) }
-        item { SmallTitle(text = "配置", modifier = Modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 8.dp.roundToPx()) { placeable.place(0, 0) } }) }
+        item { SmallTitle(text = "配置", modifier = Modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 10.dp.roundToPx()) { placeable.place(0, 0) } }) }
         item { MiuixCard { Column(modifier = Modifier.padding(vertical = 4.dp)) { BasicComponent(title = "简洁版配置", summary = "目前无法更改", endActions = { ThemedSwitch(checked = false, onCheckedChange = null, enabled = false, useMonet = useMonet) })
                     BasicComponent(title = "模块简介显示充电信息", summary = "Magisk/KSU里显示电流、电量等充电信息,可能耗一丢丢电", endActions = { ThemedSwitch(checked = switch5, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch5", "模块简介显示充电信息", !switch5) { switch5 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                     BasicComponent(title = "充电时显示灵动岛", summary = "充电时在屏幕显示灵动岛风格充电信息（需后台运行）", endActions = { ThemedSwitch(checked = switch16, onCheckedChange = null, useMonet = useMonet) }, onClick = { switch16 = !switch16; prefs.edit().putBoolean("switch16", switch16).apply(); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } } }
@@ -743,8 +732,17 @@ fun FavoritesScreen(reloadTrigger: Int = 0, modifier: Modifier = Modifier) {
         }
     }
 
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-        item { BatteryInfoCard() }
+    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 76.dp, bottom = 16.dp)) {
+            item {
+                Text(
+                    text = "日志",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MiuixTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 14.dp)
+                )
+            }
+            item { BatteryInfoCard() }
         item { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (8).dp)) } }
         item { MiuixCard(modifier = Modifier.padding(top = 11.dp)) { WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() }) } }
         item { MiuixCard(modifier = Modifier.padding(top = 16.dp)) {
@@ -1368,11 +1366,6 @@ fun ThemedSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enable
 }
 
 @Composable
-fun SectionTitle(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Box(modifier = modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 8.dp.roundToPx()) { placeable.place(0, 0) } }) { content() }
-}
-
-@Composable
 fun YellowUpdateCard() {
     val uriHandler = LocalUriHandler.current; val isDark = isSystemInDarkTheme()
     val cardBg = if (isDark) Color(0xFF3E2C00) else Color(0xFFFFF8E1)
@@ -1455,3 +1448,8 @@ fun BatteryStatItem(label: String, value: String, modifier: Modifier = Modifier)
 fun GreetingPreview() { MyApplicationTheme(useMonet = false) { MyApplicationApp(useMonet = false, onUseMonetChange = {}) } }
 
 fun Modifier.compactSmallTitle(): Modifier = this.padding(start = 4.dp).offset(x = (-13).dp, y = 11.dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } }
+
+@Composable
+fun SectionTitle(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier = modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 8.dp.roundToPx()) { placeable.place(0, 0) } }) { content() }
+}
