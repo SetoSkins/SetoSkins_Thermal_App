@@ -1,21 +1,30 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# 保留行号信息，便于调试线上崩溃
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Compose
+-dontwarn androidx.compose.**
+-keep class androidx.compose.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Miuix 组件库
+-keep class top.yukonga.miuix.kmp.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 保留四大组件
+-keep class com.setoskins.thermal.MainActivity { *; }
+-keep class com.setoskins.thermal.service.** { *; }
+
+# 保留 ModuleDetector 中的公开方法（反射/动态调用风险）
+-keep class com.setoskins.thermal.data.** { *; }
+
+# 保留 DataStore 序列化
+-keepclassmembers class * extends androidx.datastore.preferences.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+
+# Coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+
+# 移除 Kotlin 元数据（减小体积，不影响运行时）
+-keepattributes *Annotation*
+-dontnote kotlin.Metadata

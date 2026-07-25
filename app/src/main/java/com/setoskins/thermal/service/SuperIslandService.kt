@@ -78,6 +78,7 @@ class SuperIslandService : Service() {
             }
             
             canvas.drawBitmap(bitmap, srcRect, rect, paint)
+            bitmap.recycle()
             Icon.createWithBitmap(output)
         } catch (e: Exception) {
             null

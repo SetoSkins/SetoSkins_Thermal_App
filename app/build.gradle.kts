@@ -16,17 +16,26 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 仅保留 arm64-v8a，minSdk 32 设备均为 64 位 ARM
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            isCrunchPngs = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -48,7 +57,6 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-blur:0.9.1")
     implementation("top.yukonga.miuix.kmp:miuix-navigation3-ui:0.9.1")
     implementation("androidx.compose.material:material-icons-core:1.7.5")
-    implementation("androidx.compose.material:material-icons-extended:1.7.5")
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.ui)

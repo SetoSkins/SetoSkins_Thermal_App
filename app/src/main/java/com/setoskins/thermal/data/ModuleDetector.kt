@@ -18,32 +18,53 @@ object ModuleDetector {
     private const val LOG_PATH = "/data/adb/modules/SetoSkins/log.log"
     private const val THERMAL_SCRIPT_PATH = "/data/adb/modules/SetoSkins/system/Seto_fuckthermal.sh"
     private const val UPDATE_URL = "https://raw.githubusercontent.com/SetoSkins/SetoSkins_Thermal/refs/heads/master/SetoSkins.json"
-    private const val TIMEOUT_MS = 1500L
+    private const val TIMEOUT_MS = 5000L
+
+    // 预编译正则表达式，避免每次调用时重复编译
+    private val VERSION_CODE_REGEX = Regex("\"versionCode\"\\s*:\\s*(\\d+)")
+    private val TIME_REGEX = Regex("(\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})")
+    private val LEVEL_REGEX = Regex("电量\\s+(\\d+)%?")
+    private val TEMP_REGEX = Regex("温度\\s+(\\d+)")
+    private val CURRENT_REGEX = Regex("电流\\s+(-?\\d+)")
 
     /**
      * 检测设备是否有 root 权限。
      */
     suspend fun requestRoot(): Boolean = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Requesting root...")
+        
         val process = try {
+            // 直接执行 su -c id，不再预检 which su，因为某些环境下 which 可能被限
             Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to exec su: ${e.message}")
             return@withContext false
         }
-        val finished = try {
-            process.waitFor(8000, TimeUnit.MILLISECONDS)
-        } catch (e: Exception) {
-            false
+        
+        val result = withTimeoutOrNull(TIMEOUT_MS) {
+            try {
+                // 读取输出
+                val output = process.inputStream.bufferedReader().use { it.readText() }
+                val errorOutput = process.errorStream.bufferedReader().use { it.readText() }
+                val exitCode = process.waitFor()
+                Log.d(TAG, "su -c id output: $output, error: $errorOutput, exitCode: $exitCode")
+                
+                // 只要包含 uid=0 就算成功
+                exitCode == 0 && output.contains("uid=0")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during root check: ${e.message}")
+                false
+            }
         }
-        if (!finished) {
+        
+        if (result == null) {
+            Log.w(TAG, "Root check timed out (5s), killing process")
             process.destroyForcibly()
-            return@withContext false
         }
-        val output = try {
-            process.inputStream.bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            ""
-        }
-        process.exitValue() == 0 && output.contains("uid=0")
+        
+        val finalResult = result ?: false
+        Log.d(TAG, "Root check final result: $finalResult")
+        finalResult
     }
 
     /**
@@ -158,7 +179,7 @@ object ModuleDetector {
             val connection = java.net.URL(UPDATE_URL).openConnection() as java.net.HttpURLConnection
             connection.connectTimeout = 5000
             val jsonText = connection.inputStream.bufferedReader().use { it.readText() }
-            val remoteVersionMatch = "\"versionCode\"\\s*:\\s*(\\d+)".toRegex().find(jsonText)
+            val remoteVersionMatch = VERSION_CODE_REGEX.find(jsonText)
             val remoteVersion = remoteVersionMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
             remoteVersion > localVersion
         }.getOrDefault(false)
@@ -193,15 +214,15 @@ object ModuleDetector {
                     // 精准匹配格式: 07-07 18:06:20 电量 73% 温度 43℃ 电流 995mA
                     
                     // 1. 匹配时间 (格式: MM-DD HH:mm:ss)
-                    val timeMatch = Regex("(\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})").find(line)
+                    val timeMatch = TIME_REGEX.find(line)
                     val time = timeMatch?.groupValues?.get(1) ?: ""
 
                     // 2. 匹配电量 (取数字)
-                    val levelMatch = Regex("电量\\s+(\\d+)%?").find(line)
+                    val levelMatch = LEVEL_REGEX.find(line)
                     // 3. 匹配温度 (支持 ℃ 符号)
-                    val tempMatch = Regex("温度\\s+(\\d+)").find(line)
+                    val tempMatch = TEMP_REGEX.find(line)
                     // 4. 匹配电流 (支持 mA 符号)
-                    val maMatch = Regex("电流\\s+(-?\\d+)").find(line)
+                    val maMatch = CURRENT_REGEX.find(line)
 
                     // 如果缺少电量或电流数据，跳过这条记录，防止曲线归零
                     if (time.isNotEmpty() && levelMatch != null && maMatch != null && tempMatch != null) {

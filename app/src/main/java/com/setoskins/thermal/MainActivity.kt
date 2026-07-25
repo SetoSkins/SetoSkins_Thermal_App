@@ -1,7 +1,7 @@
 package com.setoskins.thermal
 
-import android.R.attr.progress
 import android.content.Context
+import android.util.Log
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -134,13 +134,13 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -186,6 +186,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import androidx.compose.ui.graphics.RectangleShape
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -225,17 +226,70 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// ── 文件级常量：避免每次重组时重复创建 Color 对象 ──
+private val ColorWatt   = Color(0xFFE57373)
+private val ColorLevel  = Color(0xFF81C784)
+private val ColorTemp   = Color(0xFF64B5F6)
+private val ColorSwitchUncheckedThumb = Color(0xFF7E8785)
+private val ColorSwitchUncheckedBorder = Color(0xFF7E8785)
+private val ColorSwitchDisabledUncheckedThumb = Color(0xFFBEBEBE)
+private val ColorSwitchDisabledUncheckedBorder = Color(0xFFD8D8D8)
+private val ColorAppIconTint = Color(0xFF9C27B0)
+private val ColorDeviceInfoLabel = Color.Gray
+private val ColorDeviceInfoValue = Color.Black
+
+// YellowUpdateCard
+private val ColorYellowBgDark = Color(0xFF3E2C00)
+private val ColorYellowBgLight = Color(0xFFFFF8E1)
+private val ColorYellowTitleDark = Color.White
+private val ColorYellowTitleLight = Color(0xFF855A00)
+private val ColorYellowSubDark = Color(0xFFFFE082)
+private val ColorYellowSubLight = Color(0xFFB08900)
+private val ColorYellowIconDark = Color(0xFFFFD54F)
+private val ColorYellowIconLight = Color(0xFFFFB300)
+
+// RedNotInstalledCard
+private val ColorRedBgDark = Color(0xFF3D0C0C)
+private val ColorRedBgLight = Color(0xFFFFE5E5)
+private val ColorRedTitleDark = Color.White
+private val ColorRedTitleLight = Color(0xFF8A1A1A)
+private val ColorRedSubDark = Color(0xFFE0E0E0)
+private val ColorRedSubLight = Color(0xFFB33A3A)
+private val ColorRedIconDark = Color(0xFFFF4444)
+private val ColorRedIconLight = Color(0xFFD32F2F)
+
+// GreenActivatedCard
+private val ColorGreenAccentDark = Color(0xFF34C759)
+private val ColorGreenAccentLight = Color(0xFF1B7A3A)
+private val ColorGreenBgDark = Color(0xFF1A3A24)
+private val ColorGreenBgLight = Color(0xFFE0F5E5)
+private val ColorGreenTitleDark = Color.White
+private val ColorGreenTitleLight = Color(0xFF0F5128)
+private val ColorGreenSubDark = Color(0xFFBFE9CC)
+private val ColorGreenSubLight = Color(0xFF2E7D3A)
+
+// 解析时间字符串 "MM-DD HH:mm:ss" 为秒数
+private fun parseTimeSeconds(time: String): Long = try {
+    val p = time.substringAfter(" ").split(":")
+    p[0].toLong() * 3600 + p[1].toLong() * 60 + p[2].toLong()
+} catch (_: Exception) {
+    0L
+}
+
 @Composable
 fun MyApplicationApp(
     useMonet: Boolean,
     onUseMonetChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
+    val hapticFeedback = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     var reloadTrigger by remember { mutableIntStateOf(0) }
     var logReloadTrigger by remember { mutableIntStateOf(0) }
     var rootState by remember { mutableStateOf<Boolean?>(null) }
+    var showRootDialog by remember { mutableStateOf(false) }
+    var hasAcknowledgedMissingRoot by remember { mutableStateOf(false) }
     var showDonatePage by remember { mutableStateOf(false) }
     var showDonateLayer by remember { mutableStateOf(false) }
     val transitionProgress = remember { Animatable(0f) }
@@ -267,7 +321,21 @@ fun MyApplicationApp(
     }
 
     LaunchedEffect(Unit) {
-        rootState = ModuleDetector.requestRoot()
+        Log.d("SetoSkins", "Starting Root Check...")
+        // 启动一个 2 秒的计时器，如果 2 秒后还没检测完且用户未点过确认，则弹窗提示
+        launch {
+            kotlinx.coroutines.delay(2000)
+            if (rootState == null && !hasAcknowledgedMissingRoot) {
+                showRootDialog = true
+            }
+        }
+        
+        val result = ModuleDetector.requestRoot()
+        Log.d("SetoSkins", "Root Check Result: $result")
+        rootState = result
+        if (result == false && !hasAcknowledgedMissingRoot) {
+            showRootDialog = true
+        }
     }
 
     val backdrop = rememberBlurBackdrop()
@@ -276,117 +344,134 @@ fun MyApplicationApp(
     val showBlur = useMonet && shaderSupported && backdrop != null && !reduceExpensiveEffects
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AnimatedBackground(useMonet = useMonet)
-        Scaffold(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        // Previous page slides out to the left as overlay opens
-                        translationX = -screenWidth.toPx() * 0.18f * transitionProgress.value
-                    },
-                
-                bottomBar = {
-                    ThemedNavigationBar(
-                        currentDestination = currentDestination,
-                        onDestinationSelected = { currentDestination = it },
-                        useMonet = useMonet,
-                        backdrop = backdrop,
-                        showBlur = showBlur
-                    )
-                }
-            ) { innerPadding ->
-                AnimatedContent(
-                    targetState = currentDestination,
-                    transitionSpec = {
-                        val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                        val slideAnimation = tween<IntOffset>(durationMillis = 320, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
-                        slideInHorizontally(animationSpec = slideAnimation, initialOffsetX = { it * direction }) + fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) togetherWith
-                            slideOutHorizontally(animationSpec = slideAnimation, targetOffsetX = { -it * direction }) + fadeOut(animationSpec = tween(220, easing = LinearOutSlowInEasing))
-                    },
-                    label = "page_transition"
-                ) { destination ->
-                    when (destination) {
-                        AppDestinations.HOME -> {
-                            HomeScreen(
-                                useMonet = useMonet,
-                                reloadTrigger = reloadTrigger,
-                                modifier = Modifier.padding(innerPadding).overScrollVertical()
-                            )
-                        }
-                        AppDestinations.FAVORITES -> {
-                            FavoritesScreen(
-                                reloadTrigger = logReloadTrigger,
-                                modifier = Modifier.padding(innerPadding).overScrollVertical()
-                            )
-                        }
-                        AppDestinations.PROFILE -> {
-                            ProfileScreen(
-                                useMonet = useMonet,
-                                onUseMonetChange = onUseMonetChange,
-                                onConfigImported = { reloadTrigger++ },
-                                onNavigateToDonate = { showDonatePage = true },
-                                reduceEffects = reduceExpensiveEffects,
-                                modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
-                            )
-                        }
-                    }
-                }
-            }
-
-        if (currentDestination == AppDestinations.FAVORITES) {
-            val haptic = LocalHapticFeedback.current
-            IconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
-                },
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 60.dp, end = 6.dp)
-            ) {
-                Icon(
-                    imageVector = MiuixIcons.Delete,
-                    contentDescription = "Clear Log",
-                    tint = MiuixTheme.colorScheme.onSurface
-                )
-            }
-        }
-
-        if (showDonateLayer) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MiuixTheme.colorScheme.background
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = 0.22f * transitionProgress.value
+                        translationX = -screenWidth.toPx() * 0.18f * transitionProgress.value
                     }
-                    .background(Color.Black)
-            )
-        }
+            ) {
+                Scaffold(
+                    containerColor = Color.Transparent,
+                    bottomBar = {
+                        ThemedNavigationBar(
+                            currentDestination = currentDestination,
+                            onDestinationSelected = { currentDestination = it },
+                            useMonet = useMonet,
+                            backdrop = backdrop,
+                            showBlur = showBlur
+                        )
+                    }
+                ) { innerPadding ->
+                    AnimatedContent(
+                        targetState = currentDestination,
+                        transitionSpec = {
+                                val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                                val slideAnimation = tween<IntOffset>(durationMillis = 320, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
+                                slideInHorizontally(animationSpec = slideAnimation, initialOffsetX = { it * direction }) + fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) togetherWith
+                                    slideOutHorizontally(animationSpec = slideAnimation, targetOffsetX = { -it * direction }) + fadeOut(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                            },
+                            label = "page_transition"
+                        ) { destination ->
+                            when (destination) {
+                                AppDestinations.HOME -> {
+                                    HomeScreen(
+                                        useMonet = useMonet,
+                                        reloadTrigger = reloadTrigger,
+                                        modifier = Modifier.padding(innerPadding).overScrollVertical()
+                                    )
+                                }
+                                AppDestinations.FAVORITES -> {
+                                    FavoritesScreen(
+                                        reloadTrigger = logReloadTrigger,
+                                        modifier = Modifier.padding(innerPadding).overScrollVertical()
+                                    )
+                                }
+                                AppDestinations.PROFILE -> {
+                                    ProfileScreen(
+                                        useMonet = useMonet,
+                                        onUseMonetChange = onUseMonetChange,
+                                        onConfigImported = { reloadTrigger++ },
+                                        onNavigateToDonate = { showDonatePage = true },
+                                        reduceEffects = reduceExpensiveEffects,
+                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
+                                    )
+                                }
+                            }
+                        }
 
-        if (rootState == false) {
+                        if (currentDestination == AppDestinations.FAVORITES) {
+                            val haptic = LocalHapticFeedback.current
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
+                                },
+                                modifier = Modifier.align(Alignment.TopEnd).padding(top = 60.dp, end = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.Delete,
+                                    contentDescription = "Clear Log",
+                                    tint = MiuixTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (showDonateLayer) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = 0.22f * transitionProgress.value
+                        }
+                        .background(Color.Black)
+                )
+            }
+
+            if (showDonateLayer) {
+                DonatePage(
+                    useMonet = useMonet,
+                    onDismiss = { showDonatePage = false },
+                    progressProvider = { transitionProgress.value }
+                )
+            }
+
             OverlayDialog(
-                show = true,
+                show = showRootDialog,
                 title = if (isZh) "权限缺失" else "Root Permission Required",
-                summary = if (isZh) "检测到设备未获取 Root 权限或拒绝了授权，本软件无法正常工作，请授权后重新进入。" else "Root access was not detected or was denied. This app requires Root to function properly. Please grant Root permission and reopen the app.",
-                onDismissRequest = { },
+                summary = if (isZh) "检测到设备未获取 Root 权限，本软件无法正常工作，请授权后重新进入。" else "Root access was not detected. This app requires Root to function properly.",
+                onDismissRequest = { 
+                    showRootDialog = false 
+                    hasAcknowledgedMissingRoot = true
+                },
                 content = {
-                    BackHandler(enabled = true) { }
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Button(onClick = { (context as? android.app.Activity)?.finish() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColorsPrimary()) {
-                            Text(if (isZh) "退出应用" else "Exit App")
+                        Button(
+                            onClick = { 
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showRootDialog = false 
+                                hasAcknowledgedMissingRoot = true
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColorsPrimary()
+                        ) {
+                            Text(if (isZh) "确定" else "OK")
                         }
                     }
                 }
             )
         }
-        if (showDonateLayer) {
-            DonatePage(
-                useMonet = useMonet,
-                onDismiss = { showDonatePage = false },
-                progressProvider = { transitionProgress.value }
-            )
-        }
     }
-}
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -494,7 +579,7 @@ fun HomeScreen(
 
     // Monitor charging status while app is open
     LaunchedEffect(Unit) {
-        while (true) {
+        while (isActive) {
             val batteryInfo = ModuleDetector.readBatteryInfo()
             val nowCharging = batteryInfo.status == "Charging"
             if (nowCharging != isChargingState.value) {
@@ -717,14 +802,14 @@ fun FavoritesScreen(reloadTrigger: Int = 0, modifier: Modifier = Modifier) {
 
     LaunchedEffect(reloadTrigger, selectedIndex) {
         if (selectedIndex == 0) {
-            while (true) {
+            while (isActive) {
                 logContent = ModuleDetector.readLog()
                 val batteryInfo = ModuleDetector.readBatteryInfo()
                 isCharging = batteryInfo.status == "Charging"
                 if (isCharging) kotlinx.coroutines.delay(15000) else break
             }
         } else {
-            while (true) {
+            while (isActive) {
                 logPoints = ModuleDetector.getParsedLogData()
                 isCharging = ModuleDetector.readBatteryInfo().status == "Charging"
                 if (isCharging) kotlinx.coroutines.delay(15000) else break
@@ -757,9 +842,9 @@ fun FavoritesScreen(reloadTrigger: Int = 0, modifier: Modifier = Modifier) {
                     else {
                         Column {
                             Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                FilterLegend(if (isZh) "功耗" else "Watt", Color(0xFFE57373), showWatt) { showWatt = !showWatt }
-                                FilterLegend(if (isZh) "电量" else "Bat", Color(0xFF81C784), showLevel) { showLevel = !showLevel }
-                                FilterLegend(if (isZh) "温度" else "Temp", Color(0xFF64B5F6), showTemp) { showTemp = !showTemp }
+                                FilterLegend(if (isZh) "功耗" else "Watt", ColorWatt, showWatt) { showWatt = !showWatt }
+                                FilterLegend(if (isZh) "电量" else "Bat", ColorLevel, showLevel) { showLevel = !showLevel }
+                                FilterLegend(if (isZh) "温度" else "Temp", ColorTemp, showTemp) { showTemp = !showTemp }
                             }
                             LogLineChart(points = logPoints, isZh = isZh, showWatt = showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging)
                         }
@@ -779,9 +864,9 @@ fun FilterLegend(label: String, color: Color, isSelected: Boolean, onClick: () -
 
 @Composable
 fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showWatt: Boolean, showLevel: Boolean, showTemp: Boolean, isCharging: Boolean = false) {
-    val wattColor = Color(0xFFE57373)
-    val levelColor = Color(0xFF81C784)
-    val tempColor = Color(0xFF64B5F6)
+    val wattColor = ColorWatt
+    val levelColor = ColorLevel
+    val tempColor = ColorTemp
     val primaryColor = MiuixTheme.colorScheme.primary
     val gridLineColor = MiuixTheme.colorScheme.onSurfaceSecondary.copy(alpha = 0.15f)
     
@@ -809,12 +894,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 animatedAlpha.snapTo(1f)
             }
         }
-    }
-    fun parseTimeSeconds(time: String): Long = try {
-        val p = time.substringAfter(" ").split(":")
-        p[0].toLong() * 3600 + p[1].toLong() * 60 + p[2].toLong()
-    } catch (_: Exception) {
-        0L
     }
     val baseTimeSeconds = remember(points) { if (points.isEmpty()) 0L else parseTimeSeconds(points.first().time) }
     val endTimeSeconds = remember(points) { if (points.isEmpty()) 0L else parseTimeSeconds(points.last().time) }
@@ -976,6 +1055,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 onDragCancel = { touchIndex = -1 }
             )
         }) {
+            val markerPaint = remember { Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER } }
+            val touchPaint = remember { Paint().apply { textSize = 34f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.LEFT } }
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width; val h = size.height; val sp = w / (points.size.coerceAtLeast(2) - 1)
                 val zoneH = h * 0.25f
@@ -1009,17 +1090,12 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     if (isCharging && lastRealTimeX >= 0f && kotlin.math.abs(x - lastRealTimeX) < 30.dp.toPx()) return@forEach
                     val p = points[index]
                     drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
-                    val textPaint = Paint().apply {
-                        textSize = 32f
-                        typeface = android.graphics.Typeface.DEFAULT_BOLD
-                        textAlign = Paint.Align.CENTER
-                    }
                     if (showWatt) {
                         val y = normalizeY((p.watt / maxWatt).coerceIn(0f, 1f), wattBase)
                         drawCircle(wattColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
                         if (animatedIndex < 0f) {
-                            textPaint.color = wattColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), textPaint)
+                            markerPaint.color = wattColor.toArgb()
+                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
                         }
                     }
                     // Temp: always below the data point
@@ -1027,8 +1103,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     if (showTemp) {
                         drawCircle(tempColor, radius = 4.5.dp.toPx(), center = Offset(x, tempY))
                         if (animatedIndex < 0f) {
-                            textPaint.color = tempColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, tempY + 22.dp.toPx(), textPaint)
+                            markerPaint.color = tempColor.toArgb()
+                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, tempY + 22.dp.toPx(), markerPaint)
                         }
                     }
                     // Level: global label position (above or below for entire line)
@@ -1036,9 +1112,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val y = normalizeY(p.level / 100f, levelBase)
                         drawCircle(levelColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
                         if (animatedIndex < 0f) {
-                            textPaint.color = levelColor.toArgb()
+                            markerPaint.color = levelColor.toArgb()
                             val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, textPaint)
+                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
                         }
                     }
                 }
@@ -1053,8 +1129,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val y = normalizeY((p.watt / maxWatt).coerceIn(0f, 1f), wattBase)
                         drawCircle(wattColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
                         if (!isLastPointMarker) {
-                            val paint = Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER; color = wattColor.toArgb() }
-                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), paint)
+                            markerPaint.color = wattColor.toArgb()
+                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
                         }
                     }
                     // Temp: always below
@@ -1062,8 +1138,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val y = normalizeY((p.temp / maxTemp).coerceIn(0f, 1f), tempBase)
                         drawCircle(tempColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
                         if (!isLastPointMarker) {
-                            val paint = Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER; color = tempColor.toArgb() }
-                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y + 22.dp.toPx(), paint)
+                            markerPaint.color = tempColor.toArgb()
+                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y + 22.dp.toPx(), markerPaint)
                         }
                     }
                     // Level: global label position
@@ -1071,9 +1147,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val y = normalizeY(p.level / 100f, levelBase)
                         drawCircle(levelColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
                         if (!isLastPointMarker) {
-                            val paint = Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER; color = levelColor.toArgb() }
+                            markerPaint.color = levelColor.toArgb()
                             val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, paint)
+                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
                         }
                     }
                 }
@@ -1082,41 +1158,37 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     val x = animatedIndex * sp
                     val p = points[animatedIndex.toInt().coerceIn(points.indices)]
                     drawLine(primaryColor.copy(alpha = alpha), Offset(x, 0f), Offset(x, h), strokeWidth = 1.5.dp.toPx())
-                    val textPaint = Paint().apply {
-                        textSize = 34f
-                        typeface = android.graphics.Typeface.DEFAULT_BOLD
-                        textAlign = Paint.Align.LEFT
-                    }
+                    touchPaint.color = if (showWatt) wattColor.copy(alpha = alpha).toArgb() else primaryColor.copy(alpha = alpha).toArgb()
                     val textOffsetX = 12.dp.toPx()
                     val rightLimit = w - 8.dp.toPx()
                     fun textX(value: String): Float {
                         val desiredX = x + textOffsetX
-                        val textWidth = textPaint.measureText(value)
+                        val textWidth = touchPaint.measureText(value)
                         return if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
                     }
                     if (showWatt) {
                         val value = "%.1fW".format(p.watt)
                         val y = normalizeY((p.watt / maxWatt).coerceIn(0f, 1f), wattBase)
                         drawCircle(wattColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                        textPaint.color = wattColor.copy(alpha = alpha).toArgb()
-                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), y - 12.dp.toPx(), textPaint)
+                        touchPaint.color = wattColor.copy(alpha = alpha).toArgb()
+                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), y - 12.dp.toPx(), touchPaint)
                     }
                     // Temp: always below the data point
                     if (showTemp) {
                         val value = "${p.temp.toInt()}°"
                         val y = normalizeY((p.temp / maxTemp).coerceIn(0f, 1f), tempBase)
                         drawCircle(tempColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                        textPaint.color = tempColor.copy(alpha = alpha).toArgb()
-                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), y + 22.dp.toPx(), textPaint)
+                        touchPaint.color = tempColor.copy(alpha = alpha).toArgb()
+                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), y + 22.dp.toPx(), touchPaint)
                     }
                     // Level: global label position
                     if (showLevel) {
                         val value = "${p.level.toInt()}%"
                         val y = normalizeY(p.level / 100f, levelBase)
                         drawCircle(levelColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                        textPaint.color = levelColor.copy(alpha = alpha).toArgb()
+                        touchPaint.color = levelColor.copy(alpha = alpha).toArgb()
                         val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
-                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), labelY, textPaint)
+                        drawContext.canvas.nativeCanvas.drawText(value, textX(value), labelY, touchPaint)
                     }
                 }
             }
@@ -1151,11 +1223,11 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConf
     val progress by remember { derivedStateOf { val idx = listState.firstVisibleItemIndex; val offset = listState.firstVisibleItemScrollOffset.toFloat(); val scrollPx = if (idx <= 0) offset else fadeDistancePx; (scrollPx / fadeDistancePx).coerceIn(0f, 1f) } }
     val spacerHeightPx = remember(density) { with(density) { 170.dp.toPx() } }; val aboutProgress by remember { derivedStateOf { val idx = listState.firstVisibleItemIndex; val offset = listState.firstVisibleItemScrollOffset.toFloat(); if (idx <= 0) (offset / spacerHeightPx).coerceIn(0f, 1f) else 1f } }
     val shaderSupported = remember { isRuntimeShaderSupported() }; val backdrop = rememberBlurBackdrop(); val dynamicBackground = shaderSupported && !reduceEffects; val isInDark = isSystemInDarkTheme(); var noiseCoefficient by remember { mutableFloatStateOf(BlurDefaults.NoiseCoefficient) }
-    val logoBlend = remember(isInDark) { if (isInDark) listOf(BlendColorEntry(Color(0xe6a1a1a1), BlurBlendMode.ColorDodge), BlendColorEntry(Color(0x4de6e6e6), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af500), BlurBlendMode.Lab)) else listOf(BlendColorEntry(Color(0xcc4a4a4a), BlurBlendMode.ColorBurn), BlendColorEntry(Color(0xff4f4f4f), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af200), BlurBlendMode.Lab)) }
+    val logoBlend = if (isInDark) listOf(BlendColorEntry(Color(0xe6a1a1a1), BlurBlendMode.ColorDodge), BlendColorEntry(Color(0x4de6e6e6), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af500), BlurBlendMode.Lab)) else listOf(BlendColorEntry(Color(0xcc4a4a4a), BlurBlendMode.ColorBurn), BlendColorEntry(Color(0xff4f4f4f), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af200), BlurBlendMode.Lab))
     BgEffectBackground(dynamicBackground = dynamicBackground, isOs3Effect = true, isFullSize = true, modifier = Modifier.fillMaxSize(), bgModifier = if (backdrop != null && !reduceEffects) Modifier.layerBackdrop(backdrop) else Modifier, alpha = { 1f - progress }) {
         Box(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(top = 12.dp).align(Alignment.TopCenter).graphicsLayer { alpha = aboutProgress }, contentAlignment = Alignment.Center) { Text(text = "关于", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.onBackground) }
         Column(modifier = Modifier.fillMaxWidth().padding(top = 170.dp).onSizeChanged { size -> with(density) { logoHeightDp = size.height.toDp() } }, horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(88.dp).graphicsLayer { val iconProgress = ((progress - 0.35f) / 0.15f).coerceIn(0f, 1f); clip = true; shape = RoundedCornerShape(24.dp); alpha = 1 - iconProgress; scaleX = 1 - (iconProgress * 0.05f); scaleY = 1 - (iconProgress * 0.05f) }.background(Color.White).padding(15.dp)) { Icon(imageVector = MiuixIcons.Contacts, contentDescription = "App Icon", modifier = Modifier.fillMaxSize(), tint = Color(0xFF9C27B0)) }
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(88.dp).graphicsLayer { val iconProgress = ((progress - 0.35f) / 0.15f).coerceIn(0f, 1f); clip = true; shape = RoundedCornerShape(24.dp); alpha = 1 - iconProgress; scaleX = 1 - (iconProgress * 0.05f); scaleY = 1 - (iconProgress * 0.05f) }.background(Color.White).padding(15.dp)) { Icon(imageVector = MiuixIcons.Contacts, contentDescription = "App Icon", modifier = Modifier.fillMaxSize(), tint = ColorAppIconTint) }
             Text(modifier = Modifier.padding(top = 16.dp).fillMaxWidth().graphicsLayer { val projectNameProgress = ((progress - 0.20f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - projectNameProgress; scaleX = 1 - (projectNameProgress * 0.05f); scaleY = 1 - (projectNameProgress * 0.05f) }.then(if (backdrop != null && !reduceEffects) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(16.dp), blurRadius = 96f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier), text = appName, color = MiuixTheme.colorScheme.onBackground, fontWeight = FontWeight.ExtraBold, fontSize = 42.sp, textAlign = TextAlign.Center)
             Text(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().graphicsLayer { val versionCodeProgress = ((progress - 0.05f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - versionCodeProgress; scaleX = 1 - (versionCodeProgress * 0.05f); scaleY = 1 - (versionCodeProgress * 0.05f) }, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, text = "$versionName ($versionCode) | release", fontSize = 15.sp, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(80.dp))
@@ -1188,25 +1260,23 @@ fun DonatePage(
     val isDark = isSystemInDarkTheme()
     val colors = MiuixTheme.colorScheme
     val scrollState = rememberScrollState()
-    val donateCardShape = RoundedCornerShape(24.dp)
-    val donateCardColor = if (isDark) {
-        colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
-    } else {
-        colors.surface.copy(alpha = if (useMonet) 0.72f else 0.62f)
+    val donateCardShape = remember { RoundedCornerShape(24.dp) }
+    val donateCardColor = remember(isDark, useMonet) {
+        if (isDark) colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
+        else colors.surface.copy(alpha = if (useMonet) 0.72f else 0.62f)
     }
-    val donateCardBorderColor = if (isDark) {
-        colors.primary.copy(alpha = if (useMonet) 0.30f else 0.22f)
-    } else {
-        colors.outline.copy(alpha = if (useMonet) 0.18f else 0.12f)
+    val donateCardBorderColor = remember(isDark, useMonet) {
+        if (isDark) colors.primary.copy(alpha = if (useMonet) 0.30f else 0.22f)
+        else colors.outline.copy(alpha = if (useMonet) 0.18f else 0.12f)
     }
-    val donateCardShadowColor = if (isDark) {
-        colors.primary.copy(alpha = if (useMonet) 0.18f else 0.10f)
-    } else {
-        Color.Black.copy(alpha = 0.08f)
+    val donateCardShadowColor = remember(isDark, useMonet) {
+        if (isDark) colors.primary.copy(alpha = if (useMonet) 0.18f else 0.10f)
+        else Color.Black.copy(alpha = 0.08f)
     }
-    val donateCardModifier = Modifier
-        .fillMaxWidth()
-        .shadow(
+    val donateCardModifier = remember(donateCardShape, donateCardBorderColor, donateCardShadowColor, isDark) {
+        Modifier
+            .fillMaxWidth()
+            .shadow(
             elevation = if (isDark) 10.dp else 4.dp,
             shape = donateCardShape,
             clip = false,
@@ -1214,6 +1284,7 @@ fun DonatePage(
             spotColor = donateCardShadowColor
         )
         .border(1.dp, donateCardBorderColor, donateCardShape)
+    }
 
     Box(
         modifier = modifier
@@ -1232,9 +1303,18 @@ fun DonatePage(
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MiuixTheme.colorScheme.onBackground
+                    )
                 }
-                Text(text = if (isZh) "捐赠" else "Donate", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (isZh) "捐赠" else "Donate",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MiuixTheme.colorScheme.onBackground
+                )
             }
             Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(scrollState).padding(horizontal = 20.dp)) {
                 Spacer(Modifier.height(16.dp))
@@ -1328,8 +1408,8 @@ private fun DonateQrImage(
 @Composable
 fun DeviceInfoItem(value: String, label: String) {
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
-        Text(text = value, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
-        Text(text = label, fontSize = 13.sp, color = Color.Gray)
+        Text(text = value, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = ColorDeviceInfoValue)
+        Text(text = label, fontSize = 13.sp, color = ColorDeviceInfoLabel)
     }
 }
 
@@ -1359,7 +1439,23 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
 fun ThemedSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true, useMonet: Boolean) {
     val colors = MiuixTheme.colorScheme
     if (useMonet) {
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled, thumbContent = { Icon(imageVector = if (checked) Icons.Rounded.Check else Icons.Rounded.Close, contentDescription = null, modifier = Modifier.size(16.dp)) }, colors = SwitchDefaults.colors(checkedThumbColor = if (isSystemInDarkTheme()) colors.primaryContainer else Color.White, checkedTrackColor = colors.primary, checkedIconColor = colors.primary, uncheckedThumbColor = Color(0xFF7E8785), uncheckedTrackColor = Color.Transparent, uncheckedBorderColor = Color(0xFF7E8785), uncheckedIconColor = Color.White, disabledCheckedThumbColor = Color.White.copy(alpha = 0.5f), disabledCheckedTrackColor = colors.primary.copy(alpha = 0.3f), disabledUncheckedThumbColor = Color(0xFFBEBEBE), disabledUncheckedTrackColor = Color.Transparent, disabledUncheckedBorderColor = Color(0xFFD8D8D8), disabledUncheckedIconColor = Color.White.copy(alpha = 0.7f)), modifier = Modifier.scale(1.02f))
+        val isDark = isSystemInDarkTheme()
+        val switchColors = SwitchDefaults.colors(
+            checkedThumbColor = if (isDark) colors.primaryContainer else Color.White,
+            checkedTrackColor = colors.primary,
+            checkedIconColor = colors.primary,
+            uncheckedThumbColor = ColorSwitchUncheckedThumb,
+            uncheckedTrackColor = Color.Transparent,
+            uncheckedBorderColor = ColorSwitchUncheckedBorder,
+            uncheckedIconColor = Color.White,
+            disabledCheckedThumbColor = Color.White.copy(alpha = 0.5f),
+            disabledCheckedTrackColor = colors.primary.copy(alpha = 0.3f),
+            disabledUncheckedThumbColor = ColorSwitchDisabledUncheckedThumb,
+            disabledUncheckedTrackColor = Color.Transparent,
+            disabledUncheckedBorderColor = ColorSwitchDisabledUncheckedBorder,
+            disabledUncheckedIconColor = Color.White.copy(alpha = 0.7f)
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled, thumbContent = { Icon(imageVector = if (checked) Icons.Rounded.Check else Icons.Rounded.Close, contentDescription = null, modifier = Modifier.size(16.dp)) }, colors = switchColors, modifier = Modifier.scale(1.02f))
     } else {
         MiuixSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
@@ -1368,10 +1464,10 @@ fun ThemedSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enable
 @Composable
 fun YellowUpdateCard() {
     val uriHandler = LocalUriHandler.current; val isDark = isSystemInDarkTheme()
-    val cardBg = if (isDark) Color(0xFF3E2C00) else Color(0xFFFFF8E1)
-    val titleColor = if (isDark) Color.White else Color(0xFF855A00)
-    val subColor = if (isDark) Color(0xFFFFE082) else Color(0xFFB08900)
-    val iconColor = if (isDark) Color(0xFFFFD54F) else Color(0xFFFFB300)
+    val cardBg = if (isDark) ColorYellowBgDark else ColorYellowBgLight
+    val titleColor = if (isDark) ColorYellowTitleDark else ColorYellowTitleLight
+    val subColor = if (isDark) ColorYellowSubDark else ColorYellowSubLight
+    val iconColor = if (isDark) ColorYellowIconDark else ColorYellowIconLight
     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(cardBg).clickable { uriHandler.openUri("https://github.com/SetoSkins/SetoSkins_Thermal/releases") }.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) { Text(text = "检测到更新", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = titleColor); Spacer(modifier = Modifier.height(4.dp)); Text(text = "新版本已发布,点击去下载", fontSize = 14.sp, color = subColor) }
@@ -1387,10 +1483,10 @@ fun YellowUpdateCard() {
 @Composable
 fun RedNotInstalledCard() {
     val uriHandler = LocalUriHandler.current; val isDark = isSystemInDarkTheme()
-    val cardBg = if (isDark) Color(0xFF3D0C0C) else Color(0xFFFFE5E5)
-    val titleColor = if (isDark) Color.White else Color(0xFF8A1A1A)
-    val subColor = if (isDark) Color(0xFFE0E0E0) else Color(0xFFB33A3A)
-    val iconColor = if (isDark) Color(0xFFFF4444) else Color(0xFFD32F2F)
+    val cardBg = if (isDark) ColorRedBgDark else ColorRedBgLight
+    val titleColor = if (isDark) ColorRedTitleDark else ColorRedTitleLight
+    val subColor = if (isDark) ColorRedSubDark else ColorRedSubLight
+    val iconColor = if (isDark) ColorRedIconDark else ColorRedIconLight
     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(cardBg).clickable { uriHandler.openUri("https://github.com/SetoSkins/SetoSkins_Thermal/releases") }.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) { Text(text = "未激活", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = titleColor); Spacer(modifier = Modifier.height(4.dp)); Text(text = "模块未安装", fontSize = 14.sp, color = subColor) }
@@ -1402,10 +1498,10 @@ fun RedNotInstalledCard() {
 @Composable
 fun GreenActivatedCard(useMonet: Boolean, version: String) {
     val isDark = isSystemInDarkTheme(); val miuixColors = MiuixTheme.colorScheme
-    val greenAccent = if (isDark) Color(0xFF34C759) else Color(0xFF1B7A3A)
-    val greenContainerBg = if (isDark) Color(0xFF1A3A24) else Color(0xFFE0F5E5)
-    val greenTitleColor = if (isDark) Color.White else Color(0xFF0F5128)
-    val greenSubColor = if (isDark) Color(0xFFBFE9CC) else Color(0xFF2E7D3A)
+    val greenAccent = if (isDark) ColorGreenAccentDark else ColorGreenAccentLight
+    val greenContainerBg = if (isDark) ColorGreenBgDark else ColorGreenBgLight
+    val greenTitleColor = if (isDark) ColorGreenTitleDark else ColorGreenTitleLight
+    val greenSubColor = if (isDark) ColorGreenSubDark else ColorGreenSubLight
     val containerBg = if (useMonet) miuixColors.secondaryContainer else greenContainerBg
     val onContainer = if (useMonet) miuixColors.onSecondaryContainer else greenTitleColor
     val onContainerSub = if (useMonet) miuixColors.onSurfaceSecondary else greenSubColor
@@ -1422,7 +1518,7 @@ fun GreenActivatedCard(useMonet: Boolean, version: String) {
 @Composable
 fun BatteryInfoCard() {
     var info by remember { mutableStateOf(ModuleDetector.BatteryInfo()) }
-    LaunchedEffect(Unit) { while (true) { info = ModuleDetector.readBatteryInfo(); kotlinx.coroutines.delay(3000) } }
+    LaunchedEffect(Unit) { while (isActive) { info = ModuleDetector.readBatteryInfo(); kotlinx.coroutines.delay(3000) } }
     val tempText = info.temperature.let { if (it.isNotEmpty()) try { "${"%.1f".format(it.toInt() / 10.0)}°C" } catch (_: Exception) { "${it}°C" } else "..." }
     val currentText = info.current.let { if (it.isNotEmpty()) try { "${it.toInt() / -1000} mA" } catch (_: Exception) { "${it} mA" } else "..." }
     val cap = info.capacity.let { if (it.isNotEmpty()) "${it}%" else "..." }
