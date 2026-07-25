@@ -19,6 +19,7 @@ import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
@@ -33,10 +34,19 @@ class SuperIslandService : Service() {
     private val UPDATE_INTERVAL_MS = 2000L
     private var appIconCircular: Icon? = null
     private val updateHandler = Handler(Looper.getMainLooper())
+    private val bgThread = HandlerThread("SuperIsland-BG").apply { start() }
+    private val bgHandler = Handler(bgThread.looper)
     private val updateRunnable = object : Runnable {
         override fun run() {
-            if (updateNotification()) {
-                updateHandler.postDelayed(this, UPDATE_INTERVAL_MS)
+            val self = this
+            // 在后台线程读取 sysfs，避免主线程阻塞
+            bgHandler.post {
+                val state = BatteryMonitor.getBatteryState(this@SuperIslandService)
+                updateHandler.post {
+                    if (updateNotification(state)) {
+                        updateHandler.postDelayed(self, UPDATE_INTERVAL_MS)
+                    }
+                }
             }
         }
     }
@@ -44,7 +54,10 @@ class SuperIslandService : Service() {
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_BATTERY_CHANGED) {
-                updateNotification()
+                bgHandler.post {
+                    val state = BatteryMonitor.getBatteryState(this@SuperIslandService)
+                    updateHandler.post { updateNotification(state) }
+                }
             }
         }
     }
@@ -86,8 +99,13 @@ class SuperIslandService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        updateNotification()
-        startRealtimeUpdates()
+        bgHandler.post {
+            val state = BatteryMonitor.getBatteryState(this@SuperIslandService)
+            updateHandler.post {
+                updateNotification(state)
+                startRealtimeUpdates()
+            }
+        }
         return START_STICKY
     }
 
@@ -96,8 +114,7 @@ class SuperIslandService : Service() {
         updateHandler.post(updateRunnable)
     }
 
-    private fun updateNotification(): Boolean {
-        val state = BatteryMonitor.getBatteryState(this)
+    private fun updateNotification(state: BatteryMonitor.BatteryState): Boolean {
         if (!state.isCharging) {
             stopSelf()
             return false
@@ -173,6 +190,8 @@ class SuperIslandService : Service() {
 
     override fun onDestroy() {
         updateHandler.removeCallbacks(updateRunnable)
+        bgHandler.removeCallbacksAndMessages(null)
+        bgThread.quitSafely()
         unregisterReceiver(batteryReceiver)
         super.onDestroy()
     }

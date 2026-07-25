@@ -40,7 +40,7 @@ fun MyApplicationTheme(
             // 把 MIUIX 主题色同步到 Material3,这样 Material3 组件
             // 在 Material You / MIUIX 模式下都能遵循当前主题
             val miuixColors = MiuixTheme.colorScheme
-            val materialColors = remember(miuixColors, darkTheme) {
+            val materialColors = remember(miuixColors.primary, miuixColors.onPrimary, miuixColors.primaryContainer, miuixColors.onPrimaryContainer, miuixColors.secondary, miuixColors.onSecondary, miuixColors.secondaryContainer, miuixColors.onSecondaryContainer, miuixColors.background, miuixColors.onBackground, miuixColors.surface, miuixColors.onSurface, miuixColors.surfaceVariant, miuixColors.onSurfaceSecondary, miuixColors.outline, miuixColors.error, miuixColors.onError, darkTheme) {
             if (darkTheme) {
                 darkColorScheme(
                     primary = miuixColors.primary,

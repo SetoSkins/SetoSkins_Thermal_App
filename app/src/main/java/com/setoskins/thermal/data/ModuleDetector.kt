@@ -101,11 +101,18 @@ object ModuleDetector {
 
     /**
      * 执行温控脚本，在每次开关变更时触发。
+     * 超时保护：最多等待 TIMEOUT_MS，防止脚本卡死阻塞线程。
      */
     suspend fun executeThermalScript(): Unit = withContext(Dispatchers.IO) {
         runCatching {
-            val command = "sh '$THERMAL_SCRIPT_PATH'"
-            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "sh '$THERMAL_SCRIPT_PATH'"))
+            val result = withTimeoutOrNull(TIMEOUT_MS) {
+                process.waitFor()
+            }
+            if (result == null) {
+                Log.w(TAG, "Thermal script execution timed out, killing process")
+                process.destroyForcibly()
+            }
         }
     }
 
@@ -178,6 +185,7 @@ object ModuleDetector {
             val localVersion = getLocalVersionCode()
             val connection = java.net.URL(UPDATE_URL).openConnection() as java.net.HttpURLConnection
             connection.connectTimeout = 5000
+            connection.readTimeout = 5000
             val jsonText = connection.inputStream.bufferedReader().use { it.readText() }
             val remoteVersionMatch = VERSION_CODE_REGEX.find(jsonText)
             val remoteVersion = remoteVersionMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0

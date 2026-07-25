@@ -52,12 +52,17 @@ fun BgEffectBackground(
             if (!animatesColors) return@LaunchedEffect
             var targetStage = floor(colorStage.value) + 1f
             while (isActive) {
-                delay((preset.colorInterpPeriod * 500).toLong())
-                colorStage.animateTo(
-                    targetValue = targetStage,
-                    animationSpec = spring(dampingRatio = 0.9f, stiffness = 35f),
-                )
-                targetStage += 1f
+                // 当 alpha 为 0 时跳过动画计算，避免后台无效 CPU 消耗
+                if (alpha() > 0f) {
+                    delay((preset.colorInterpPeriod * 500).toLong())
+                    colorStage.animateTo(
+                        targetValue = targetStage,
+                        animationSpec = spring(dampingRatio = 0.9f, stiffness = 35f),
+                    )
+                    targetStage += 1f
+                } else {
+                    delay(500) // alpha 为 0 时仅低频检查，等待恢复可见
+                }
             }
         }
 
