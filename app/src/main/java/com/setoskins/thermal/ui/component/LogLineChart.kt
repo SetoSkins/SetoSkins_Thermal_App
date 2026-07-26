@@ -173,6 +173,26 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         data
     }
 
+    // ── 时间轴刻度标记（每10分钟整点，插值计算分数索引，不与实时数据点重叠） ──
+    val timeAxisMarkers = remember(points, chartData.timeSeconds, baseTimeSeconds, totalDurationMinutes) {
+        val data = mutableListOf<Pair<Float, String>>()
+        if (points.size < 2) return@remember data
+        val timeSeconds = chartData.timeSeconds
+        val step = 10L
+        for (minute in step..<totalDurationMinutes step step) {
+            val targetSeconds = baseTimeSeconds + minute * 60
+            var idx = timeSeconds.indexOfFirst { it >= targetSeconds }
+            if (idx <= 0) continue
+            val prevSec = timeSeconds[idx - 1]
+            val nextSec = timeSeconds[idx]
+            if (nextSec == prevSec) continue
+            val frac = (targetSeconds - prevSec).toFloat() / (nextSec - prevSec).toFloat()
+            val fracIndex = (idx - 1) + frac
+            data.add(fracIndex to "${minute}m")
+        }
+        data
+    }
+
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
         // ── 摘要卡片 ──
         run {
@@ -258,6 +278,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             // ── Paint 对象复用：只创建一次 ──
             val markerPaint = remember { Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER } }
             val touchPaint = remember { Paint().apply { textSize = 34f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.LEFT } }
+            val timeLabelPaint = remember { Paint().apply { textSize = 26f; textAlign = Paint.Align.CENTER } }
+            val onSurfaceSecondaryColor = MiuixTheme.colorScheme.onSurfaceSecondary
             val density = LocalDensity.current
 
             // ── 电量标签重叠检测：预计算，避免 Canvas 内每帧遍历 ──
@@ -359,6 +381,21 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
                             drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
                         }
+                    }
+                }
+
+                // ── 时间轴刻度标签（每10分钟，不与实时数据点标记重叠） ──
+                if (timeAxisMarkers.isNotEmpty()) {
+                    val overlapThreshold = 30.dp.toPx()
+                    timeAxisMarkers.forEach { (fracIndex, label) ->
+                        val x = fracIndex * sp
+                        // 检查是否与已有实时 markerData 位置重叠，优先保留实时标记
+                        val tooClose = markerData.any { (markerIdx, _) ->
+                            kotlin.math.abs(markerIdx * sp - x) < overlapThreshold
+                        }
+                        if (tooClose) return@forEach
+                        timeLabelPaint.color = onSurfaceSecondaryColor.copy(alpha = 0.45f).toArgb()
+                        drawContext.canvas.nativeCanvas.drawText(label, x, h - 4.dp.toPx(), timeLabelPaint)
                     }
                 }
 
