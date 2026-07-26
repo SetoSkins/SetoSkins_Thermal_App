@@ -173,22 +173,48 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         data
     }
 
-    // ── 时间轴刻度标记（每10分钟整点，插值计算分数索引，不与实时数据点重叠） ──
+    // ── 时间轴刻度标记（每10分钟整点，充电时95%后停止，100%再生一次） ──
     val timeAxisMarkers = remember(points, chartData.timeSeconds, baseTimeSeconds, totalDurationMinutes) {
         val data = mutableListOf<Pair<Float, String>>()
         if (points.size < 2) return@remember data
         val timeSeconds = chartData.timeSeconds
         val step = 10L
-        for (minute in step..<totalDurationMinutes step step) {
-            val targetSeconds = baseTimeSeconds + minute * 60
-            var idx = timeSeconds.indexOfFirst { it >= targetSeconds }
-            if (idx <= 0) continue
-            val prevSec = timeSeconds[idx - 1]
-            val nextSec = timeSeconds[idx]
-            if (nextSec == prevSec) continue
-            val frac = (targetSeconds - prevSec).toFloat() / (nextSec - prevSec).toFloat()
-            val fracIndex = (idx - 1) + frac
-            data.add(fracIndex to "${minute}m")
+        val charge95Index = points.indexOfFirst { it.level >= 95f }
+
+        if (charge95Index == -1) {
+            // 无充电：正常生成每10分钟刻度
+            for (minute in step..<totalDurationMinutes step step) {
+                val targetSeconds = baseTimeSeconds + minute * 60
+                var idx = timeSeconds.indexOfFirst { it >= targetSeconds }
+                if (idx <= 0) continue
+                val prevSec = timeSeconds[idx - 1]
+                val nextSec = timeSeconds[idx]
+                if (nextSec == prevSec) continue
+                val frac = (targetSeconds - prevSec).toFloat() / (nextSec - prevSec).toFloat()
+                val fracIndex = (idx - 1) + frac
+                data.add(fracIndex to "${minute}m")
+            }
+        } else {
+            // 充电：95%之前正常生成每10分钟刻度，95%后停止
+            val charge95Time = timeSeconds[charge95Index]
+            for (minute in step..<totalDurationMinutes step step) {
+                val targetSeconds = baseTimeSeconds + minute * 60
+                if (targetSeconds >= charge95Time) break
+                var idx = timeSeconds.indexOfFirst { it >= targetSeconds }
+                if (idx <= 0) continue
+                val prevSec = timeSeconds[idx - 1]
+                val nextSec = timeSeconds[idx]
+                if (nextSec == prevSec) continue
+                val frac = (targetSeconds - prevSec).toFloat() / (nextSec - prevSec).toFloat()
+                val fracIndex = (idx - 1) + frac
+                data.add(fracIndex to "${minute}m")
+            }
+            // 到达100%时生成一次刻度
+            val fullIdx = points.indexOfLast { it.level >= 100f }
+            if (fullIdx > charge95Index) {
+                val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
+                data.add(fullIdx.toFloat() to "${m}m")
+            }
         }
         data
     }
