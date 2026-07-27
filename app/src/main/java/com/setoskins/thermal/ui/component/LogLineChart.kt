@@ -140,15 +140,31 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         val charge95Index = points.indexOfFirst { it.level >= 95f }
         if (charge95Index == -1) {
             var lastM = -1L
+            val lastIdx = points.lastIndex
+            var lastIdxAdded = false
             points.indices.forEach { index ->
                 val m = (timeSeconds[index] - baseTimeSeconds) / 60
                 if (lastM == -1L || m - lastM >= 10) {
                     data.add(index to "${m}m")
                     lastM = m
+                    if (index == lastIdx) lastIdxAdded = true
+                }
+            }
+            // 最后一个点如果还没被加入（距离上一个标记不足10分钟），按间隙处理
+            if (!lastIdxAdded) {
+                val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
+                val lastMark = data.lastOrNull()
+                // 间隙 < 3 分钟：替换上一个标记（如 12m 替换 10m、21m 替换 20m）
+                // 间隙 >= 3 分钟：保留两者（如 23m 和 20m 并存）
+                if (lastMark != null && m - lastM < 3) {
+                    data[data.lastIndex] = lastIdx to "${m}m"
+                } else {
+                    data.add(lastIdx to "${m}m")
                 }
             }
         } else {
             var lastM = -1L
+            // 95%之前正常每10分钟标记，95%后停止
             points.indices.forEach { index ->
                 if (index < charge95Index) {
                     val m = (timeSeconds[index] - baseTimeSeconds) / 60
@@ -159,14 +175,32 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 }
             }
             val lastIdx = points.lastIndex
-            if (!isCharging) {
+            val fullIdx = points.indexOfLast { it.level >= 100f }
+            val hasFull = fullIdx > charge95Index
+            // 到达100%时标记一次
+            if (hasFull) {
+                val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
+                data.add(fullIdx to "${m}m")
+            }
+            // 末尾点：100% 标记不可替换，其余间隙 >= 2 分钟则替换上一个
+            if (data.none { it.first == lastIdx }) {
                 val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
-                data.add(lastIdx to "${m}m")
-            } else if (points[lastIdx].level >= 100f) {
-                val fullIdx = points.indexOfLast { it.level >= 100f }
-                if (fullIdx >= charge95Index) {
-                    val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
-                    data.add(fullIdx to "${m}m")
+                val lastMark = data.lastOrNull()
+                if (lastMark != null) {
+                    val isLastFull = hasFull && lastMark.first == fullIdx
+                    if (!isLastFull) {
+                        val lastMarkM = (timeSeconds[lastMark.first] - baseTimeSeconds) / 60
+                        // 间隙 < 3 分钟：替换上一个标记，>= 3 分钟：保留两者
+                        if (m - lastMarkM < 3) {
+                            data[data.lastIndex] = lastIdx to "${m}m"
+                        } else {
+                            data.add(lastIdx to "${m}m")
+                        }
+                    } else {
+                        data.add(lastIdx to "${m}m")
+                    }
+                } else {
+                    data.add(lastIdx to "${m}m")
                 }
             }
         }
@@ -231,7 +265,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 "${totalDurationMinutes}m"
             }
             val wattValue = if (isAnimatingTouch) "%.1f W".format(points[activeIndex].watt) else "%.1f W".format(averageWatt)
-            val levelValue = "${minLevel}% → ${maxLevel}%"
+            val levelValue = "${minLevel}→${maxLevel}%"
             val tempValue = if (isAnimatingTouch) "${points[activeIndex].temp.toInt()}°C" else "${averageTemp.toInt()}°C"
             val shouldCollapse = isTouching || isCharging
             val summaryTransition = updateTransition(targetState = shouldCollapse, label = "log_summary_transition")
@@ -304,8 +338,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             // ── Paint 对象复用：只创建一次 ──
             val markerPaint = remember { Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER } }
             val touchPaint = remember { Paint().apply { textSize = 34f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.LEFT } }
-            val timeLabelPaint = remember { Paint().apply { textSize = 26f; textAlign = Paint.Align.CENTER } }
-            val onSurfaceSecondaryColor = MiuixTheme.colorScheme.onSurfaceSecondary
             val density = LocalDensity.current
 
             // ── 电量标签重叠检测：预计算，避免 Canvas 内每帧遍历 ──
@@ -341,12 +373,10 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 if (showTemp) drawLogPathZone(chartData.tempNorm, sp, usableZoneH, tempBase, tempColor)
 
                 val animatedIndex = animatedTouchIndex.value
-                val lastRealTimeX = if (points.isNotEmpty()) points.lastIndex * sp else -1f
 
                 // ── 绘制 marker 数据点 ──
                 markerData.forEach { (index, _) ->
                     val x = index * sp
-                    if (isCharging && lastRealTimeX >= 0f && kotlin.math.abs(x - lastRealTimeX) < 30.dp.toPx()) return@forEach
                     drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
                     val p = points[index]
 
@@ -374,54 +404,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
                             drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
                         }
-                    }
-                }
-
-                // ── 充电时始终显示最右边数据点 ──
-                if (isCharging && animatedIndex < 0f && points.isNotEmpty()) {
-                    val lastIdx = points.lastIndex
-                    val isLastPointMarker = markerData.any { it.first == lastIdx }
-                    val x = lastIdx * sp
-                    val p = points[lastIdx]
-                    if (showWatt) {
-                        val y = wattBase + (1f - chartData.wattNorm[lastIdx]) * usableZoneH
-                        drawCircle(wattColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                        if (!isLastPointMarker) {
-                            markerPaint.color = wattColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
-                        }
-                    }
-                    if (showTemp) {
-                        val y = tempBase + (1f - chartData.tempNorm[lastIdx]) * usableZoneH
-                        drawCircle(tempColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                        if (!isLastPointMarker) {
-                            markerPaint.color = tempColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y + 22.dp.toPx(), markerPaint)
-                        }
-                    }
-                    if (showLevel) {
-                        val y = levelBase + (1f - chartData.levelNorm[lastIdx]) * usableZoneH
-                        drawCircle(levelColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                        if (!isLastPointMarker) {
-                            markerPaint.color = levelColor.toArgb()
-                            val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
-                        }
-                    }
-                }
-
-                // ── 时间轴刻度标签（每10分钟，不与实时数据点标记重叠） ──
-                if (timeAxisMarkers.isNotEmpty()) {
-                    val overlapThreshold = 30.dp.toPx()
-                    timeAxisMarkers.forEach { (fracIndex, label) ->
-                        val x = fracIndex * sp
-                        // 检查是否与已有实时 markerData 位置重叠，优先保留实时标记
-                        val tooClose = markerData.any { (markerIdx, _) ->
-                            kotlin.math.abs(markerIdx * sp - x) < overlapThreshold
-                        }
-                        if (tooClose) return@forEach
-                        timeLabelPaint.color = onSurfaceSecondaryColor.copy(alpha = 0.45f).toArgb()
-                        drawContext.canvas.nativeCanvas.drawText(label, x, h - 4.dp.toPx(), timeLabelPaint)
                     }
                 }
 
@@ -470,11 +452,38 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }
         }
 
-        // ── 底部时间轴 ──
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("0m", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
-            if (points.isNotEmpty()) {
-                Text("${totalDurationMinutes}m", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+        // ── 底部时间轴（Canvas，与图表同宽，刻度标签与 0m/total 并排） ──
+        val timeLabelPaint = remember { Paint().apply { textSize = 26f } }
+        val timeTextColor = MiuixTheme.colorScheme.onSurfaceSecondary
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 28.dp)
+                .height(20.dp)
+        ) {
+            if (points.size < 2) return@Canvas
+            val w = size.width
+            val sp = w / (points.size - 1)
+            val textY = size.height - 4.dp.toPx()
+
+            // 0m — 左对齐
+            timeLabelPaint.textAlign = Paint.Align.LEFT
+            timeLabelPaint.color = timeTextColor.toArgb()
+            drawContext.canvas.nativeCanvas.drawText("0m", 0f, textY, timeLabelPaint)
+
+            // 总时长 — 右对齐
+            timeLabelPaint.textAlign = Paint.Align.RIGHT
+            drawContext.canvas.nativeCanvas.drawText("${totalDurationMinutes}m", w, textY, timeLabelPaint)
+
+            // 刻度标签 — 居中，跳过于 0m / 总时长过近的标签
+            timeLabelPaint.textAlign = Paint.Align.CENTER
+            timeLabelPaint.color = timeTextColor.toArgb()
+            val edgeThreshold = 30.dp.toPx()
+            val totalRight = w - edgeThreshold
+            timeAxisMarkers.forEach { (fracIndex, label) ->
+                val x = fracIndex * sp
+                if (x < edgeThreshold || x > totalRight) return@forEach
+                drawContext.canvas.nativeCanvas.drawText(label, x, textY, timeLabelPaint)
             }
         }
     }
