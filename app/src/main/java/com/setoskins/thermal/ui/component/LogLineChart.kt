@@ -289,7 +289,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 "${totalDurationMinutes}m"
             }
             val wattValue = if (isAnimatingTouch) "%.1f W".format(points[activeIndex].watt) else "%.1f W".format(averageWatt)
-            val levelValue = "${minLevel}→${maxLevel}%"
+            val levelValue = "${minLevel}%→${maxLevel}%"
             val tempValue = if (isAnimatingTouch) "${points[activeIndex].temp.toInt()}°C" else "${averageTemp.toInt()}°C"
             val shouldCollapse = isTouching || isCharging
             val summaryTransition = updateTransition(targetState = shouldCollapse, label = "log_summary_transition")
