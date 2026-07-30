@@ -13,7 +13,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -94,8 +93,7 @@ private data class ChartData(
     val timeSeconds: List<Long>,
     val wattNorm: List<Float>,
     val levelNorm: List<Float>,
-    val tempNorm: List<Float>,
-    val levelLabelBelow: Boolean
+    val tempNorm: List<Float>
 )
 
 @Composable
@@ -104,7 +102,7 @@ private fun rememberChartData(points: List<ModuleDetector.LogDataPoint>, maxWatt
     val wattNorm = points.map { (it.watt / maxWatt).coerceIn(0f, 1f) }
     val levelNorm = points.map { it.level / 100f }
     val tempNorm = points.map { (it.temp / maxTemp).coerceIn(0f, 1f) }
-    ChartData(timeSeconds = timeSeconds, wattNorm = wattNorm, levelNorm = levelNorm, tempNorm = tempNorm, levelLabelBelow = false) // levelLabelBelow 需要在 Canvas 中计算（依赖像素坐标）
+    ChartData(timeSeconds = timeSeconds, wattNorm = wattNorm, levelNorm = levelNorm, tempNorm = tempNorm)
 }
 
 @Composable
@@ -118,8 +116,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     val yAxisWidth = 32.dp           // Y 轴标尺宽度
     val yAxisLeftPadding = 8.dp      // Y 轴左侧间距，与时间标尺同步
     
-    val maxWattPoint = points.maxOfOrNull { it.watt } ?: 0f
-    val maxWatt = if (onlyWattMode) 100f else maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f)
+    val maxWattPoint = remember(points) { points.maxOfOrNull { it.watt } ?: 0f }
+    val maxWatt = remember(onlyWattMode, maxWattPoint) { if (onlyWattMode) 100f else maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f) }
     val maxTemp = 100f
 
     // ── 预计算所有数据，避免 Canvas 内重复计算 ──
@@ -487,7 +485,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             drawCircle(wattColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
                             if (animatedIndex < 0f) {
                                 markerPaint.color = wattColor.copy(alpha = markerAlpha).toArgb()
-                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
+                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y + 22.dp.toPx(), markerPaint)
                             }
                         }
                         // 温度 marker
@@ -496,7 +494,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             drawCircle(tempColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
                             if (animatedIndex < 0f) {
                                 markerPaint.color = tempColor.copy(alpha = markerAlpha).toArgb()
-                                drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y + 22.dp.toPx(), markerPaint)
+                                drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y - 10.dp.toPx(), markerPaint)
                             }
                         }
                         // 电量 marker
@@ -530,7 +528,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val desiredX = x + textOffsetX
                             val textWidth = touchPaint.measureText(value)
                             val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                            drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, y + 22.dp.toPx(), touchPaint)
                         }
                         // 温度触摸（过渡时淡出）
                         if (showTemp && otherAlpha > 0.001f) {
@@ -542,7 +540,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val desiredX = x + textOffsetX
                             val textWidth = touchPaint.measureText(value)
                             val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                            drawContext.canvas.nativeCanvas.drawText(value, tx, y + 22.dp.toPx(), touchPaint)
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
                         }
                         // 电量触摸（过渡时淡出）
                         if (showLevel && otherAlpha > 0.001f) {

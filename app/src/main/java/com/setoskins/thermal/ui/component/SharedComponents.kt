@@ -26,7 +26,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -178,6 +180,8 @@ fun SliderRow(
     summary: String? = null,
     onClickLabel: () -> Unit
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var previousValue by remember { mutableStateOf(value) }
     BasicComponent(
         title = title,
         summary = summary,
@@ -201,7 +205,7 @@ fun SliderRow(
     )
     Slider(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { if (it != previousValue) { previousValue = it; hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove) }; onValueChange(it) },
         valueRange = valueRange,
         steps = steps,
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp)

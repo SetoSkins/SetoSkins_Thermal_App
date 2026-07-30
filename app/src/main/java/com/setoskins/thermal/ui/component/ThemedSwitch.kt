@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -20,6 +22,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemedSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled: Boolean = true, useMonet: Boolean) {
+    val hapticFeedback = LocalHapticFeedback.current
     val colors = MiuixTheme.colorScheme
     if (useMonet) {
         val isDark = isSystemInDarkTheme()
@@ -38,8 +41,8 @@ fun ThemedSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enable
             disabledUncheckedBorderColor = ColorSwitchDisabledUncheckedBorder,
             disabledUncheckedIconColor = Color.White.copy(alpha = 0.7f)
         )
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled, thumbContent = { Icon(imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp)) }, colors = switchColors, modifier = Modifier.scale(1.02f))
+        Switch(checked = checked, onCheckedChange = onCheckedChange?.let { cb -> { hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress); cb(it) } }, enabled = enabled, thumbContent = { Icon(imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp)) }, colors = switchColors, modifier = Modifier.scale(1.02f))
     } else {
-        MiuixSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        MiuixSwitch(checked = checked, onCheckedChange = onCheckedChange?.let { cb -> { hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress); cb(it) } }, enabled = enabled)
     }
 }

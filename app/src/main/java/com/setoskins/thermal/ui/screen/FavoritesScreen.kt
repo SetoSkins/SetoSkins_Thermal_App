@@ -15,7 +15,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -62,20 +61,19 @@ import com.setoskins.thermal.ui.component.ColorTemp
 import com.setoskins.thermal.ui.component.ColorWatt
 import com.setoskins.thermal.ui.component.BatteryInfoCard
 import com.setoskins.thermal.ui.component.LogLineChart
-import com.setoskins.thermal.ui.component.parseTimeSeconds
 import com.setoskins.thermal.ui.component.MiuixCard
 import com.setoskins.thermal.ui.component.SectionTitle
+import com.setoskins.thermal.ui.component.ThemedSwitch
 import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun FavoritesScreen(reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, contentPaddingTop: Dp = 0.dp, modifier: Modifier = Modifier) {
+fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, contentPaddingTop: Dp = 0.dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     var selectedIndex by rememberSaveable { mutableIntStateOf(prefs.getInt("logViewStyle", 0)) }
@@ -86,8 +84,9 @@ fun FavoritesScreen(reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = nu
     var showTemp by rememberSaveable { mutableStateOf(true) }
     var onlyWattMode by rememberSaveable { mutableStateOf(false) }
     var isCharging by remember { mutableStateOf(false) }
-    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
-    val isCenterText = logContent == "日志文件为空" || logContent == "无法读取日志文件" || logContent == "正在加载日志..."
+    val config = LocalConfiguration.current
+    val isZh = remember { config.locales.get(0).language == "zh" }
+    val isCenterText = remember(logContent) { logContent == "日志文件为空" || logContent == "无法读取日志文件" || logContent == "正在加载日志..." }
 
     // 使用广播监听充电状态变化，替代轮询中 readBatteryInfo 调用
     DisposableEffect(Unit) {
@@ -153,7 +152,7 @@ fun FavoritesScreen(reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = nu
         item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) { Column {
                 WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
                 AnimatedVisibility(visible = selectedIndex == 1, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                    BasicComponent(title = if (isZh) "仅显示功耗曲线" else "Watt Only", endActions = { Switch(checked = onlyWattMode, onCheckedChange = { onlyWattMode = it }) })
+                    BasicComponent(title = if (isZh) "仅显示功耗曲线" else "Watt Only", endActions = { ThemedSwitch(checked = onlyWattMode, onCheckedChange = { onlyWattMode = it }, useMonet = useMonet) })
                 }
             } } }
         item(key = "log_content") { MiuixCard(modifier = Modifier.padding(top = 16.dp)) {

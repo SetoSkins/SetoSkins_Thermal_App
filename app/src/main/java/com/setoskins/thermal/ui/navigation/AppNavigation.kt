@@ -153,6 +153,16 @@ fun MyApplicationApp(
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
     val favoritesScrollBehavior = MiuixScrollBehavior()
+    val activeScrollBehavior = when (currentDestination) {
+        AppDestinations.HOME -> homeScrollBehavior
+        AppDestinations.FAVORITES -> favoritesScrollBehavior
+        else -> null
+    }
+    val activeTitle = when (currentDestination) {
+        AppDestinations.HOME -> "Seto温控"
+        AppDestinations.FAVORITES -> "日志"
+        else -> ""
+    }
     val isDark = isSystemInDarkTheme()
 
     Box(
@@ -172,24 +182,14 @@ fun MyApplicationApp(
                         containerColor = Color.Transparent,
                         topBar = {
                             if (currentDestination != AppDestinations.PROFILE) {
-                                val scrollBehavior = when (currentDestination) {
-                                    AppDestinations.HOME -> homeScrollBehavior
-                                    AppDestinations.FAVORITES -> favoritesScrollBehavior
-                                    else -> null
-                                }
-                                val title = when (currentDestination) {
-                                    AppDestinations.HOME -> "Seto温控"
-                                    AppDestinations.FAVORITES -> "日志"
-                                    else -> ""
-                                }
                                 TopAppBar(
-                                    title = title,
-                                    largeTitle = title,
+                                    title = activeTitle,
+                                    largeTitle = activeTitle,
                                     largeTitleColor = Color.Transparent,
                                     color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
-                                    scrollBehavior = scrollBehavior,
+                                    scrollBehavior = activeScrollBehavior,
                                     bottomContent = {
-                                        val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
+                                        val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior?.state?.collapsedFraction ?: 0f } }
                                         val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
                                         Spacer(modifier = Modifier.height(height))
                                     },
@@ -245,6 +245,7 @@ fun MyApplicationApp(
                                     }
                                     AppDestinations.FAVORITES -> {
                                         FavoritesScreen(
+                                            useMonet = useMonet,
                                             reloadTrigger = logReloadTrigger,
                                             scrollBehavior = favoritesScrollBehavior,
                                             contentPaddingTop = innerPadding.calculateTopPadding(),
@@ -267,16 +268,6 @@ fun MyApplicationApp(
                     }
 
                     if (currentDestination != AppDestinations.PROFILE) {
-                        val activeScrollBehavior = when (currentDestination) {
-                            AppDestinations.HOME -> homeScrollBehavior
-                            AppDestinations.FAVORITES -> favoritesScrollBehavior
-                            else -> null
-                        }
-                        val activeTitle = when (currentDestination) {
-                            AppDestinations.HOME -> "Seto温控"
-                            AppDestinations.FAVORITES -> "日志"
-                            else -> ""
-                        }
                         if (activeScrollBehavior != null) {
                             val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior.state.collapsedFraction } }
                             Text(
