@@ -137,8 +137,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         val data = mutableListOf<Pair<Int, String>>()
         if (points.isEmpty()) return@remember data
         val timeSeconds = chartData.timeSeconds
-        val charge95Index = points.indexOfFirst { it.level >= 95f }
-        if (charge95Index == -1) {
+        val charge80Index = points.indexOfFirst { it.level >= 80f }
+        if (charge80Index == -1) {
             var lastM = -1L
             val lastIdx = points.lastIndex
             var lastIdxAdded = false
@@ -164,9 +164,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }
         } else {
             var lastM = -1L
-            // 95%之前正常每10分钟标记，95%后停止
+            // 80%之前正常每10分钟标记，80%后停止
             points.indices.forEach { index ->
-                if (index < charge95Index) {
+                if (index < charge80Index) {
                     val m = (timeSeconds[index] - baseTimeSeconds) / 60
                     if (lastM == -1L || m - lastM >= 10) {
                         data.add(index to "${m}m")
@@ -174,15 +174,27 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     }
                 }
             }
+            // 到达80%时标记：距离上一个标记 ≤5 分钟则替换，>5 分钟则追加
+            val m80 = (timeSeconds[charge80Index] - baseTimeSeconds) / 60
+            if (data.isNotEmpty()) {
+                val lastMarkM = (timeSeconds[data.last().first] - baseTimeSeconds) / 60
+                if (m80 - lastMarkM <= 5) {
+                    data[data.lastIndex] = charge80Index to "${m80}m"
+                } else {
+                    data.add(charge80Index to "${m80}m")
+                }
+            } else {
+                data.add(charge80Index to "${m80}m")
+            }
             val lastIdx = points.lastIndex
             val fullIdx = points.indexOfLast { it.level >= 100f }
-            val hasFull = fullIdx > charge95Index
+            val hasFull = fullIdx > charge80Index
             // 到达100%时标记一次
             if (hasFull) {
                 val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
                 data.add(fullIdx to "${m}m")
             }
-            // 末尾点：100% 标记不可替换，其余间隙 >= 2 分钟则替换上一个
+            // 末尾点：100% 标记不可替换，其余间隙 < 3 分钟则替换上一个
             if (data.none { it.first == lastIdx }) {
                 val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
                 val lastMark = data.lastOrNull()
@@ -190,7 +202,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     val isLastFull = hasFull && lastMark.first == fullIdx
                     if (!isLastFull) {
                         val lastMarkM = (timeSeconds[lastMark.first] - baseTimeSeconds) / 60
-                        // 间隙 < 3 分钟：替换上一个标记，>= 3 分钟：保留两者
                         if (m - lastMarkM < 3) {
                             data[data.lastIndex] = lastIdx to "${m}m"
                         } else {
@@ -207,15 +218,15 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         data
     }
 
-    // ── 时间轴刻度标记（每10分钟整点，充电时95%后停止，100%再生一次） ──
+    // ── 时间轴刻度标记（每10分钟整点，充电时80%后停止，100%再生一次） ──
     val timeAxisMarkers = remember(points, chartData.timeSeconds, baseTimeSeconds, totalDurationMinutes) {
         val data = mutableListOf<Pair<Float, String>>()
         if (points.size < 2) return@remember data
         val timeSeconds = chartData.timeSeconds
         val step = 10L
-        val charge95Index = points.indexOfFirst { it.level >= 95f }
+        val charge80Idx = points.indexOfFirst { it.level >= 80f }
 
-        if (charge95Index == -1) {
+        if (charge80Idx == -1) {
             // 无充电：正常生成每10分钟刻度
             for (minute in step..<totalDurationMinutes step step) {
                 val targetSeconds = baseTimeSeconds + minute * 60
@@ -229,11 +240,11 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 data.add(fracIndex to "${minute}m")
             }
         } else {
-            // 充电：95%之前正常生成每10分钟刻度，95%后停止
-            val charge95Time = timeSeconds[charge95Index]
+            // 充电：80%之前正常生成每10分钟刻度，80%后停止
+            val charge80Time = timeSeconds[charge80Idx]
             for (minute in step..<totalDurationMinutes step step) {
                 val targetSeconds = baseTimeSeconds + minute * 60
-                if (targetSeconds >= charge95Time) break
+                if (targetSeconds >= charge80Time) break
                 var idx = timeSeconds.indexOfFirst { it >= targetSeconds }
                 if (idx <= 0) continue
                 val prevSec = timeSeconds[idx - 1]
@@ -243,9 +254,22 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 val fracIndex = (idx - 1) + frac
                 data.add(fracIndex to "${minute}m")
             }
+            // 到达80%时生成刻度：距离上一个 ≤5 分钟则替换，>5 分钟则追加
+            val m80 = (timeSeconds[charge80Idx] - baseTimeSeconds) / 60
+            if (data.isNotEmpty()) {
+                val lastLabel = data.last().second
+                val lastM = lastLabel.substringBefore("m").toLongOrNull() ?: 0L
+                if (m80 - lastM <= 5) {
+                    data[data.lastIndex] = charge80Idx.toFloat() to "${m80}m"
+                } else {
+                    data.add(charge80Idx.toFloat() to "${m80}m")
+                }
+            } else {
+                data.add(charge80Idx.toFloat() to "${m80}m")
+            }
             // 到达100%时生成一次刻度
             val fullIdx = points.indexOfLast { it.level >= 100f }
-            if (fullIdx > charge95Index) {
+            if (fullIdx > charge80Idx) {
                 val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
                 data.add(fullIdx.toFloat() to "${m}m")
             }
