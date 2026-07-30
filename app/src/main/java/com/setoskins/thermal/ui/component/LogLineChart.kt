@@ -1,10 +1,14 @@
 package com.setoskins.thermal.ui.component
 
 import android.graphics.Paint
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.ZoneOffset
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Canvas
@@ -17,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,9 +53,11 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 // 解析时间字符串 "MM-DD HH:mm:ss" 为秒数
+private val timeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 internal fun parseTimeSeconds(time: String): Long = try {
-    val p = time.substringAfter(" ").split(":")
-    p[0].toLong() * 3600 + p[1].toLong() * 60 + p[2].toLong()
+    // 日志中没有年份，补充一个固定年份以支持跨月/跨天计算
+    val fullTime = "2026-$time"
+    LocalDateTime.parse(fullTime, timeFormatter).toEpochSecond(ZoneOffset.UTC)
 } catch (_: Exception) {
     0L
 }
@@ -64,6 +71,21 @@ fun DrawScope.drawLogPathZone(values: List<Float>, sp: Float, zoneH: Float, base
         else { val px = (i - 1) * sp; val py = baseY + zoneH - (values[i - 1] * zoneH); path.cubicTo((px + x) / 2, py, (px + x) / 2, y, x, y) }
     }
     drawPath(path = path, color = color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+}
+
+// 绘制曲线下方的填充区域
+fun DrawScope.drawLogFillZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color) {
+    val path = Path()
+    values.forEachIndexed { i, v ->
+        val x = i * sp; val y = baseY + zoneH - (v * zoneH)
+        if (i == 0) path.moveTo(x, y)
+        else { val px = (i - 1) * sp; val py = baseY + zoneH - (values[i - 1] * zoneH); path.cubicTo((px + x) / 2, py, (px + x) / 2, y, x, y) }
+    }
+    val lastX = (values.size - 1) * sp
+    path.lineTo(lastX, baseY + zoneH)
+    path.lineTo(0f, baseY + zoneH)
+    path.close()
+    drawPath(path = path, color = color)
 }
 
 // ── 预计算数据结构（一次性计算，避免 Canvas 内重复） ──
@@ -86,15 +108,18 @@ private fun rememberChartData(points: List<ModuleDetector.LogDataPoint>, maxWatt
 }
 
 @Composable
-fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showWatt: Boolean, showLevel: Boolean, showTemp: Boolean, isCharging: Boolean = false) {
+fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showWatt: Boolean, showLevel: Boolean, showTemp: Boolean, isCharging: Boolean = false, onlyWattMode: Boolean = false) {
     val wattColor = ColorWatt
     val levelColor = ColorLevel
     val tempColor = ColorTemp
     val primaryColor = MiuixTheme.colorScheme.primary
     val gridLineColor = MiuixTheme.colorScheme.onSurfaceSecondary.copy(alpha = 0.15f)
+    val yAxisTextColor = MiuixTheme.colorScheme.onSurfaceSecondary
+    val yAxisWidth = 32.dp           // Y 轴标尺宽度
+    val yAxisLeftPadding = 8.dp      // Y 轴左侧间距，与时间标尺同步
     
     val maxWattPoint = points.maxOfOrNull { it.watt } ?: 0f
-    val maxWatt = maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f)
+    val maxWatt = if (onlyWattMode) 100f else maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f)
     val maxTemp = 100f
 
     // ── 预计算所有数据，避免 Canvas 内重复计算 ──
@@ -291,28 +316,40 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             val wattValue = if (isAnimatingTouch) "%.1f W".format(points[activeIndex].watt) else "%.1f W".format(averageWatt)
             val levelValue = "${minLevel}%→${maxLevel}%"
             val tempValue = if (isAnimatingTouch) "${points[activeIndex].temp.toInt()}°C" else "${averageTemp.toInt()}°C"
-            val shouldCollapse = isTouching || isCharging
+            val shouldCollapse = isTouching || isCharging || onlyWattMode
             val summaryTransition = updateTransition(targetState = shouldCollapse, label = "log_summary_transition")
             val durationWeight by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
                 label = "duration_weight"
-            ) { touching -> if (touching) 4f else 1f }
+            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 4f else 1f }
+            val wattWeight by summaryTransition.animateFloat(
+                transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
+                label = "watt_weight"
+            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 0.001f else 0.9f }
+            val wattAlpha by summaryTransition.animateFloat(
+                transitionSpec = { tween(durationMillis = 320, easing = FastOutSlowInEasing) },
+                label = "watt_alpha"
+            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 0f else 1f }
+            val wattScale by summaryTransition.animateFloat(
+                transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
+                label = "watt_scale"
+            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 0.82f else 1f }
             val compactOtherWeight by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
                 label = "compact_other_weight"
-            ) { touching -> if (touching) 0.001f else 0.9f }
+            ) { state -> if (state) 0.001f else 0.9f }
             val levelWeight by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
                 label = "level_weight"
-            ) { touching -> if (touching) 0.001f else 1.2f }
+            ) { state -> if (state) 0.001f else 1.2f }
             val otherAlpha by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 320, easing = FastOutSlowInEasing) },
                 label = "other_alpha"
-            ) { touching -> if (touching) 0f else 1f }
+            ) { state -> if (state) 0f else 1f }
             val otherScale by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
                 label = "other_scale"
-            ) { touching -> if (touching) 0.82f else 1f }
+            ) { state -> if (state) 0.82f else 1f }
             Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 8.dp), colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.weight(durationWeight), contentAlignment = Alignment.Center) {
@@ -321,10 +358,10 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             Text(if (isZh) "时长" else "Dur", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
-                    Box(modifier = Modifier.weight(compactOtherWeight).graphicsLayer { alpha = otherAlpha; scaleX = otherScale; scaleY = otherScale }, contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.weight(wattWeight).graphicsLayer { alpha = wattAlpha; scaleX = wattScale; scaleY = wattScale }, contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(wattValue, fontSize = 14.sp, color = wattColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
-                            Text(if (isZh) "平均功耗" else "Avg Watt", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
+                            Text(if (isZh) { if (onlyWattMode && isTouching) "实时功耗" else "平均功耗" } else { if (onlyWattMode && isTouching) "Watt" else "Avg Watt" }, fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
                     Box(modifier = Modifier.weight(levelWeight).graphicsLayer { alpha = otherAlpha; scaleX = otherScale; scaleY = otherScale }, contentAlignment = Alignment.Center) {
@@ -343,134 +380,183 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }
         }
 
-        // ── 图表区域 ──
-        Box(modifier = Modifier.fillMaxWidth().height(220.dp).padding(horizontal = 28.dp).pointerInput(points) {
-            detectDragGesturesAfterLongPress(
-                onDragStart = { offset ->
-                    val sp = size.width / (points.size.coerceAtLeast(2) - 1)
-                    touchIndex = (offset.x / sp).toInt().coerceIn(points.indices)
-                },
-                onDrag = { change, _ ->
-                    val sp = size.width / (points.size.coerceAtLeast(2) - 1)
-                    touchIndex = (change.position.x / sp).toInt().coerceIn(points.indices)
-                    change.consume()
-                },
-                onDragEnd = { touchIndex = -1 },
-                onDragCancel = { touchIndex = -1 }
-            )
-        }) {
-            // ── Paint 对象复用：只创建一次 ──
-            val markerPaint = remember { Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER } }
-            val touchPaint = remember { Paint().apply { textSize = 34f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.LEFT } }
-            val density = LocalDensity.current
+        // ── 模式切换过渡动画 ──
+        val modeTransition by animateFloatAsState(
+            targetValue = if (onlyWattMode) 1f else 0f,
+            animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+            label = "mode_transition"
+        )
 
-            // ── 电量标签重叠检测：预计算，避免 Canvas 内每帧遍历 ──
-            val levelLabelBelow = remember(showLevel, chartData.levelNorm, density) {
-                if (!showLevel || chartData.levelNorm.isEmpty()) return@remember false
-                val chartHeightPx = with(density) { 220.dp.toPx() }
-                val zoneHPx = chartHeightPx * 0.25f
-                val px10 = with(density) { 10.dp.toPx() }
-                val px22 = with(density) { 22.dp.toPx() }
-                chartData.levelNorm.any { v ->
-                    val y = (1f - v) * zoneHPx
-                    y - px10 < 0f || y + px22 > zoneHPx
+        // ── 图表区域（统一布局） ──
+        Row(modifier = Modifier.fillMaxWidth().height(220.dp).padding(start = yAxisLeftPadding, end = 28.dp)) {
+            // ── 左侧 Y 轴瓦数标尺（动画淡入） ──
+            val yAxisPaint = remember { Paint().apply { textSize = 24f; textAlign = Paint.Align.RIGHT } }
+            Canvas(modifier = Modifier.width(yAxisWidth).fillMaxSize()) {
+                val h = size.height
+                val rightEdge = size.width - 8.dp.toPx()
+                yAxisPaint.color = yAxisTextColor.copy(alpha = modeTransition).toArgb()
+                for (i in 0..4) {
+                    val value = (i * 25).toInt()
+                    val y = h - (i.toFloat() / 4 * h)
+                    drawContext.canvas.nativeCanvas.drawText("${value}W", rightEdge, y + 4.dp.toPx(), yAxisPaint)
                 }
             }
+            // ── 右侧图表 ──
+            Box(modifier = Modifier.weight(1f).fillMaxSize().pointerInput(points) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        val sp = size.width / (points.size.coerceAtLeast(2) - 1)
+                        touchIndex = (offset.x / sp).toInt().coerceIn(points.indices)
+                    },
+                    onDrag = { change, _ ->
+                        val sp = size.width / (points.size.coerceAtLeast(2) - 1)
+                        touchIndex = (change.position.x / sp).toInt().coerceIn(points.indices)
+                        change.consume()
+                    },
+                    onDragEnd = { touchIndex = -1 },
+                    onDragCancel = { touchIndex = -1 }
+                )
+            }) {
+                val markerPaint = remember { Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER } }
+                val touchPaint = remember { Paint().apply { textSize = 34f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.LEFT } }
+                val density = LocalDensity.current
 
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width; val h = size.height
-                if (points.size < 2) return@Canvas
-                val sp = w / (points.size - 1)
-                val zoneH = h * 0.25f
-                val gap = h * 0.125f
-                val levelBase = 0f
-                val tempBase = zoneH + gap
-                val wattBase = 2f * (zoneH + gap)
-                val usableZoneH = zoneH
-
-                // ── 绘制网格线 ──
-                for (i in 0..4) { drawLine(gridLineColor, Offset(0f, h - (i.toFloat() / 4 * h)), Offset(w, h - (i.toFloat() / 4 * h)), strokeWidth = 0.5.dp.toPx()) }
-
-                // ── 绘制曲线（使用预计算的数据） ──
-                if (showWatt) drawLogPathZone(chartData.wattNorm, sp, usableZoneH, wattBase, wattColor)
-                if (showLevel) drawLogPathZone(chartData.levelNorm, sp, usableZoneH, levelBase, levelColor)
-                if (showTemp) drawLogPathZone(chartData.tempNorm, sp, usableZoneH, tempBase, tempColor)
-
-                val animatedIndex = animatedTouchIndex.value
-
-                // ── 绘制 marker 数据点 ──
-                markerData.forEach { (index, _) ->
-                    val x = index * sp
-                    drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
-                    val p = points[index]
-
-                    if (showWatt) {
-                        val y = wattBase + (1f - chartData.wattNorm[index]) * usableZoneH
-                        drawCircle(wattColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                        if (animatedIndex < 0f) {
-                            markerPaint.color = wattColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
-                        }
-                    }
-                    if (showTemp) {
-                        val y = tempBase + (1f - chartData.tempNorm[index]) * usableZoneH
-                        drawCircle(tempColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                        if (animatedIndex < 0f) {
-                            markerPaint.color = tempColor.toArgb()
-                            drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y + 22.dp.toPx(), markerPaint)
-                        }
-                    }
-                    if (showLevel) {
-                        val y = levelBase + (1f - chartData.levelNorm[index]) * usableZoneH
-                        drawCircle(levelColor, radius = 4.5.dp.toPx(), center = Offset(x, y))
-                        if (animatedIndex < 0f) {
-                            markerPaint.color = levelColor.toArgb()
-                            val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                            drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
-                        }
+                // ── 电量标签重叠检测 ──
+                val levelLabelBelow = remember(showLevel, chartData.levelNorm, density) {
+                    if (!showLevel || chartData.levelNorm.isEmpty()) return@remember false
+                    val chartHeightPx = with(density) { 220.dp.toPx() }
+                    val zoneHPx = chartHeightPx * 0.25f
+                    val px10 = with(density) { 10.dp.toPx() }
+                    val px22 = with(density) { 22.dp.toPx() }
+                    chartData.levelNorm.any { v ->
+                        val y = (1f - v) * zoneHPx
+                        y - px10 < 0f || y + px22 > zoneHPx
                     }
                 }
 
-                // ── 触摸指示器 ──
-                val alpha = animatedAlpha.value
-                if (animatedIndex >= 0f && animatedIndex <= points.lastIndex) {
-                    val x = animatedIndex * sp
-                    val p = points[animatedIndex.toInt().coerceIn(points.indices)]
-                    val idx = animatedIndex.toInt().coerceIn(points.indices)
-                    drawLine(primaryColor.copy(alpha = alpha), Offset(x, 0f), Offset(x, h), strokeWidth = 1.5.dp.toPx())
-                    val textOffsetX = 12.dp.toPx()
-                    val rightLimit = w - 8.dp.toPx()
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width; val h = size.height
+                    if (points.size < 2) return@Canvas
+                    val sp = w / (points.size - 1)
 
-                    if (showWatt) {
-                        val value = "%.1fW".format(p.watt)
-                        val y = wattBase + (1f - chartData.wattNorm[idx]) * usableZoneH
-                        drawCircle(wattColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                        touchPaint.color = wattColor.copy(alpha = alpha).toArgb()
-                        val desiredX = x + textOffsetX
-                        val textWidth = touchPaint.measureText(value)
-                        val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                        drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
+                    // ── 绘制网格线 ──
+                    for (i in 0..4) { drawLine(gridLineColor, Offset(0f, h - (i.toFloat() / 4 * h)), Offset(w, h - (i.toFloat() / 4 * h)), strokeWidth = 0.5.dp.toPx()) }
+
+                    val zoneH = h * 0.25f
+                    val gap = h * 0.125f
+                    val levelBase = 0f
+                    val wattBaseNormal = zoneH + gap
+                    val tempBase = 2f * (zoneH + gap)
+
+                    val t = modeTransition
+                    val wattBaseY = wattBaseNormal + (0f - wattBaseNormal) * t
+                    val wattZoneH = zoneH + (h - zoneH) * t
+
+                    // ── 功耗曲线下方填充（淡入） ──
+                    if (t > 0.001f) {
+                        drawLogFillZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = 0.08f * t))
                     }
-                    if (showTemp) {
-                        val value = "${p.temp.toInt()}°"
-                        val y = tempBase + (1f - chartData.tempNorm[idx]) * usableZoneH
-                        drawCircle(tempColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                        touchPaint.color = tempColor.copy(alpha = alpha).toArgb()
-                        val desiredX = x + textOffsetX
-                        val textWidth = touchPaint.measureText(value)
-                        val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                        drawContext.canvas.nativeCanvas.drawText(value, tx, y + 22.dp.toPx(), touchPaint)
+
+                    // ── 绘制曲线 ──
+                    if (showWatt) drawLogPathZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor)
+
+                    val otherAlpha = (1f - t).coerceIn(0f, 1f)
+                    if (showLevel && otherAlpha > 0.001f) {
+                        drawLogPathZone(chartData.levelNorm, sp, zoneH, levelBase, levelColor.copy(alpha = otherAlpha))
                     }
-                    if (showLevel) {
-                        val value = "${p.level.toInt()}%"
-                        val y = levelBase + (1f - chartData.levelNorm[idx]) * usableZoneH
-                        drawCircle(levelColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                        touchPaint.color = levelColor.copy(alpha = alpha).toArgb()
-                        val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
-                        val desiredX = x + textOffsetX
-                        val textWidth = touchPaint.measureText(value)
-                        val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                        drawContext.canvas.nativeCanvas.drawText(value, tx, labelY, touchPaint)
+                    if (showTemp && otherAlpha > 0.001f) {
+                        drawLogPathZone(chartData.tempNorm, sp, zoneH, tempBase, tempColor.copy(alpha = otherAlpha))
+                    }
+
+                    val animatedIndex = animatedTouchIndex.value
+
+                    // ── 绘制 marker 竖线 ──
+                    markerData.forEach { (index, _) ->
+                        val x = index * sp
+                        drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
+
+                        // 所有标记点随模式过渡淡出
+                        if (otherAlpha <= 0.001f) return@forEach
+
+                        val p = points[index]
+                        val markerAlpha = otherAlpha
+
+                        // 功耗 marker
+                        if (showWatt) {
+                            val y = wattBaseY + (1f - chartData.wattNorm[index]) * wattZoneH
+                            drawCircle(wattColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
+                            if (animatedIndex < 0f) {
+                                markerPaint.color = wattColor.copy(alpha = markerAlpha).toArgb()
+                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
+                            }
+                        }
+                        // 温度 marker
+                        if (showTemp) {
+                            val y = tempBase + (1f - chartData.tempNorm[index]) * zoneH
+                            drawCircle(tempColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
+                            if (animatedIndex < 0f) {
+                                markerPaint.color = tempColor.copy(alpha = markerAlpha).toArgb()
+                                drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y + 22.dp.toPx(), markerPaint)
+                            }
+                        }
+                        // 电量 marker
+                        if (showLevel) {
+                            val y = levelBase + (1f - chartData.levelNorm[index]) * zoneH
+                            drawCircle(levelColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
+                            if (animatedIndex < 0f) {
+                                markerPaint.color = levelColor.copy(alpha = markerAlpha).toArgb()
+                                val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
+                                drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
+                            }
+                        }
+                    }
+
+                    // ── 触摸指示器 ──
+                    val alpha = animatedAlpha.value
+                    if (animatedIndex >= 0f && animatedIndex <= points.lastIndex) {
+                        val x = animatedIndex * sp
+                        val p = points[animatedIndex.toInt().coerceIn(points.indices)]
+                        val idx = animatedIndex.toInt().coerceIn(points.indices)
+                        drawLine(primaryColor.copy(alpha = alpha), Offset(x, 0f), Offset(x, h), strokeWidth = 1.5.dp.toPx())
+                        val textOffsetX = 12.dp.toPx()
+                        val rightLimit = w - 8.dp.toPx()
+
+                        // 功耗触摸（始终绘制）
+                        if (showWatt) {
+                            val value = "%.1fW".format(p.watt)
+                            val y = wattBaseY + (1f - chartData.wattNorm[idx]) * wattZoneH
+                            drawCircle(wattColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
+                            touchPaint.color = wattColor.copy(alpha = alpha).toArgb()
+                            val desiredX = x + textOffsetX
+                            val textWidth = touchPaint.measureText(value)
+                            val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
+                        }
+                        // 温度触摸（过渡时淡出）
+                        if (showTemp && otherAlpha > 0.001f) {
+                            val value = "${p.temp.toInt()}°"
+                            val y = tempBase + (1f - chartData.tempNorm[idx]) * zoneH
+                            val touchAlpha = alpha * otherAlpha
+                            drawCircle(tempColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
+                            touchPaint.color = tempColor.copy(alpha = touchAlpha).toArgb()
+                            val desiredX = x + textOffsetX
+                            val textWidth = touchPaint.measureText(value)
+                            val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, y + 22.dp.toPx(), touchPaint)
+                        }
+                        // 电量触摸（过渡时淡出）
+                        if (showLevel && otherAlpha > 0.001f) {
+                            val value = "${p.level.toInt()}%"
+                            val y = levelBase + (1f - chartData.levelNorm[idx]) * zoneH
+                            val touchAlpha = alpha * otherAlpha
+                            drawCircle(levelColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
+                            touchPaint.color = levelColor.copy(alpha = touchAlpha).toArgb()
+                            val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
+                            val desiredX = x + textOffsetX
+                            val textWidth = touchPaint.measureText(value)
+                            val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, labelY, touchPaint)
+                        }
                     }
                 }
             }
@@ -482,7 +568,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp)
+                .padding(start = yAxisLeftPadding + yAxisWidth, end = 28.dp)
                 .height(20.dp)
         ) {
             if (points.size < 2) return@Canvas
@@ -493,7 +579,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             // 0m — 左对齐
             timeLabelPaint.textAlign = Paint.Align.LEFT
             timeLabelPaint.color = timeTextColor.toArgb()
-            drawContext.canvas.nativeCanvas.drawText("0m", 0f, textY, timeLabelPaint)
+            drawContext.canvas.nativeCanvas.drawText("0m", -6.dp.toPx(), textY, timeLabelPaint)
 
             // 总时长 — 右对齐
             timeLabelPaint.textAlign = Paint.Align.RIGHT

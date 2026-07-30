@@ -217,7 +217,7 @@ object ModuleDetector {
     suspend fun getParsedLogData(): List<LogDataPoint> = withContext(Dispatchers.IO) {
         runCatching {
             val lines = Runtime.getRuntime().exec(arrayOf("su", "-c", "sed -n '5,\$p' '$LOG_PATH'")).inputStream.bufferedReader().readLines()
-            lines.mapNotNull { line ->
+            val rawPoints = lines.mapNotNull { line ->
                 try {
                     // 精准匹配格式: 07-07 18:06:20 电量 73% 温度 43℃ 电流 995mA
                     
@@ -242,6 +242,11 @@ object ModuleDetector {
                         LogDataPoint(time, level, temp, watt)
                     } else null
                 } catch (e: Exception) { null }
+            }
+            // 按分钟去重：80%电量前保留第一条，80%及之后保留最后一条
+            rawPoints.groupBy { it.time.substringBeforeLast(":") }.values.map { group ->
+                val first80Index = group.indexOfFirst { it.level >= 80f }
+                if (first80Index >= 0) group.last() else group.first()
             }
         }.getOrDefault(emptyList())
     }

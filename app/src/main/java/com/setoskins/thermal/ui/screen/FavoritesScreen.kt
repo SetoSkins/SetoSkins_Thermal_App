@@ -4,6 +4,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +28,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,8 +66,10 @@ import com.setoskins.thermal.ui.component.parseTimeSeconds
 import com.setoskins.thermal.ui.component.MiuixCard
 import com.setoskins.thermal.ui.component.SectionTitle
 import kotlinx.coroutines.isActive
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -72,6 +84,7 @@ fun FavoritesScreen(reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = nu
     var showWatt by rememberSaveable { mutableStateOf(true) }
     var showLevel by rememberSaveable { mutableStateOf(true) }
     var showTemp by rememberSaveable { mutableStateOf(true) }
+    var onlyWattMode by rememberSaveable { mutableStateOf(false) }
     var isCharging by remember { mutableStateOf(false) }
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val isCenterText = logContent == "日志文件为空" || logContent == "无法读取日志文件" || logContent == "正在加载日志..."
@@ -105,7 +118,7 @@ fun FavoritesScreen(reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = nu
         isCharging = batteryInfo.status == "Charging"
     }
 
-    LaunchedEffect(reloadTrigger, selectedIndex) {
+    LaunchedEffect(reloadTrigger, selectedIndex, isCharging) {
         if (selectedIndex == 0) {
             var lastLogContent = ""
             while (isActive) {
@@ -137,7 +150,12 @@ fun FavoritesScreen(reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = nu
     LazyColumn(modifier = modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp)) {
         item(key = "battery_card") { BatteryInfoCard() }
         item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (8).dp)) } }
-        item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) { WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() }) } }
+        item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) { Column {
+                WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
+                AnimatedVisibility(visible = selectedIndex == 1, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                    BasicComponent(title = if (isZh) "仅显示功耗曲线" else "Watt Only", endActions = { Switch(checked = onlyWattMode, onCheckedChange = { onlyWattMode = it }) })
+                }
+            } } }
         item(key = "log_content") { MiuixCard(modifier = Modifier.padding(top = 16.dp)) {
                 if (selectedIndex == 0) {
                     val secondaryColor = MiuixTheme.colorScheme.onSurfaceSecondary
@@ -149,13 +167,34 @@ fun FavoritesScreen(reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = nu
                     if (logPoints.isEmpty()) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No Data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
                     else {
                         Column {
-                            Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                FilterLegend(if (isZh) "功耗" else "Watt", ColorWatt, showWatt) { showWatt = !showWatt }
-                                FilterLegend(if (isZh) "电量" else "Bat", ColorLevel, showLevel) { showLevel = !showLevel }
-                                FilterLegend(if (isZh) "温度" else "Temp", ColorTemp, showTemp) { showTemp = !showTemp }
+                                val legendWeight by animateFloatAsState(
+                                    targetValue = if (onlyWattMode) 0.001f else 1f,
+                                    animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+                                    label = "legend_weight"
+                                )
+                                val legendAlpha by animateFloatAsState(
+                                    targetValue = if (onlyWattMode) 0f else 1f,
+                                    animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                                    label = "legend_alpha"
+                                )
+                                val legendScale by animateFloatAsState(
+                                    targetValue = if (onlyWattMode) 0.82f else 1f,
+                                    animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+                                    label = "legend_scale"
+                                )
+                                Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                        FilterLegend(if (isZh) "功耗" else "Watt", ColorWatt, showWatt) { showWatt = !showWatt }
+                                    }
+                                    Box(modifier = Modifier.weight(legendWeight).wrapContentSize(unbounded = true).graphicsLayer { alpha = legendAlpha; scaleX = legendScale }, contentAlignment = Alignment.Center) {
+                                        FilterLegend(if (isZh) "电量" else "Bat", ColorLevel, showLevel) { showLevel = !showLevel }
+                                    }
+                                    Box(modifier = Modifier.weight(legendWeight).wrapContentSize(unbounded = true).graphicsLayer { alpha = legendAlpha; scaleX = legendScale }, contentAlignment = Alignment.Center) {
+                                        FilterLegend(if (isZh) "温度" else "Temp", ColorTemp, showTemp) { showTemp = !showTemp }
+                                    }
+                                }
+                                LogLineChart(points = logPoints, isZh = isZh, showWatt = if (onlyWattMode) true else showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging, onlyWattMode = onlyWattMode)
                             }
-                            LogLineChart(points = logPoints, isZh = isZh, showWatt = showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging)
-                        }
                     }
                 }
             }
