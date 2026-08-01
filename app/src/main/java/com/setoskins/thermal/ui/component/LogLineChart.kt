@@ -5,12 +5,32 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.ZoneOffset
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
@@ -24,6 +44,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,9 +63,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import kotlin.math.roundToInt
 import com.setoskins.thermal.data.ModuleDetector
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -106,7 +130,7 @@ private fun rememberChartData(points: List<ModuleDetector.LogDataPoint>, maxWatt
 }
 
 @Composable
-fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showWatt: Boolean, showLevel: Boolean, showTemp: Boolean, isCharging: Boolean = false, onlyWattMode: Boolean = false) {
+fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showWatt: Boolean, showLevel: Boolean, showTemp: Boolean, isCharging: Boolean = false, singleCurveMode: String? = null, onSingleCurveModeChange: (String?) -> Unit = {}) {
     val wattColor = ColorWatt
     val levelColor = ColorLevel
     val tempColor = ColorTemp
@@ -117,7 +141,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     val yAxisLeftPadding = 8.dp      // Y 轴左侧间距，与时间标尺同步
     
     val maxWattPoint = remember(points) { points.maxOfOrNull { it.watt } ?: 0f }
-    val maxWatt = remember(onlyWattMode, maxWattPoint) { if (onlyWattMode) 100f else maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f) }
+    val maxWatt = remember(singleCurveMode, maxWattPoint) { if (singleCurveMode != null) 100f else maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f) }
     val maxTemp = 100f
 
     // ── 预计算所有数据，避免 Canvas 内重复计算 ──
@@ -314,89 +338,143 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             val wattValue = if (isAnimatingTouch) "%.1f W".format(points[activeIndex].watt) else "%.1f W".format(averageWatt)
             val levelValue = "${minLevel}%→${maxLevel}%"
             val tempValue = if (isAnimatingTouch) "${points[activeIndex].temp.toInt()}°C" else "${averageTemp.toInt()}°C"
-            val shouldCollapse = isTouching || isCharging || onlyWattMode
+            val shouldCollapse = isTouching || isCharging || singleCurveMode != null
+            val isSingleCurveMode = singleCurveMode != null
+            val outerDurationWeight by animateFloatAsState(
+                targetValue = if (isSingleCurveMode && !isTouching) 3f else 1f,
+                animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+                label = "outer_duration_weight"
+            )
             val summaryTransition = updateTransition(targetState = shouldCollapse, label = "log_summary_transition")
-            val durationWeight by summaryTransition.animateFloat(
-                transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
-                label = "duration_weight"
-            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 4f else 1f }
             val wattWeight by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
                 label = "watt_weight"
-            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 0.001f else 0.9f }
+            ) { state -> if (state && singleCurveMode == "watt" && !isTouching) 1f else if (state && singleCurveMode != null) 0.001f else 0.9f }
             val wattAlpha by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 320, easing = FastOutSlowInEasing) },
                 label = "watt_alpha"
-            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 0f else 1f }
+            ) { state -> if (state && singleCurveMode == "watt" && !isTouching) 1f else if (state && singleCurveMode != null) 0f else 1f }
             val wattScale by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
                 label = "watt_scale"
-            ) { state -> if (state && onlyWattMode && !isTouching && !isCharging) 1f else if (state) 0.82f else 1f }
-            val compactOtherWeight by summaryTransition.animateFloat(
-                transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
-                label = "compact_other_weight"
-            ) { state -> if (state) 0.001f else 0.9f }
+            ) { state -> if (state && singleCurveMode == "watt" && !isTouching) 1f else if (state && singleCurveMode != null) 0.82f else 1f }
             val levelWeight by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
                 label = "level_weight"
-            ) { state -> if (state) 0.001f else 1.2f }
-            val otherAlpha by summaryTransition.animateFloat(
+            ) { state -> if (state && singleCurveMode == "level" && !isTouching) 1f else if (state && singleCurveMode != null) 0.001f else 1.2f }
+            val levelAlpha by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 320, easing = FastOutSlowInEasing) },
-                label = "other_alpha"
-            ) { state -> if (state) 0f else 1f }
-            val otherScale by summaryTransition.animateFloat(
+                label = "level_alpha"
+            ) { state -> if (state && singleCurveMode == "level" && !isTouching) 1f else if (state && singleCurveMode != null) 0f else 1f }
+            val levelScale by summaryTransition.animateFloat(
                 transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
-                label = "other_scale"
-            ) { state -> if (state) 0.82f else 1f }
+                label = "level_scale"
+            ) { state -> if (state && singleCurveMode == "level" && !isTouching) 1f else if (state && singleCurveMode != null) 0.82f else 1f }
+            val tempWeight by summaryTransition.animateFloat(
+                transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
+                label = "temp_weight"
+            ) { state -> if (state && singleCurveMode == "temp" && !isTouching) 1f else if (state && singleCurveMode != null) 0.001f else 0.9f }
+            val tempAlpha by summaryTransition.animateFloat(
+                transitionSpec = { tween(durationMillis = 320, easing = FastOutSlowInEasing) },
+                label = "temp_alpha"
+            ) { state -> if (state && singleCurveMode == "temp" && !isTouching) 1f else if (state && singleCurveMode != null) 0f else 1f }
+            val tempScale by summaryTransition.animateFloat(
+                transitionSpec = { tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)) },
+                label = "temp_scale"
+            ) { state -> if (state && singleCurveMode == "temp" && !isTouching) 1f else if (state && singleCurveMode != null) 0.82f else 1f }
             Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 8.dp), colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.weight(durationWeight), contentAlignment = Alignment.Center) {
+                Column {
+                    SingleCurveSegmentControl(
+                        singleCurveMode = singleCurveMode,
+                        onModeChange = onSingleCurveModeChange,
+                        isZh = isZh
+                    )
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.weight(outerDurationWeight), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(durationValue, fontSize = 14.sp, color = primaryColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
                             Text(if (isZh) "时长" else "Dur", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
+                    Row(modifier = Modifier.weight(3f), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.weight(wattWeight).graphicsLayer { alpha = wattAlpha; scaleX = wattScale; scaleY = wattScale }, contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(wattValue, fontSize = 14.sp, color = wattColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
-                            Text(if (isZh) { if (onlyWattMode && isTouching) "实时功耗" else "平均功耗" } else { if (onlyWattMode && isTouching) "Watt" else "Avg Watt" }, fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
+                            Text(if (isZh) "平均功耗" else "Avg Watt", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
-                    Box(modifier = Modifier.weight(levelWeight).graphicsLayer { alpha = otherAlpha; scaleX = otherScale; scaleY = otherScale }, contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.weight(levelWeight).graphicsLayer { alpha = levelAlpha; scaleX = levelScale; scaleY = levelScale }, contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(levelValue, fontSize = 14.sp, color = levelColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
                             Text(if (isZh) "电量" else "Bat", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
-                    Box(modifier = Modifier.weight(compactOtherWeight).graphicsLayer { alpha = otherAlpha; scaleX = otherScale; scaleY = otherScale }, contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.weight(tempWeight).graphicsLayer { alpha = tempAlpha; scaleX = tempScale; scaleY = tempScale }, contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(tempValue, fontSize = 14.sp, color = tempColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
                             Text(if (isZh) "平均温度" else "Avg Temp", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
+                    }
+                }
                 }
             }
         }
 
-        // ── 模式切换过渡动画 ──
-        val modeTransition by animateFloatAsState(
-            targetValue = if (onlyWattMode) 1f else 0f,
+        // ── 每曲线独立的展开/alpha 动画 ──
+        val wattExpansion by animateFloatAsState(
+            targetValue = if (singleCurveMode == "watt") 1f else 0f,
             animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
-            label = "mode_transition"
+            label = "watt_expansion"
+        )
+        val levelExpansion by animateFloatAsState(
+            targetValue = if (singleCurveMode == "level") 1f else 0f,
+            animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+            label = "level_expansion"
+        )
+        val tempExpansion by animateFloatAsState(
+            targetValue = if (singleCurveMode == "temp") 1f else 0f,
+            animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+            label = "temp_expansion"
+        )
+        val wattCurveAlpha by animateFloatAsState(
+            targetValue = if (singleCurveMode == null || singleCurveMode == "watt") 1f else 0f,
+            animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+            label = "watt_curve_alpha"
+        )
+        val levelCurveAlpha by animateFloatAsState(
+            targetValue = if (singleCurveMode == null || singleCurveMode == "level") 1f else 0f,
+            animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+            label = "level_curve_alpha"
+        )
+        val tempCurveAlpha by animateFloatAsState(
+            targetValue = if (singleCurveMode == null || singleCurveMode == "temp") 1f else 0f,
+            animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+            label = "temp_curve_alpha"
+        )
+        val yAxisAlpha by animateFloatAsState(
+            targetValue = if (singleCurveMode != null) 1f else 0f,
+            animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+            label = "yaxis_alpha"
         )
 
         // ── 图表区域（统一布局） ──
         Row(modifier = Modifier.fillMaxWidth().height(220.dp).padding(start = yAxisLeftPadding, end = 28.dp)) {
-            // ── 左侧 Y 轴瓦数标尺（动画淡入） ──
+            // ── 左侧 Y 轴标尺（根据模式切换） ──
             val yAxisPaint = remember { Paint().apply { textSize = 24f; textAlign = Paint.Align.RIGHT } }
             Canvas(modifier = Modifier.width(yAxisWidth).fillMaxSize()) {
                 val h = size.height
                 val rightEdge = size.width - 8.dp.toPx()
-                yAxisPaint.color = yAxisTextColor.copy(alpha = modeTransition).toArgb()
+                yAxisPaint.color = yAxisTextColor.copy(alpha = yAxisAlpha).toArgb()
+                val (labelMin, labelMax, labelSuffix) = when (singleCurveMode) {
+                    "level" -> Triple(0f, 100f, "%")
+                    "temp" -> Triple(20f, 60f, "°")
+                    else -> Triple(0f, 100f, "W")
+                }
                 for (i in 0..4) {
-                    val value = (i * 25).toInt()
+                    val value = (labelMin + i * (labelMax - labelMin) / 4).toInt()
                     val y = h - (i.toFloat() / 4 * h)
-                    drawContext.canvas.nativeCanvas.drawText("${value}W", rightEdge, y + 4.dp.toPx(), yAxisPaint)
+                    drawContext.canvas.nativeCanvas.drawText("${value}$labelSuffix", rightEdge, y + 4.dp.toPx(), yAxisPaint)
                 }
             }
             // ── 右侧图表 ──
@@ -446,67 +524,81 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     val wattBaseNormal = zoneH + gap
                     val tempBase = 2f * (zoneH + gap)
 
-                    val t = modeTransition
-                    val wattBaseY = wattBaseNormal + (0f - wattBaseNormal) * t
-                    val wattZoneH = zoneH + (h - zoneH) * t
+                    // 功耗曲线过渡
+                    val wattT = wattExpansion
+                    val wattBaseY = wattBaseNormal + (0f - wattBaseNormal) * wattT
+                    val wattZoneH = zoneH + (h - zoneH) * wattT
+                    // 电量曲线过渡
+                    val levelT = levelExpansion
+                    val levelBaseY = levelBase + (0f - levelBase) * levelT
+                    val levelZoneH = zoneH + (h - zoneH) * levelT
+                    // 温度曲线过渡
+                    val tempT = tempExpansion
+                    val tempBaseY = tempBase + (0f - tempBase) * tempT
+                    val tempZoneH = zoneH + (h - zoneH) * tempT
 
-                    // ── 功耗曲线下方填充（淡入） ──
-                    if (t > 0.001f) {
-                        drawLogFillZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = 0.08f * t))
+                    // ── 曲线下方填充（淡入） ──
+                    if (wattExpansion > 0.001f) {
+                        drawLogFillZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = 0.08f * wattExpansion))
+                    }
+                    if (levelExpansion > 0.001f) {
+                        drawLogFillZone(chartData.levelNorm, sp, levelZoneH, levelBaseY, levelColor.copy(alpha = 0.08f * levelExpansion))
+                    }
+                    if (tempExpansion > 0.001f) {
+                        drawLogFillZone(chartData.tempNorm, sp, tempZoneH, tempBaseY, tempColor.copy(alpha = 0.08f * tempExpansion))
                     }
 
                     // ── 绘制曲线 ──
-                    if (showWatt) drawLogPathZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor)
-
-                    val otherAlpha = (1f - t).coerceIn(0f, 1f)
-                    if (showLevel && otherAlpha > 0.001f) {
-                        drawLogPathZone(chartData.levelNorm, sp, zoneH, levelBase, levelColor.copy(alpha = otherAlpha))
+                    if (showWatt) drawLogPathZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = wattCurveAlpha))
+                    if (showLevel && levelCurveAlpha > 0.001f) {
+                        drawLogPathZone(chartData.levelNorm, sp, levelZoneH, levelBaseY, levelColor.copy(alpha = levelCurveAlpha))
                     }
-                    if (showTemp && otherAlpha > 0.001f) {
-                        drawLogPathZone(chartData.tempNorm, sp, zoneH, tempBase, tempColor.copy(alpha = otherAlpha))
+                    if (showTemp && tempCurveAlpha > 0.001f) {
+                        drawLogPathZone(chartData.tempNorm, sp, tempZoneH, tempBaseY, tempColor.copy(alpha = tempCurveAlpha))
                     }
 
                     val animatedIndex = animatedTouchIndex.value
 
-                    // ── 绘制 marker 竖线 ──
+                    // ── 绘制 marker 竖线（单曲线模式下隐藏） ──
+                    if (singleCurveMode == null) {
                     markerData.forEach { (index, _) ->
                         val x = index * sp
                         drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
 
-                        // 所有标记点随模式过渡淡出
-                        if (otherAlpha <= 0.001f) return@forEach
-
                         val p = points[index]
-                        val markerAlpha = otherAlpha
 
                         // 功耗 marker
                         if (showWatt) {
                             val y = wattBaseY + (1f - chartData.wattNorm[index]) * wattZoneH
+                            val markerAlpha = wattCurveAlpha
                             drawCircle(wattColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
-                            if (animatedIndex < 0f) {
+                            if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                 markerPaint.color = wattColor.copy(alpha = markerAlpha).toArgb()
-                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y + 22.dp.toPx(), markerPaint)
+                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
                             }
                         }
                         // 温度 marker
                         if (showTemp) {
-                            val y = tempBase + (1f - chartData.tempNorm[index]) * zoneH
+                            val y = tempBaseY + (1f - chartData.tempNorm[index]) * tempZoneH
+                            val markerAlpha = tempCurveAlpha
                             drawCircle(tempColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
-                            if (animatedIndex < 0f) {
+                            if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                 markerPaint.color = tempColor.copy(alpha = markerAlpha).toArgb()
                                 drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y - 10.dp.toPx(), markerPaint)
                             }
                         }
                         // 电量 marker
                         if (showLevel) {
-                            val y = levelBase + (1f - chartData.levelNorm[index]) * zoneH
+                            val y = levelBaseY + (1f - chartData.levelNorm[index]) * levelZoneH
+                            val markerAlpha = levelCurveAlpha
                             drawCircle(levelColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
-                            if (animatedIndex < 0f) {
+                            if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                 markerPaint.color = levelColor.copy(alpha = markerAlpha).toArgb()
                                 val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
                                 drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
                             }
                         }
+                    }
                     }
 
                     // ── 触摸指示器 ──
@@ -519,22 +611,23 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val textOffsetX = 12.dp.toPx()
                         val rightLimit = w - 8.dp.toPx()
 
-                        // 功耗触摸（始终绘制）
-                        if (showWatt) {
+                        // 功耗触摸
+                        if (showWatt && wattCurveAlpha > 0.001f) {
                             val value = "%.1fW".format(p.watt)
                             val y = wattBaseY + (1f - chartData.wattNorm[idx]) * wattZoneH
-                            drawCircle(wattColor.copy(alpha = alpha), radius = 5.dp.toPx(), center = Offset(x, y))
-                            touchPaint.color = wattColor.copy(alpha = alpha).toArgb()
+                            val touchAlpha = alpha * wattCurveAlpha
+                            drawCircle(wattColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
+                            touchPaint.color = wattColor.copy(alpha = touchAlpha).toArgb()
                             val desiredX = x + textOffsetX
                             val textWidth = touchPaint.measureText(value)
                             val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                            drawContext.canvas.nativeCanvas.drawText(value, tx, y + 22.dp.toPx(), touchPaint)
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
                         }
                         // 温度触摸（过渡时淡出）
-                        if (showTemp && otherAlpha > 0.001f) {
+                        if (showTemp && tempCurveAlpha > 0.001f) {
                             val value = "${p.temp.toInt()}°"
-                            val y = tempBase + (1f - chartData.tempNorm[idx]) * zoneH
-                            val touchAlpha = alpha * otherAlpha
+                            val y = tempBaseY + (1f - chartData.tempNorm[idx]) * tempZoneH
+                            val touchAlpha = alpha * tempCurveAlpha
                             drawCircle(tempColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
                             touchPaint.color = tempColor.copy(alpha = touchAlpha).toArgb()
                             val desiredX = x + textOffsetX
@@ -543,10 +636,10 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
                         }
                         // 电量触摸（过渡时淡出）
-                        if (showLevel && otherAlpha > 0.001f) {
+                        if (showLevel && levelCurveAlpha > 0.001f) {
                             val value = "${p.level.toInt()}%"
-                            val y = levelBase + (1f - chartData.levelNorm[idx]) * zoneH
-                            val touchAlpha = alpha * otherAlpha
+                            val y = levelBaseY + (1f - chartData.levelNorm[idx]) * levelZoneH
+                            val touchAlpha = alpha * levelCurveAlpha
                             drawCircle(levelColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
                             touchPaint.color = levelColor.copy(alpha = touchAlpha).toArgb()
                             val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
@@ -592,6 +685,110 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 val x = fracIndex * sp
                 if (x < edgeThreshold || x > totalRight) return@forEach
                 drawContext.canvas.nativeCanvas.drawText(label, x, textY, timeLabelPaint)
+            }
+        }
+    }
+}
+
+@Composable
+fun SingleCurveSegmentControl(
+    singleCurveMode: String?,
+    onModeChange: (String?) -> Unit,
+    isZh: Boolean
+) {
+    val options = listOf(
+        Triple("watt", if (isZh) "功耗" else "Watt", ColorWatt),
+        Triple("level", if (isZh) "电量" else "Bat", ColorLevel),
+        Triple("temp", if (isZh) "温度" else "Temp", ColorTemp)
+    )
+    val selectedIndex = options.indexOfFirst { it.first == singleCurveMode }
+    val hasSelection = selectedIndex >= 0
+
+    val colors = MiuixTheme.colorScheme
+    val surfaceColor = colors.surfaceVariant
+    val indicatorColor = colors.primary
+    val onIndicatorColor = colors.onPrimary
+    val textColor = colors.onSurface
+
+    var segmentWidthPx by remember { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
+
+    val indicatorOffset by animateFloatAsState(
+        targetValue = if (hasSelection) selectedIndex.toFloat() * segmentWidthPx else 0f,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "segment_indicator"
+    )
+
+    var dragTotal by remember { mutableFloatStateOf(0f) }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(surfaceColor)
+            .pointerInput(selectedIndex) {
+                detectHorizontalDragGestures(
+                    onDragStart = { dragTotal = 0f },
+                    onDragEnd = {
+                        val effectiveIndex = if (hasSelection) selectedIndex else 0
+                        if (dragTotal < -50f && effectiveIndex < 2) {
+                            onModeChange(options[effectiveIndex + 1].first)
+                        } else if (dragTotal > 50f && effectiveIndex > 0) {
+                            onModeChange(options[effectiveIndex - 1].first)
+                        } else if (dragTotal < -50f && !hasSelection) {
+                            onModeChange(options[0].first)
+                        }
+                        dragTotal = 0f
+                    },
+                    onDragCancel = { dragTotal = 0f },
+                    onHorizontalDrag = { _, dragAmount -> dragTotal += dragAmount }
+                )
+            }
+            .onSizeChanged { size -> segmentWidthPx = size.width.toFloat() / 3f }
+    ) {
+        if (hasSelection) {
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(indicatorOffset.roundToInt(), 0) }
+                    .size(
+                        width = with(density) { segmentWidthPx.toDp() },
+                        height = 32.dp
+                    )
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(indicatorColor)
+                    .zIndex(0f)
+            )
+        }
+
+        Row(modifier = Modifier.fillMaxWidth().height(32.dp)) {
+            options.forEachIndexed { index, (key, label, color) ->
+                val isSelected = selectedIndex == index
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onModeChange(if (isSelected) null else key) }
+                        .zIndex(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            label,
+                            fontSize = 13.sp,
+                            color = if (isSelected) onIndicatorColor else textColor,
+                            fontWeight = FontWeight.Bold,
+                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                        )
+                    }
+                }
             }
         }
     }
