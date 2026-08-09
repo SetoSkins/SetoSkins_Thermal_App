@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
@@ -69,6 +68,8 @@ fun HomeScreen(
     reloadTrigger: Int = 0,
     scrollBehavior: ScrollBehavior? = null,
     contentPaddingTop: Dp = 0.dp,
+    onNavigateToBlacklist: () -> Unit = {},
+    onNavigateToWhitelist: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -220,10 +221,10 @@ fun HomeScreen(
     } }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(11.dp)
-    ) {
+            modifier = modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
         item(key = "status_card") {
             if (!moduleInstalled) RedNotInstalledCard()
             else if (hasUpdate) YellowUpdateCard()
@@ -267,7 +268,9 @@ fun HomeScreen(
                 prefs = prefs,
                 externalConfig = externalConfig,
                 updateSwitch = updateSwitch,
-                updateText = updateText
+                updateText = updateText,
+                onShowBlacklist = onNavigateToBlacklist,
+                onShowWhitelist = onNavigateToWhitelist
             )
         }
     }

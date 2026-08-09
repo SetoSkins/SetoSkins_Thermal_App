@@ -1,5 +1,9 @@
 package com.setoskins.thermal.ui.screen
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -7,10 +11,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,11 +26,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.setoskins.thermal.ui.component.ConfigDialog
 import com.setoskins.thermal.ui.component.MiuixCard
 import com.setoskins.thermal.ui.component.SliderRow
@@ -34,6 +47,13 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 // ── 对话框配置 ──
 
@@ -60,10 +80,24 @@ fun SpeedControlSection(
     externalConfig: Map<String, String> = emptyMap(),
     updateSwitch: (String, String, Boolean, (Boolean) -> Unit) -> Unit,
     updateText: (String, String, String, (String) -> Unit) -> Unit,
+    onShowBlacklist: () -> Unit = {},
+    onShowWhitelist: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
+    val context = LocalContext.current
+
+    // ── 权限请求 ──
+    var pendingWhitelist by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            if (pendingWhitelist) onShowWhitelist() else onShowBlacklist()
+        }
+    }
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
     // ── 开关状态 ──
     var switch4 by remember { mutableStateOf(prefs.getBoolean("switch4", false)) }
@@ -71,6 +105,8 @@ fun SpeedControlSection(
     var switch10 by remember { mutableStateOf(prefs.getBoolean("switch10", false)) }
     var switch13 by remember { mutableStateOf(prefs.getBoolean("switch13", false)) }
     var switch12 by remember { mutableStateOf(prefs.getBoolean("switch12", false)) }
+    var switch8 by remember { mutableStateOf(prefs.getBoolean("switch8", false)) }
+    var switch9 by remember { mutableStateOf(prefs.getBoolean("switch9", false)) }
 
     // ── 文本字段状态 ──
     var currentValue by rememberSaveable { mutableStateOf(prefs.getString("currentValue", "") ?: "") }
@@ -161,7 +197,7 @@ fun SpeedControlSection(
     debounceSlider("resumeChargeLevel", "恢复充电电量") { resumeChargeLevel }
 
     // ── 互斥开关辅助 ──
-    fun isExclusiveEnabled() = !anyExclusiveActive(switch11, switch13, switch10)
+    fun isExclusiveEnabled() = !anyExclusiveActive(switch4, switch11, switch13, switch10, switch12, switch8, switch9)
 
     MiuixCard(modifier = modifier) {
         Column {
@@ -365,10 +401,13 @@ fun SpeedControlSection(
             // ── 停充控制 ──
             BasicComponent(
                 title = "当电流低于阈值执行停充",
-                endActions = { ThemedSwitch(checked = switch12, onCheckedChange = null, useMonet = useMonet) },
+                enabled = switch12 || isExclusiveEnabled(),
+                endActions = { ThemedSwitch(checked = switch12, onCheckedChange = null, enabled = switch12 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
-                    updateSwitch("switch12", "当电流低于阈值执行停充", !switch12) { switch12 = it }
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (switch12 || isExclusiveEnabled()) {
+                        updateSwitch("switch12", "当电流低于阈值执行停充", !switch12) { switch12 = it }
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
                 }
             )
             AnimatedVisibility(visible = switch12, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
@@ -403,6 +442,79 @@ fun SpeedControlSection(
                 }
             }
 
+            // ── 分应用调速 ──
+            BasicComponent(
+                title = "分应用调速",
+                enabled = switch8 || isExclusiveEnabled(),
+                endActions = { ThemedSwitch(checked = switch8, onCheckedChange = null, enabled = switch8 || isExclusiveEnabled(), useMonet = useMonet) },
+                onClick = {
+                    if (switch8 || isExclusiveEnabled()) {
+                        updateSwitch("switch8", "分应用调速", !switch8) { switch8 = it }
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                }
+            )
+            AnimatedVisibility(visible = switch8, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                key("per_app_blacklist") {
+                    BasicComponent(
+                        title = "黑名单",
+                        summary = if (isZh) "选择参与分应用调速的应用" else "Select apps to participate in per-app speed control.",
+                        endActions = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                            )
+                        },
+                        onClick = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.QUERY_ALL_PACKAGES) == PackageManager.PERMISSION_GRANTED) {
+                                onShowBlacklist()
+                            } else {
+                                showPermissionDialog = true
+                                pendingWhitelist = false
+                            }
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    )
+                }
+            }
+
+            // ── 无温控应用 ──
+            BasicComponent(
+                title = "无温控应用",
+                enabled = switch9 || isExclusiveEnabled(),
+                endActions = { ThemedSwitch(checked = switch9, onCheckedChange = null, enabled = switch9 || isExclusiveEnabled(), useMonet = useMonet) },
+                onClick = {
+                    if (switch9 || isExclusiveEnabled()) {
+                        updateSwitch("switch9", "无温控应用", !switch9) { switch9 = it }
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                }
+            )
+            AnimatedVisibility(visible = switch9, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                key("per_app_whitelist") {
+                    BasicComponent(
+                        title = "黑白名单",
+                        endActions = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                            )
+                        },
+                        onClick = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.QUERY_ALL_PACKAGES) == PackageManager.PERMISSION_GRANTED) {
+                                onShowWhitelist()
+                            } else {
+                                showPermissionDialog = true
+                                pendingWhitelist = true
+                            }
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    )
+                }
+            }
+
             // ── 统一对话框：替代 8 个独立 OverlayDialog ──
             dialogState?.let { state ->
                 ConfigDialog(
@@ -416,6 +528,35 @@ fun SpeedControlSection(
                     onDismiss = { dialogState = null }
                 )
             }
+
+            // ── 权限请求对话框 ──
+            OverlayDialog(
+                show = showPermissionDialog,
+                title = if (isZh) "需要权限" else "Permission Required",
+                summary = if (isZh) "获取已安装应用列表需要查询所有应用权限，请在接下来的对话框中授权。" else "Access to installed apps requires the \"Query all packages\" permission. Please grant it in the next dialog.",
+                onDismissRequest = { showPermissionDialog = false },
+                content = {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = { showPermissionDialog = false },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors()
+                        ) {
+                            Text(if (isZh) "取消" else "Cancel")
+                        }
+                        Button(
+                            onClick = {
+                                showPermissionDialog = false
+                                permissionLauncher.launch(Manifest.permission.QUERY_ALL_PACKAGES)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColorsPrimary()
+                        ) {
+                            Text(if (isZh) "授权" else "Grant")
+                        }
+                    }
+                }
+            )
         }
     }
 }

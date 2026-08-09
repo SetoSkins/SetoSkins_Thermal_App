@@ -14,6 +14,8 @@ object ModuleDetector {
     private const val TAG = "SetoSkins_ModuleDetector"
     private const val MODULE_PATH = "/data/adb/modules/SetoSkins"
     private const val CONFIG_PATH = "/data/adb/modules/SetoSkins/配置.prop"
+    private const val BLACKLIST_PATH = "/data/adb/modules/SetoSkins/黑名单.prop"
+    private const val WHITELIST_APP_PATH = "/data/adb/modules/SetoSkins/无温控应用.prop"
     private const val MODULE_PROP_PATH = "/data/adb/modules/SetoSkins/module.prop"
     private const val LOG_PATH = "/data/adb/modules/SetoSkins/log.log"
     private const val THERMAL_SCRIPT_PATH = "/data/adb/modules/SetoSkins/system/Seto_fuckthermal.sh"
@@ -94,7 +96,7 @@ object ModuleDetector {
     suspend fun updateConfig(key: String, value: Any): Unit = withContext(Dispatchers.IO) {
         runCatching {
             val strValue = value.toString()
-            val command = "sed -i 's/^$key=.*/$key=$strValue/g' '$CONFIG_PATH'"
+            val command = "if grep -q '^$key=' '$CONFIG_PATH'; then sed -i 's/^$key=.*/$key=$strValue/g' '$CONFIG_PATH'; else echo '$key=$strValue' >> '$CONFIG_PATH'; fi"
             Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
         }
     }
@@ -151,6 +153,49 @@ object ModuleDetector {
         runCatching {
             Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$CONFIG_PATH'")).inputStream.bufferedReader().use { it.readText() }
         }.getOrDefault("")
+    }
+
+    suspend fun readBlacklistConfig(): Map<String, String> = readAppConfig(BLACKLIST_PATH)
+
+    suspend fun readAppConfig(path: String): Map<String, String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$path'"))
+            val lines = process.inputStream.bufferedReader().readLines()
+            val map = mutableMapOf<String, String>()
+            lines.forEach { line ->
+                val parts = line.trim().split(" ", limit = 2)
+                if (parts.size == 2) map[parts[0]] = parts[1]
+            }
+            map
+        }.getOrDefault(emptyMap())
+    }
+
+    suspend fun writeBlacklistConfig(entries: Map<String, String>): Unit = writeAppConfig(BLACKLIST_PATH, entries)
+
+    suspend fun writeAppConfig(path: String, entries: Map<String, String>): Unit = withContext(Dispatchers.IO) {
+        runCatching {
+            val content = entries.entries.joinToString("\n") { "${it.key} ${it.value}" }
+            val command = "echo '$content' > '$path'"
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
+        }
+    }
+
+    suspend fun readWhitelistAppPackages(): Set<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$WHITELIST_APP_PATH'"))
+            process.inputStream.bufferedReader().readLines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        }.getOrDefault(emptySet())
+    }
+
+    suspend fun writeWhitelistAppPackages(packages: Set<String>): Unit = withContext(Dispatchers.IO) {
+        runCatching {
+            val content = packages.joinToString("\n")
+            val command = "echo '$content' > '$WHITELIST_APP_PATH'"
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
+        }
     }
 
     suspend fun readLog(): String = withContext(Dispatchers.IO) {

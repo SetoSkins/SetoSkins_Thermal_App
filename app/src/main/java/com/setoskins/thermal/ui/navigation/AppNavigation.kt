@@ -77,6 +77,7 @@ import com.setoskins.thermal.ui.screen.HomeScreen
 import com.setoskins.thermal.ui.screen.FavoritesScreen
 import com.setoskins.thermal.ui.screen.ProfileScreen
 import com.setoskins.thermal.ui.screen.DonatePage
+import com.setoskins.thermal.ui.screen.BlacklistPage
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("主页", Icons.Filled.Home),
@@ -101,7 +102,59 @@ fun MyApplicationApp(
     var showDonatePage by remember { mutableStateOf(false) }
     var showDonateLayer by remember { mutableStateOf(false) }
     val transitionProgress = remember { Animatable(0f) }
+    var showBlacklistPage by remember { mutableStateOf(false) }
+    var showBlacklistLayer by remember { mutableStateOf(false) }
+    val blacklistTransitionProgress = remember { Animatable(0f) }
+    var showWhitelistPage by remember { mutableStateOf(false) }
+    var showWhitelistLayer by remember { mutableStateOf(false) }
+    val whitelistTransitionProgress = remember { Animatable(0f) }
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
+
+    LaunchedEffect(showBlacklistPage) {
+        if (showBlacklistPage) {
+            showBlacklistLayer = true
+            blacklistTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+        } else {
+            blacklistTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            showBlacklistLayer = false
+        }
+    }
+
+    PredictiveBackHandler(enabled = showBlacklistPage) { progress ->
+        try {
+            progress.collect { backEvent ->
+                blacklistTransitionProgress.snapTo(1f - backEvent.progress)
+            }
+            showBlacklistPage = false
+        } catch (e: Exception) {
+            scope.launch {
+                blacklistTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            }
+        }
+    }
+
+    LaunchedEffect(showWhitelistPage) {
+        if (showWhitelistPage) {
+            showWhitelistLayer = true
+            whitelistTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+        } else {
+            whitelistTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            showWhitelistLayer = false
+        }
+    }
+
+    PredictiveBackHandler(enabled = showWhitelistPage) { progress ->
+        try {
+            progress.collect { backEvent ->
+                whitelistTransitionProgress.snapTo(1f - backEvent.progress)
+            }
+            showWhitelistPage = false
+        } catch (e: Exception) {
+            scope.launch {
+                whitelistTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            }
+        }
+    }
 
     LaunchedEffect(showDonatePage) {
         if (showDonatePage) {
@@ -148,7 +201,7 @@ fun MyApplicationApp(
 
     val backdrop = rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
-    val reduceExpensiveEffects = showDonatePage || showDonateLayer
+    val reduceExpensiveEffects = showDonatePage || showDonateLayer || showBlacklistPage || showBlacklistLayer || showWhitelistPage || showWhitelistLayer
     val showBlur = useMonet && shaderSupported && backdrop != null && !reduceExpensiveEffects
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
@@ -174,7 +227,7 @@ fun MyApplicationApp(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationX = -screenWidth.toPx() * 0.18f * transitionProgress.value
+                    translationX = -screenWidth.toPx() * 0.18f * maxOf(transitionProgress.value, blacklistTransitionProgress.value, whitelistTransitionProgress.value)
                 }
         ) {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -240,6 +293,8 @@ fun MyApplicationApp(
                                             reloadTrigger = reloadTrigger,
                                             scrollBehavior = homeScrollBehavior,
                                             contentPaddingTop = innerPadding.calculateTopPadding(),
+                                            onNavigateToBlacklist = { showBlacklistPage = true },
+                                            onNavigateToWhitelist = { showWhitelistPage = true },
                                             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
                                         )
                                     }
@@ -301,6 +356,49 @@ fun MyApplicationApp(
                     useMonet = useMonet,
                     onDismiss = { showDonatePage = false },
                     progressProvider = { transitionProgress.value }
+                )
+            }
+
+            if (showBlacklistLayer) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = 0.22f * blacklistTransitionProgress.value
+                        }
+                        .background(Color.Black)
+                )
+            }
+
+            if (showBlacklistLayer) {
+                BlacklistPage(
+                    useMonet = useMonet,
+                    isZh = isZh,
+                    prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE),
+                    onBack = { showBlacklistPage = false },
+                    progressProvider = { blacklistTransitionProgress.value }
+                )
+            }
+
+            if (showWhitelistLayer) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = 0.22f * whitelistTransitionProgress.value
+                        }
+                        .background(Color.Black)
+                )
+            }
+
+            if (showWhitelistLayer) {
+                BlacklistPage(
+                    useMonet = useMonet,
+                    isZh = isZh,
+                    prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE),
+                    onBack = { showWhitelistPage = false },
+                    progressProvider = { whitelistTransitionProgress.value },
+                    mode = "whitelist"
                 )
             }
 

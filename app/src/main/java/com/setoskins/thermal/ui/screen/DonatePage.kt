@@ -95,7 +95,7 @@ fun DonatePage(
                 scaleX = 1f
                 scaleY = 1f
             }
-            .background(MiuixTheme.colorScheme.background)
+            .background(if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
