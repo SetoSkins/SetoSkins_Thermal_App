@@ -12,11 +12,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,9 +31,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.setoskins.thermal.ui.component.ConfigDialog
 import com.setoskins.thermal.ui.component.MiuixCard
@@ -49,8 +44,6 @@ import kotlinx.coroutines.flow.drop
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -89,7 +82,7 @@ fun SpeedControlSection(
     val context = LocalContext.current
 
     // ── 权限请求 ──
-    var pendingWhitelist by remember { mutableStateOf(false) }
+    var pendingWhitelist by rememberSaveable { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -97,16 +90,16 @@ fun SpeedControlSection(
             if (pendingWhitelist) onShowWhitelist() else onShowBlacklist()
         }
     }
-    var showPermissionDialog by remember { mutableStateOf(false) }
+    var showPermissionDialog by rememberSaveable { mutableStateOf(false) }
 
     // ── 开关状态 ──
-    var switch4 by remember { mutableStateOf(prefs.getBoolean("switch4", false)) }
-    var switch11 by remember { mutableStateOf(prefs.getBoolean("switch11", false)) }
-    var switch10 by remember { mutableStateOf(prefs.getBoolean("switch10", false)) }
-    var switch13 by remember { mutableStateOf(prefs.getBoolean("switch13", false)) }
-    var switch12 by remember { mutableStateOf(prefs.getBoolean("switch12", false)) }
-    var switch8 by remember { mutableStateOf(prefs.getBoolean("switch8", false)) }
-    var switch9 by remember { mutableStateOf(prefs.getBoolean("switch9", false)) }
+    var switch4 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch4", false)) }
+    var switch11 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch11", false)) }
+    var switch10 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch10", false)) }
+    var switch13 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch13", false)) }
+    var switch12 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch12", false)) }
+    var switch8 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch8", false)) }
+    var switch9 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch9", false)) }
 
     // ── 文本字段状态 ──
     var currentValue by rememberSaveable { mutableStateOf(prefs.getString("currentValue", "") ?: "") }
@@ -136,8 +129,11 @@ fun SpeedControlSection(
     var dialogState by remember { mutableStateOf<DialogState?>(null) }
 
     // ── 配置同步：增量更新，仅处理变化的 key ──
+    // 使用 remember(externalConfig) 确保 externalConfig 变化时 configSynced 重置为 false
+    var configSynced by remember(externalConfig) { mutableStateOf(false) }
     LaunchedEffect(externalConfig) {
-        if (externalConfig.isEmpty()) return@LaunchedEffect
+        if (externalConfig.isEmpty() || configSynced) return@LaunchedEffect
+        configSynced = true
         val editor = prefs.edit()
         var dirty = false
         val switchFields = mapOf<String, (Boolean) -> Unit>(

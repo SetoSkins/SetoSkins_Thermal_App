@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,13 +32,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
@@ -56,6 +56,8 @@ import com.setoskins.thermal.ui.component.YellowUpdateCard
 import com.setoskins.thermal.ui.component.compactSmallTitle
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
@@ -75,25 +77,26 @@ fun HomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
     // ── 非调速区开关状态 ──
-    var switch2 by remember { mutableStateOf(prefs.getBoolean("switch2", false)) }
-    var switch3 by remember { mutableStateOf(prefs.getBoolean("switch3", true)) }
-    var switch5 by remember { mutableStateOf(prefs.getBoolean("switch5", false)) }
-    var switch6 by remember { mutableStateOf(prefs.getBoolean("switch6", false)) }
-    var switch7 by remember { mutableStateOf(prefs.getBoolean("switch7", false)) }
-    var switch8 by remember { mutableStateOf(prefs.getBoolean("switch8", false)) }
-    var switch9 by remember { mutableStateOf(prefs.getBoolean("switch9", false)) }
-    var switch14 by remember { mutableStateOf(prefs.getBoolean("switch14", false)) }
-    var switch15 by remember { mutableStateOf(prefs.getBoolean("switch15", false)) }
-    var switch16 by remember { mutableStateOf(prefs.getBoolean("switch16", false)) }
-    val isChargingState = remember { mutableStateOf(false) }
+    var switch2 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch2", false)) }
+    var switch3 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch3", true)) }
+    var switch5 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch5", false)) }
+    var switch6 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch6", false)) }
+    var switch7 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch7", false)) }
+    var switch8 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch8", false)) }
+    var switch9 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch9", false)) }
+    var switch14 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch14", false)) }
+    var switch15 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch15", false)) }
+    var switch16 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch16", false)) }
+    val isChargingState = rememberSaveable { mutableStateOf(false) }
 
     // ── 模块状态 ──
-    var moduleInstalled by remember { mutableStateOf(false) }
-    var hasUpdate by remember { mutableStateOf(false) }
-    var moduleVersion by remember { mutableStateOf("") }
+    var moduleInstalled by rememberSaveable { mutableStateOf(false) }
+    var hasUpdate by rememberSaveable { mutableStateOf(false) }
+    var moduleVersion by rememberSaveable { mutableStateOf("") }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
@@ -173,7 +176,7 @@ fun HomeScreen(
     }
 
     // ── 配置同步：顺序执行避免并行 su 调用，config 传给 SpeedControlSection 避免重复读取 ──
-    var externalConfig by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var externalConfig by rememberSaveable { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(reloadTrigger) {
         // 顺序执行避免并行 su 调用
         moduleInstalled = ModuleDetector.isModuleInstalled()
@@ -261,6 +264,25 @@ fun HomeScreen(
         item(key = "speed_title") {
             Spacer(modifier = Modifier.height(12.dp))
             SmallTitle(text = "调速 (22000mA＝22000000μA)(重启生效)", modifier = Modifier.compactSmallTitle())
+        }
+        item(key = "speed_tip") {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                cornerRadius = 16.dp,
+                colors = CardDefaults.defaultColors(
+                    color = MiuixTheme.colorScheme.background,
+                    contentColor = MiuixTheme.colorScheme.onSurface
+                )
+            ) {
+                Text(
+                    text = if (isZh) "Tip：部分机型可能因电池节点差异无法使用调速功能，请自行测试。" else "Tip：Speed control may not work on some devices due to battery node differences. Please test yourself.",
+                    fontSize = 13.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
         }
         item(key = "speed_control") {
             SpeedControlSection(
