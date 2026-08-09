@@ -131,11 +131,15 @@ fun SpeedControlSection(
     var dialogState by remember { mutableStateOf<DialogState?>(null) }
 
     // ── 配置同步：增量更新，仅处理变化的 key ──
-    // 使用 remember(externalConfig) 确保 externalConfig 变化时 configSynced 重置为 false
-    var configSynced by remember(externalConfig) { mutableStateOf(false) }
+    // configSynced 用 rememberSaveable 避免 LazyColumn 回收/重建时丢失状态
+    // lastConfigFingerprint 追踪 externalConfig 内容变化，变化时重置 configSynced
+    var configSynced by rememberSaveable { mutableStateOf(false) }
+    var lastConfigFingerprint by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(externalConfig) {
-        if (externalConfig.isEmpty() || configSynced) return@LaunchedEffect
+        val fingerprint = externalConfig.entries.sortedBy { it.key }.toString()
+        if (externalConfig.isEmpty() || (configSynced && fingerprint == lastConfigFingerprint)) return@LaunchedEffect
         configSynced = true
+        lastConfigFingerprint = fingerprint
         val editor = prefs.edit()
         var dirty = false
         val switchFields = mapOf<String, (Boolean) -> Unit>(
