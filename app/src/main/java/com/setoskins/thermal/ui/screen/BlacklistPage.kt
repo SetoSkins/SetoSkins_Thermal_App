@@ -50,8 +50,10 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,6 +94,7 @@ fun BlacklistPage(
     val configPath = "/data/adb/modules/SetoSkins/黑名单.prop"
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val hapticFeedback = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
     val bgColor = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
@@ -138,6 +141,7 @@ fun BlacklistPage(
         if (newSet.contains(pkg)) newSet.remove(pkg) else newSet.add(pkg)
         appSet = newSet
         prefs.edit().putStringSet(prefsKey, newSet).apply()
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
         if (isWhitelist) {
             scope.launch { ModuleDetector.writeWhitelistAppPackages(newSet) }
         } else {
@@ -243,6 +247,7 @@ fun BlacklistPage(
                         onClick = {
                             val newMode = !isWhitelistMode
                             isWhitelistMode = newMode
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             scope.launch {
                                 ModuleDetector.updateConfig("黑白名单", if (newMode) "白名单" else "黑名单")
                             }
