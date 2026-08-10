@@ -14,11 +14,17 @@ object ModuleDetector {
     private const val TAG = "SetoSkins_ModuleDetector"
     private const val MODULE_PATH = "/data/adb/modules/SetoSkins"
     private const val CONFIG_PATH = "/data/adb/modules/SetoSkins/配置.prop"
-    private const val BLACKLIST_PATH = "/data/adb/modules/SetoSkins/黑名单.prop"
+    private const val BLACKLIST_PATH = "/data/adb/modules/SetoSkins/分应用调速.prop"
+    private const val BLACKLIST_NAME = "分应用调速.prop"
     private const val WHITELIST_APP_PATH = "/data/adb/modules/SetoSkins/无温控应用.prop"
+    private const val WHITELIST_APP_NAME = "无温控应用.prop"
+    private const val BYPASS_LIST_PATH = "/data/adb/modules/SetoSkins/旁路充电名单.prop"
+    private const val BYPASS_LIST_NAME = "旁路充电名单.prop"
+    private const val BYPASS_CONFIG_PATH = "/data/adb/modules/SetoSkins/旁路充电配置.prop"
     private const val MODULE_PROP_PATH = "/data/adb/modules/SetoSkins/module.prop"
     private const val LOG_PATH = "/data/adb/modules/SetoSkins/log.log"
     private const val THERMAL_SCRIPT_PATH = "/data/adb/modules/SetoSkins/system/Seto_fuckthermal.sh"
+    private const val CURRENT_SCRIPT_PATH = "/data/adb/SetoSkins/Seto_fuckthermal.sh"
     private const val UPDATE_URL = "https://raw.githubusercontent.com/SetoSkins/SetoSkins_Thermal/refs/heads/master/SetoSkins.json"
     private const val TIMEOUT_MS = 5000L
 
@@ -118,6 +124,22 @@ object ModuleDetector {
         }
     }
 
+    /**
+     * 执行电流脚本，在修改最大电流数开关变更时触发。
+     */
+    suspend fun executeCurrentScript(): Unit = withContext(Dispatchers.IO) {
+        runCatching {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "sh '$CURRENT_SCRIPT_PATH'"))
+            val result = withTimeoutOrNull(TIMEOUT_MS) {
+                process.waitFor()
+            }
+            if (result == null) {
+                Log.w(TAG, "Current script execution timed out, killing process")
+                process.destroyForcibly()
+            }
+        }
+    }
+
     suspend fun readConfig(): Map<String, String> = withContext(Dispatchers.IO) {
         runCatching {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$CONFIG_PATH'"))
@@ -155,7 +177,10 @@ object ModuleDetector {
         }.getOrDefault("")
     }
 
-    suspend fun readBlacklistConfig(): Map<String, String> = readAppConfig(BLACKLIST_PATH)
+    suspend fun readBlacklistConfig(): Map<String, String> = withContext(Dispatchers.IO) {
+        val path = findFilePath(BLACKLIST_NAME) ?: BLACKLIST_PATH
+        readAppConfig(path)
+    }
 
     suspend fun readAppConfig(path: String): Map<String, String> = withContext(Dispatchers.IO) {
         runCatching {
@@ -170,7 +195,10 @@ object ModuleDetector {
         }.getOrDefault(emptyMap())
     }
 
-    suspend fun writeBlacklistConfig(entries: Map<String, String>): Unit = writeAppConfig(BLACKLIST_PATH, entries)
+    suspend fun writeBlacklistConfig(entries: Map<String, String>): Unit = withContext(Dispatchers.IO) {
+        val path = findFilePath(BLACKLIST_NAME) ?: BLACKLIST_PATH
+        writeAppConfig(path, entries)
+    }
 
     suspend fun writeAppConfig(path: String, entries: Map<String, String>): Unit = withContext(Dispatchers.IO) {
         runCatching {
@@ -182,7 +210,8 @@ object ModuleDetector {
 
     suspend fun readWhitelistAppPackages(): Set<String> = withContext(Dispatchers.IO) {
         runCatching {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$WHITELIST_APP_PATH'"))
+            val path = findFilePath(WHITELIST_APP_NAME) ?: WHITELIST_APP_PATH
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$path'"))
             process.inputStream.bufferedReader().readLines()
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
@@ -192,8 +221,46 @@ object ModuleDetector {
 
     suspend fun writeWhitelistAppPackages(packages: Set<String>): Unit = withContext(Dispatchers.IO) {
         runCatching {
+            val path = findFilePath(WHITELIST_APP_NAME) ?: WHITELIST_APP_PATH
             val content = packages.joinToString("\n")
-            val command = "echo '$content' > '$WHITELIST_APP_PATH'"
+            val command = "echo '$content' > '$path'"
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
+        }
+    }
+
+    suspend fun readBypassListPackages(): Set<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val path = findFilePath(BYPASS_LIST_NAME) ?: BYPASS_LIST_PATH
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$path'"))
+            process.inputStream.bufferedReader().readLines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        }.getOrDefault(emptySet())
+    }
+
+    suspend fun writeBypassListPackages(packages: Set<String>): Unit = withContext(Dispatchers.IO) {
+        runCatching {
+            val path = findFilePath(BYPASS_LIST_NAME) ?: BYPASS_LIST_PATH
+            val content = packages.joinToString("\n")
+            val command = "echo '$content' > '$path'"
+            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
+        }
+    }
+
+    private suspend fun findFilePath(fileName: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val process = Runtime.getRuntime().exec(
+                arrayOf("su", "-c", "find '$MODULE_PATH' -name '$fileName' -type f 2>/dev/null | head -1")
+            )
+            process.inputStream.bufferedReader().readLine()?.trim()?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
+    }
+
+    suspend fun writeBypassConfig(config: Map<String, String>): Unit = withContext(Dispatchers.IO) {
+        runCatching {
+            val content = config.entries.joinToString("\n") { "${it.key}=${it.value}" }
+            val command = "echo '$content' > '$BYPASS_CONFIG_PATH'"
             Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
         }
     }

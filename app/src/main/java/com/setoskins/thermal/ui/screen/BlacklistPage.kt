@@ -91,7 +91,7 @@ fun BlacklistPage(
     var isWhitelistMode by remember { mutableStateOf(false) }
     val effectiveWhitelist = isWhitelist && isWhitelistMode
     val prefsKey = if (effectiveWhitelist) "whitelist_apps" else "blacklist_apps"
-    val title = if (isWhitelist) "黑白名单" else "黑名单"
+    val title = if (isWhitelist) "无温控应用名单" else "分应用调速名单"
     val configPath = "/data/adb/modules/SetoSkins/黑名单.prop"
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -141,7 +141,13 @@ fun BlacklistPage(
 
     val toggleApp: (String) -> Unit = { pkg ->
         val newSet = appSet.toMutableSet()
-        if (newSet.contains(pkg)) newSet.remove(pkg) else newSet.add(pkg)
+        if (newSet.contains(pkg)) {
+            newSet.remove(pkg)
+            appCurrentValues = appCurrentValues.toMutableMap().apply { remove(pkg) }
+        } else {
+            newSet.add(pkg)
+            appCurrentValues = appCurrentValues.toMutableMap().apply { put(pkg, "22000000") }
+        }
         appSet = newSet
         prefs.edit().putStringSet(prefsKey, newSet).apply()
         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -198,7 +204,7 @@ fun BlacklistPage(
                     color = MiuixTheme.colorScheme.onSurface
                 )
             }
-            // ── 白名单模式切换（仅黑白名单页显示） ──
+            // ── 白名单模式切换（仅无温控应用名单页显示） ──
             if (isWhitelist) {
                 // ── 模式说明 Tips ──
                 Card(
@@ -462,7 +468,7 @@ private fun AppListItem(
             )
         }
 
-        // ── 修改最大电流数（仅黑名单页面显示） ──
+        // ── 修改最大电流数（仅分应用调速名单页面显示） ──
         if (showCurrentField) {
             AnimatedVisibility(
                 visible = isBlacklisted,

@@ -23,12 +23,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,10 +54,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.service.SuperIslandService
+import com.setoskins.thermal.ui.component.ConfigDialog
 import com.setoskins.thermal.ui.component.GreenActivatedCard
 import com.setoskins.thermal.ui.component.MiuixCard
 import com.setoskins.thermal.ui.component.RedNotInstalledCard
+import com.setoskins.thermal.ui.component.SliderRow
 import com.setoskins.thermal.ui.component.ThemedSwitch
+import com.setoskins.thermal.ui.component.ThemedTextField
 import com.setoskins.thermal.ui.component.YellowUpdateCard
 import com.setoskins.thermal.ui.component.compactSmallTitle
 import kotlinx.coroutines.launch
@@ -72,6 +81,7 @@ fun HomeScreen(
     contentPaddingTop: Dp = 0.dp,
     onNavigateToBlacklist: () -> Unit = {},
     onNavigateToWhitelist: () -> Unit = {},
+    onNavigateToBypassList: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -91,6 +101,22 @@ fun HomeScreen(
     var switch14 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch14", false)) }
     var switch15 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch15", false)) }
     var switch16 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch16", false)) }
+    var switch17 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch17", false)) }
+    var switch18 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch18", false)) }
+    var switch4 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch4", false)) }
+    var switch10 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch10", false)) }
+    var switch11 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch11", false)) }
+    var switch12 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch12", false)) }
+    var switch13 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch13", false)) }
+    var appBypassTargetTemp by rememberSaveable { mutableStateOf(prefs.getString("appBypassTargetTemp", "40") ?: "40") }
+    var appBypassRecoveryTemp by rememberSaveable { mutableStateOf(prefs.getString("appBypassRecoveryTemp", "35") ?: "35") }
+    var appBypassMaxCurrent by rememberSaveable { mutableStateOf(prefs.getString("appBypassMaxCurrent", "22000000") ?: "22000000") }
+    var appBypassStopLevel by rememberSaveable { mutableStateOf(prefs.getString("appBypassStopLevel", "10") ?: "10") }
+    var globalBypassTargetTemp by rememberSaveable { mutableStateOf(prefs.getString("globalBypassTargetTemp", "40") ?: "40") }
+    var globalBypassRecoveryTemp by rememberSaveable { mutableStateOf(prefs.getString("globalBypassRecoveryTemp", "35") ?: "35") }
+    var globalBypassMaxCurrent by rememberSaveable { mutableStateOf(prefs.getString("globalBypassMaxCurrent", "22000000") ?: "22000000") }
+    var globalBypassStopLevel by rememberSaveable { mutableStateOf(prefs.getString("globalBypassStopLevel", "10") ?: "10") }
+    var dialogState by remember { mutableStateOf<DialogState?>(null) }
     val isChargingState = rememberSaveable { mutableStateOf(false) }
 
     // ── 模块状态 ──
@@ -203,12 +229,39 @@ fun HomeScreen(
         syncSwitch("系统均衡式性能温控", switch14, { switch14 = it }, "switch14")
         syncSwitch("分应用调速", switch8, { switch8 = it }, "switch8")
         syncSwitch("无温控应用", switch9, { switch9 = it }, "switch9")
-        // 调速区开关：只写 prefs，SpeedControlSection 通过 externalConfig 同步
-        syncSwitchPrefOnly("修改最大电流数", "switch4")
-        syncSwitchPrefOnly("充电调速", "switch11")
-        syncSwitchPrefOnly("亮息屏调速", "switch10")
-        syncSwitchPrefOnly("当电流低于阈值执行停充", "switch12")
-        syncSwitchPrefOnly("自定义阶梯模式", "switch13")
+        syncSwitch("分应用旁路", switch17, { switch17 = it }, "switch17")
+        syncSwitch("温度旁路", switch18, { switch18 = it }, "switch18")
+        syncSwitch("修改最大电流数", switch4, { switch4 = it }, "switch4")
+        syncSwitch("充电调速", switch11, { switch11 = it }, "switch11")
+        syncSwitch("亮息屏调速", switch10, { switch10 = it }, "switch10")
+        syncSwitch("当电流低于阈值执行停充", switch12, { switch12 = it }, "switch12")
+        syncSwitch("自定义阶梯模式", switch13, { switch13 = it }, "switch13")
+        // 分应用旁路温度滑块
+        config["分应用旁路到达温度"]?.trim()?.let { v ->
+            if (appBypassTargetTemp != v) { appBypassTargetTemp = v; editor.putString("appBypassTargetTemp", v) }
+        }
+        config["分应用旁路恢复温度"]?.trim()?.let { v ->
+            if (appBypassRecoveryTemp != v) { appBypassRecoveryTemp = v; editor.putString("appBypassRecoveryTemp", v) }
+        }
+        config["分应用旁路最大电流数"]?.trim()?.let { v ->
+            if (appBypassMaxCurrent != v) { appBypassMaxCurrent = v; editor.putString("appBypassMaxCurrent", v) }
+        }
+        config["分应用旁路停充电量"]?.trim()?.let { v ->
+            if (appBypassStopLevel != v) { appBypassStopLevel = v; editor.putString("appBypassStopLevel", v) }
+        }
+        // 全局旁路温度滑块
+        config["全局旁路到达温度"]?.trim()?.let { v ->
+            if (globalBypassTargetTemp != v) { globalBypassTargetTemp = v; editor.putString("globalBypassTargetTemp", v) }
+        }
+        config["全局旁路恢复温度"]?.trim()?.let { v ->
+            if (globalBypassRecoveryTemp != v) { globalBypassRecoveryTemp = v; editor.putString("globalBypassRecoveryTemp", v) }
+        }
+        config["全局旁路最大电流数"]?.trim()?.let { v ->
+            if (globalBypassMaxCurrent != v) { globalBypassMaxCurrent = v; editor.putString("globalBypassMaxCurrent", v) }
+        }
+        config["全局旁路停充电量"]?.trim()?.let { v ->
+            if (globalBypassStopLevel != v) { globalBypassStopLevel = v; editor.putString("globalBypassStopLevel", v) }
+        }
         editor.apply()
     }
 
@@ -222,6 +275,48 @@ fun HomeScreen(
         scope.launch { ModuleDetector.updateConfig(configKey, newValue) }
         Unit
     } }
+
+    // ── 旁路充电配置写入 /data/adb/modules/SetoSkins/旁路充电配置.prop ──
+    val writeBypassConfigFile = remember(scope) { {
+        val config = buildMap {
+            put("分应用旁路", switch17.toString())
+            put("应用到达温度", appBypassTargetTemp)
+            put("应用恢复温度", appBypassRecoveryTemp)
+            put("分应用最大电流数", appBypassMaxCurrent)
+            put("分应用停充电量", appBypassStopLevel)
+            put("全局旁路", switch18.toString())
+            put("全局到达温度", globalBypassTargetTemp)
+            put("全局恢复温度", globalBypassRecoveryTemp)
+            put("全局最大电流数", globalBypassMaxCurrent)
+            put("全局停充电量", globalBypassStopLevel)
+        }
+        scope.launch { ModuleDetector.writeBypassConfig(config) }
+    } }
+
+    // ── 旁路滑块值变化时 300ms 防抖写入配置 ──
+    LaunchedEffect(appBypassTargetTemp, appBypassRecoveryTemp, appBypassMaxCurrent, appBypassStopLevel) {
+        kotlinx.coroutines.delay(300)
+        writeBypassConfigFile()
+    }
+    LaunchedEffect(globalBypassTargetTemp, globalBypassRecoveryTemp, globalBypassMaxCurrent, globalBypassStopLevel) {
+        kotlinx.coroutines.delay(300)
+        writeBypassConfigFile()
+    }
+
+    // ── 九开关互斥：调速区 + 旁路充电区，任一个打开时关闭其余八个 ──
+    val homeExclusiveActive = switch17 || switch18
+    val speedExclusiveActive = switch4 || switch10 || switch11 || switch12 || switch13 || switch8 || switch9
+    val turnOffAllOtherExclusive: (String) -> Unit = { exceptKey ->
+        if (exceptKey != "switch4" && switch4) updateSwitch("switch4", "修改最大电流数", false) { switch4 = false }
+        if (exceptKey != "switch10" && switch10) updateSwitch("switch10", "亮息屏调速", false) { switch10 = false }
+        if (exceptKey != "switch11" && switch11) updateSwitch("switch11", "充电调速", false) { switch11 = false }
+        if (exceptKey != "switch12" && switch12) updateSwitch("switch12", "当电流低于阈值执行停充", false) { switch12 = false }
+        if (exceptKey != "switch13" && switch13) updateSwitch("switch13", "自定义阶梯模式", false) { switch13 = false }
+        if (exceptKey != "switch8" && switch8) updateSwitch("switch8", "分应用调速", false) { switch8 = false }
+        if (exceptKey != "switch9" && switch9) updateSwitch("switch9", "无温控应用", false) { switch9 = false }
+        if (exceptKey != "switch17" && switch17) updateSwitch("switch17", "分应用旁路", false) { switch17 = false }
+        if (exceptKey != "switch18" && switch18) updateSwitch("switch18", "全局旁路", false) { switch18 = false }
+    }
 
     LazyColumn(
             modifier = modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
@@ -276,13 +371,14 @@ fun HomeScreen(
                 )
             ) {
                 Text(
-                    text = if (isZh) "Tip：部分机型可能因电池节点差异无法使用调速功能，请自行测试。" else "Tip：Speed control may not work on some devices due to battery node differences. Please test yourself.",
+                    text = if (isZh) "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。" else "Tip：Speed control may not work on some devices due to battery node differences. Please test yourself.",
                     fontSize = 13.sp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                 )
             }
         }
+
         item(key = "speed_control") {
             SpeedControlSection(
                 useMonet = useMonet,
@@ -291,8 +387,249 @@ fun HomeScreen(
                 updateSwitch = updateSwitch,
                 updateText = updateText,
                 onShowBlacklist = onNavigateToBlacklist,
-                onShowWhitelist = onNavigateToWhitelist
+                onShowWhitelist = onNavigateToWhitelist,
+                switch4 = switch4,
+                switch10 = switch10,
+                switch11 = switch11,
+                switch12 = switch12,
+                switch13 = switch13,
+                switch8 = switch8,
+                switch9 = switch9,
+                homeExclusiveActive = homeExclusiveActive,
+                onToggleSwitch4 = { newVal ->
+                    if (newVal) turnOffAllOtherExclusive("switch4")
+                    updateSwitch("switch4", "修改最大电流数", newVal) { switch4 = newVal }
+                },
+                onToggleSwitch10 = { newVal ->
+                    if (newVal) turnOffAllOtherExclusive("switch10")
+                    updateSwitch("switch10", "亮息屏调速", newVal) { switch10 = newVal }
+                },
+                onToggleSwitch11 = { newVal ->
+                    if (newVal) turnOffAllOtherExclusive("switch11")
+                    updateSwitch("switch11", "充电调速", newVal) { switch11 = newVal }
+                },
+                onToggleSwitch12 = { newVal ->
+                    if (newVal) turnOffAllOtherExclusive("switch12")
+                    updateSwitch("switch12", "当电流低于阈值执行停充", newVal) { switch12 = newVal }
+                },
+                onToggleSwitch13 = { newVal ->
+                    if (newVal) turnOffAllOtherExclusive("switch13")
+                    updateSwitch("switch13", "自定义阶梯模式", newVal) { switch13 = newVal }
+                },
+                onToggleSwitch8 = { newVal ->
+                    if (newVal) turnOffAllOtherExclusive("switch8")
+                    updateSwitch("switch8", "分应用调速", newVal) { switch8 = newVal }
+                },
+                onToggleSwitch9 = { newVal ->
+                    if (newVal) turnOffAllOtherExclusive("switch9")
+                    updateSwitch("switch9", "无温控应用", newVal) { switch9 = newVal }
+                }
             )
         }
+
+        item(key = "bypass_charge_title") {
+            Spacer(modifier = Modifier.height(12.dp))
+            SmallTitle(text = "旁路充电", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } })
+        }
+
+        item(key = "bypass_charge_card") {
+            MiuixCard {
+                Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                    BasicComponent(
+                        title = "全局旁路",
+                        enabled = switch18 || !speedExclusiveActive,
+                        endActions = { ThemedSwitch(checked = switch18, onCheckedChange = null, enabled = switch18 || !speedExclusiveActive, useMonet = useMonet) },
+                        onClick = {
+                            if (switch18 || !speedExclusiveActive) {
+                                val newVal = !switch18
+                                if (newVal) {
+                                    turnOffAllOtherExclusive("switch18")
+                                    if (switch17) updateSwitch("switch17", "分应用旁路", false) { switch17 = false }
+                                }
+                                updateSwitch("switch18", "全局旁路", newVal) { switch18 = newVal }
+                                writeBypassConfigFile()
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        }
+                    )
+                    AnimatedVisibility(visible = switch18, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                        Column {
+                            key("global_bypass_target_temp") {
+                                SliderRow(
+                                    title = "全局到达温度",
+                                    value = globalBypassTargetTemp.toFloatOrNull() ?: 40f,
+                                    onValueChange = {
+                                        globalBypassTargetTemp = it.toInt().toString()
+                                        updateText("globalBypassTargetTemp", "全局旁路到达温度", globalBypassTargetTemp) {}
+                                    },
+                                    valueRange = 20f..50f, steps = 30, suffix = "°C",
+                                    onClickLabel = {
+                                        dialogState = DialogState(
+                                            "调整全局到达温度",
+                                            "输入温度 (20-50 °C)",
+                                            globalBypassTargetTemp,
+                                            20..50
+                                        ) { v ->
+                                            globalBypassTargetTemp = v.toString()
+                                        }
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                )
+                            }
+                            key("global_bypass_recovery_temp") {
+                                SliderRow(
+                                    title = "全局恢复温度",
+                                    value = globalBypassRecoveryTemp.toFloatOrNull() ?: 35f,
+                                    onValueChange = {
+                                        globalBypassRecoveryTemp = it.toInt().toString()
+                                        updateText("globalBypassRecoveryTemp", "全局旁路恢复温度", globalBypassRecoveryTemp) {}
+                                    },
+                                    valueRange = 20f..50f, steps = 30, suffix = "°C",
+                                    onClickLabel = {
+                                        dialogState = DialogState("调整全局恢复温度", "输入温度 (20-50 °C)", globalBypassRecoveryTemp, 20..50) { v ->
+                                            globalBypassRecoveryTemp = v.toString()
+                                        }
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                )
+                            }
+                            key("global_bypass_max_current") {
+                                ThemedTextField(
+                                    value = globalBypassMaxCurrent,
+                                    onValueChange = {
+                                        globalBypassMaxCurrent = it
+                                        updateText("globalBypassMaxCurrent", "全局旁路最大电流数", it) {}
+                                    },
+                                    label = "22A＝22000mA＝22000000",
+                                    useMonet = useMonet,
+                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                                    inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
+                                )
+                            }
+                            key("global_bypass_stop_level") {
+                                ThemedTextField(
+                                    value = globalBypassStopLevel,
+                                    onValueChange = {
+                                        globalBypassStopLevel = it
+                                        updateText("globalBypassStopLevel", "全局旁路停充电量", it) {}
+                                    },
+                                    label = "电量达到以下时关闭旁路充电",
+                                    useMonet = useMonet,
+                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                                    inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
+                                )
+                            }
+                        }
+                    }
+                    BasicComponent(
+                        title = "分应用旁路",
+                        enabled = switch17 || !speedExclusiveActive,
+                        endActions = { ThemedSwitch(checked = switch17, onCheckedChange = null, enabled = switch17 || !speedExclusiveActive, useMonet = useMonet) },
+                        onClick = {
+                            if (switch17 || !speedExclusiveActive) {
+                                val newVal = !switch17
+                                if (newVal) {
+                                    turnOffAllOtherExclusive("switch17")
+                                    if (switch18) updateSwitch("switch18", "全局旁路", false) { switch18 = false }
+                                }
+                                updateSwitch("switch17", "分应用旁路", newVal) { switch17 = newVal }
+                                writeBypassConfigFile()
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        }
+                    )
+                    AnimatedVisibility(visible = switch17, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                        Column {
+                            key("app_bypass_target_temp") {
+                                SliderRow(
+                                    title = "应用到达温度",
+                                    value = appBypassTargetTemp.toFloatOrNull() ?: 40f,
+                                    onValueChange = {
+                                        appBypassTargetTemp = it.toInt().toString()
+                                        updateText("appBypassTargetTemp", "分应用旁路到达温度", appBypassTargetTemp) {}
+                                    },
+                                    valueRange = 20f..50f, steps = 30, suffix = "°C",
+                                    onClickLabel = {
+                                        dialogState = DialogState("调整应用到达温度", "输入温度 (20-50 °C)", appBypassTargetTemp, 20..50) { v ->
+                                            appBypassTargetTemp = v.toString()
+                                        }
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                )
+                            }
+                            key("app_bypass_recovery_temp") {
+                                SliderRow(
+                                    title = "应用恢复温度",
+                                    value = appBypassRecoveryTemp.toFloatOrNull() ?: 35f,
+                                    onValueChange = {
+                                        appBypassRecoveryTemp = it.toInt().toString()
+                                        updateText("appBypassRecoveryTemp", "分应用旁路恢复温度", appBypassRecoveryTemp) {}
+                                    },
+                                    valueRange = 20f..50f, steps = 30, suffix = "°C",
+                                    onClickLabel = {
+                                        dialogState = DialogState("调整应用恢复温度", "输入温度 (20-50 °C)", appBypassRecoveryTemp, 20..50) { v ->
+                                            appBypassRecoveryTemp = v.toString()
+                                        }
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                )
+                            }
+                            key("app_bypass_max_current") {
+                                ThemedTextField(
+                                    value = appBypassMaxCurrent,
+                                    onValueChange = {
+                                        appBypassMaxCurrent = it
+                                        updateText("appBypassMaxCurrent", "分应用旁路最大电流数", it) {}
+                                    },
+                                    label = "22A＝22000mA＝22000000",
+                                    useMonet = useMonet,
+                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                                    inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
+                                )
+                            }
+                            key("app_bypass_stop_level") {
+                                ThemedTextField(
+                                    value = appBypassStopLevel,
+                                    onValueChange = {
+                                        appBypassStopLevel = it
+                                        updateText("appBypassStopLevel", "分应用旁路停充电量", it) {}
+                                    },
+                                    label = "电量达到以下时关闭旁路充电",
+                                    useMonet = useMonet,
+                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                                    inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
+                                )
+                            }
+                            key("app_bypass_list") {
+                                BasicComponent(
+                                    title = "旁路充电名单",
+                                    onClick = {
+                                        onNavigateToBypassList()
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
+
+    // ── 滑块数值输入对话框 ──
+    val state = dialogState
+    if (state != null) {
+        ConfigDialog(
+            show = true,
+            title = state.title,
+            summary = state.summary,
+            initialValue = state.initialValue,
+            validationRange = state.range,
+            isZh = isZh,
+            onConfirm = state.onConfirm,
+            onDismiss = { dialogState = null }
+        )
+    }
+
 }

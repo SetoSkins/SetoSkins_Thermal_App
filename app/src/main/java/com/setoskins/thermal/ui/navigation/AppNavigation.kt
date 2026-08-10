@@ -78,6 +78,7 @@ import com.setoskins.thermal.ui.screen.FavoritesScreen
 import com.setoskins.thermal.ui.screen.ProfileScreen
 import com.setoskins.thermal.ui.screen.DonatePage
 import com.setoskins.thermal.ui.screen.BlacklistPage
+import com.setoskins.thermal.ui.screen.BypassListPage
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("主页", Icons.Filled.Home),
@@ -108,6 +109,9 @@ fun MyApplicationApp(
     var showWhitelistPage by remember { mutableStateOf(false) }
     var showWhitelistLayer by remember { mutableStateOf(false) }
     val whitelistTransitionProgress = remember { Animatable(0f) }
+    var showBypassListPage by remember { mutableStateOf(false) }
+    var showBypassListLayer by remember { mutableStateOf(false) }
+    val bypassListTransitionProgress = remember { Animatable(0f) }
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
 
     LaunchedEffect(showBlacklistPage) {
@@ -152,6 +156,29 @@ fun MyApplicationApp(
         } catch (e: Exception) {
             scope.launch {
                 whitelistTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            }
+        }
+    }
+
+    LaunchedEffect(showBypassListPage) {
+        if (showBypassListPage) {
+            showBypassListLayer = true
+            bypassListTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+        } else {
+            bypassListTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            showBypassListLayer = false
+        }
+    }
+
+    PredictiveBackHandler(enabled = showBypassListPage) { progress ->
+        try {
+            progress.collect { backEvent ->
+                bypassListTransitionProgress.snapTo(1f - backEvent.progress)
+            }
+            showBypassListPage = false
+        } catch (e: Exception) {
+            scope.launch {
+                bypassListTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
             }
         }
     }
@@ -295,6 +322,7 @@ fun MyApplicationApp(
                                             contentPaddingTop = innerPadding.calculateTopPadding(),
                                             onNavigateToBlacklist = { showBlacklistPage = true },
                                             onNavigateToWhitelist = { showWhitelistPage = true },
+                                            onNavigateToBypassList = { showBypassListPage = true },
                                             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
                                         )
                                     }
@@ -399,6 +427,27 @@ fun MyApplicationApp(
                     onBack = { showWhitelistPage = false },
                     progressProvider = { whitelistTransitionProgress.value },
                     mode = "whitelist"
+                )
+            }
+
+            if (showBypassListLayer) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = 0.22f * bypassListTransitionProgress.value
+                        }
+                        .background(Color.Black)
+                )
+            }
+
+            if (showBypassListLayer) {
+                BypassListPage(
+                    useMonet = useMonet,
+                    isZh = isZh,
+                    prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE),
+                    onBack = { showBypassListPage = false },
+                    progressProvider = { bypassListTransitionProgress.value }
                 )
             }
 

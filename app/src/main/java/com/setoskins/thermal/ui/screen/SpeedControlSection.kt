@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ConfigDialog
 import com.setoskins.thermal.ui.component.MiuixCard
 import com.setoskins.thermal.ui.component.SliderRow
@@ -43,6 +45,7 @@ import com.setoskins.thermal.ui.component.ThemedTextField
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -52,7 +55,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 // ── 对话框配置 ──
 
-private data class DialogState(
+data class DialogState(
     val title: String,
     val summary: String,
     val initialValue: String,
@@ -77,9 +80,25 @@ fun SpeedControlSection(
     updateText: (String, String, String, (String) -> Unit) -> Unit,
     onShowBlacklist: () -> Unit = {},
     onShowWhitelist: () -> Unit = {},
+    switch4: Boolean,
+    switch10: Boolean,
+    switch11: Boolean,
+    switch12: Boolean,
+    switch13: Boolean,
+    switch8: Boolean,
+    switch9: Boolean,
+    homeExclusiveActive: Boolean,
+    onToggleSwitch4: (Boolean) -> Unit,
+    onToggleSwitch10: (Boolean) -> Unit,
+    onToggleSwitch11: (Boolean) -> Unit,
+    onToggleSwitch12: (Boolean) -> Unit,
+    onToggleSwitch13: (Boolean) -> Unit,
+    onToggleSwitch8: (Boolean) -> Unit,
+    onToggleSwitch9: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hapticFeedback = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val context = LocalContext.current
 
@@ -94,17 +113,8 @@ fun SpeedControlSection(
     }
     var showPermissionDialog by rememberSaveable { mutableStateOf(false) }
 
-    // ── 开关状态 ──
-    var switch4 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch4", false)) }
-    var switch11 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch11", false)) }
-    var switch10 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch10", false)) }
-    var switch13 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch13", false)) }
-    var switch12 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch12", false)) }
-    var switch8 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch8", false)) }
-    var switch9 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch9", false)) }
-
     // ── 文本字段状态 ──
-    var currentValue by rememberSaveable { mutableStateOf(prefs.getString("currentValue", "") ?: "") }
+    var currentValue by rememberSaveable { mutableStateOf(prefs.getString("currentValue", "22000000") ?: "22000000") }
     var screenOnValue by rememberSaveable { mutableStateOf(prefs.getString("screenOnValue", "") ?: "") }
     var screenOffValue by rememberSaveable { mutableStateOf(prefs.getString("screenOffValue", "") ?: "") }
 
@@ -142,13 +152,6 @@ fun SpeedControlSection(
         lastConfigFingerprint = fingerprint
         val editor = prefs.edit()
         var dirty = false
-        val switchFields = mapOf<String, (Boolean) -> Unit>(
-            "修改最大电流数" to { v -> switch4 = v; editor.putBoolean("switch4", v); dirty = true },
-            "充电调速" to { v -> switch11 = v; editor.putBoolean("switch11", v); dirty = true },
-            "亮息屏调速" to { v -> switch10 = v; editor.putBoolean("switch10", v); dirty = true },
-            "自定义阶梯模式" to { v -> switch13 = v; editor.putBoolean("switch13", v); dirty = true },
-            "当电流低于阈值执行停充" to { v -> switch12 = v; editor.putBoolean("switch12", v); dirty = true }
-        )
         val textFields = mapOf<String, (String) -> Unit>(
             "最大电流数" to { v -> currentValue = v; editor.putString("currentValue", v); dirty = true },
             "亮屏限制电流" to { v -> screenOnValue = v; editor.putString("screenOnValue", v); dirty = true },
@@ -172,7 +175,6 @@ fun SpeedControlSection(
         )
         for ((key, raw) in externalConfig) {
             val trimmed = raw.trim()
-            switchFields[key]?.let { it(trimmed.lowercase() == "true"); continue }
             textFields[key]?.let { it(if (trimmed.equals("false", ignoreCase = true)) "" else trimmed) }
         }
         if (dirty) editor.apply()
@@ -199,7 +201,7 @@ fun SpeedControlSection(
     debounceSlider("resumeChargeLevel", "恢复充电电量") { resumeChargeLevel }
 
     // ── 互斥开关辅助 ──
-    fun isExclusiveEnabled() = !anyExclusiveActive(switch4, switch11, switch13, switch10, switch12, switch8, switch9)
+    fun isExclusiveEnabled() = !anyExclusiveActive(switch4, switch11, switch13, switch10, switch12, switch8, switch9) && !homeExclusiveActive
 
     MiuixCard(modifier = modifier) {
         Column {
@@ -210,7 +212,8 @@ fun SpeedControlSection(
                 endActions = { ThemedSwitch(checked = switch4, onCheckedChange = null, enabled = switch4 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
                     if (switch4 || isExclusiveEnabled()) {
-                        updateSwitch("switch4", "修改最大电流数", !switch4) { switch4 = it }
+                        onToggleSwitch4(!switch4)
+                        scope.launch { ModuleDetector.executeCurrentScript() }
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }
@@ -221,7 +224,7 @@ fun SpeedControlSection(
                         ThemedTextField(
                             value = currentValue,
                             onValueChange = { updateText("currentValue", "最大电流数", it) { currentValue = it } },
-                            label = "22A＝22000mA＝22000000",
+                                label = "22A＝22000mA＝22000000",
                             useMonet = useMonet,
                             modifier = Modifier.fillMaxWidth(),
                             inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
@@ -237,7 +240,7 @@ fun SpeedControlSection(
                 endActions = { ThemedSwitch(checked = switch11, onCheckedChange = null, enabled = switch11 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
                     if (switch11 || isExclusiveEnabled()) {
-                        updateSwitch("switch11", "充电调速", !switch11) { switch11 = it }
+                        onToggleSwitch11(!switch11)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }
@@ -315,7 +318,7 @@ fun SpeedControlSection(
                 endActions = { ThemedSwitch(checked = switch13, onCheckedChange = null, enabled = switch13 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
                     if (switch13 || isExclusiveEnabled()) {
-                        updateSwitch("switch13", "自定义阶梯模式", !switch13) { switch13 = it }
+                        onToggleSwitch13(!switch13)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }
@@ -385,7 +388,7 @@ fun SpeedControlSection(
                 endActions = { ThemedSwitch(checked = switch10, onCheckedChange = null, enabled = switch10 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
                     if (switch10 || isExclusiveEnabled()) {
-                        updateSwitch("switch10", "亮息屏调速", !switch10) { switch10 = it }
+                        onToggleSwitch10(!switch10)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }
@@ -407,7 +410,7 @@ fun SpeedControlSection(
                 endActions = { ThemedSwitch(checked = switch12, onCheckedChange = null, enabled = switch12 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
                     if (switch12 || isExclusiveEnabled()) {
-                        updateSwitch("switch12", "当电流低于阈值执行停充", !switch12) { switch12 = it }
+                        onToggleSwitch12(!switch12)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }
@@ -451,7 +454,7 @@ fun SpeedControlSection(
                 endActions = { ThemedSwitch(checked = switch8, onCheckedChange = null, enabled = switch8 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
                     if (switch8 || isExclusiveEnabled()) {
-                        updateSwitch("switch8", "分应用调速", !switch8) { switch8 = it }
+                        onToggleSwitch8(!switch8)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }
@@ -459,7 +462,7 @@ fun SpeedControlSection(
             AnimatedVisibility(visible = switch8, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 key("per_app_blacklist") {
                     BasicComponent(
-                        title = "黑名单",
+                        title = "分应用调速名单",
                         summary = if (isZh) "选择参与分应用调速的应用" else "Select apps to participate in per-app speed control.",
                         endActions = {
                             Icon(
@@ -488,7 +491,7 @@ fun SpeedControlSection(
                 endActions = { ThemedSwitch(checked = switch9, onCheckedChange = null, enabled = switch9 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
                     if (switch9 || isExclusiveEnabled()) {
-                        updateSwitch("switch9", "无温控应用", !switch9) { switch9 = it }
+                        onToggleSwitch9(!switch9)
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }
@@ -496,7 +499,7 @@ fun SpeedControlSection(
             AnimatedVisibility(visible = switch9, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 key("per_app_whitelist") {
                     BasicComponent(
-                        title = "黑白名单",
+                        title = "无温控应用名单",
                         endActions = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
