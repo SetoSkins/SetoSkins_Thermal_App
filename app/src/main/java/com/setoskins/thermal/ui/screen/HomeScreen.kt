@@ -603,6 +603,13 @@ fun HomeScreen(
                             key("app_bypass_list") {
                                 BasicComponent(
                                     title = "旁路充电名单",
+                                    endActions = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                            contentDescription = null,
+                                            tint = MiuixTheme.colorScheme.onSurfaceVariantActions
+                                        )
+                                    },
                                     onClick = {
                                         onNavigateToBypassList()
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)

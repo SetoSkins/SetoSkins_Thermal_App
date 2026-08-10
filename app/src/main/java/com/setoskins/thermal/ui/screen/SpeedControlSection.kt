@@ -213,7 +213,6 @@ fun SpeedControlSection(
                 onClick = {
                     if (switch4 || isExclusiveEnabled()) {
                         onToggleSwitch4(!switch4)
-                        scope.launch { ModuleDetector.executeCurrentScript() }
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                 }

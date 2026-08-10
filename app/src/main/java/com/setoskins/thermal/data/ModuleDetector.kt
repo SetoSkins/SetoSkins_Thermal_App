@@ -24,7 +24,6 @@ object ModuleDetector {
     private const val MODULE_PROP_PATH = "/data/adb/modules/SetoSkins/module.prop"
     private const val LOG_PATH = "/data/adb/modules/SetoSkins/log.log"
     private const val THERMAL_SCRIPT_PATH = "/data/adb/modules/SetoSkins/system/Seto_fuckthermal.sh"
-    private const val CURRENT_SCRIPT_PATH = "/data/adb/SetoSkins/Seto_fuckthermal.sh"
     private const val UPDATE_URL = "https://raw.githubusercontent.com/SetoSkins/SetoSkins_Thermal/refs/heads/master/SetoSkins.json"
     private const val TIMEOUT_MS = 5000L
 
@@ -119,22 +118,6 @@ object ModuleDetector {
             }
             if (result == null) {
                 Log.w(TAG, "Thermal script execution timed out, killing process")
-                process.destroyForcibly()
-            }
-        }
-    }
-
-    /**
-     * 执行电流脚本，在修改最大电流数开关变更时触发。
-     */
-    suspend fun executeCurrentScript(): Unit = withContext(Dispatchers.IO) {
-        runCatching {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "sh '$CURRENT_SCRIPT_PATH'"))
-            val result = withTimeoutOrNull(TIMEOUT_MS) {
-                process.waitFor()
-            }
-            if (result == null) {
-                Log.w(TAG, "Current script execution timed out, killing process")
                 process.destroyForcibly()
             }
         }
