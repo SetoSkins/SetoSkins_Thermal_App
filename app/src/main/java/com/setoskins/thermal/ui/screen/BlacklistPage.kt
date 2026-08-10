@@ -68,6 +68,7 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -97,6 +98,7 @@ fun BlacklistPage(
     val hapticFeedback = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
     val bgColor = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
+    var isLoading by remember { mutableStateOf(true) }
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var appSet by remember { mutableStateOf(prefs.getStringSet(prefsKey, emptySet()) ?: emptySet()) }
@@ -114,6 +116,7 @@ fun BlacklistPage(
             appCurrentValues = withContext(Dispatchers.IO) { ModuleDetector.readAppConfig(configPath) }
         }
         allApps = allApps.sortedByDescending { appSet.contains(it.packageName) }
+        isLoading = false
     }
 
     LaunchedEffect(isWhitelistMode) {
@@ -204,7 +207,7 @@ fun BlacklistPage(
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     cornerRadius = 20.dp,
                     colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.background,
+                        color = MiuixTheme.colorScheme.surfaceContainer,
                         contentColor = MiuixTheme.colorScheme.onSurface
                     )
                 ) {
@@ -231,7 +234,7 @@ fun BlacklistPage(
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     cornerRadius = 20.dp,
                     colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.background,
+                        color = MiuixTheme.colorScheme.surfaceContainer,
                         contentColor = MiuixTheme.colorScheme.onSurface
                     )
                 ) {
@@ -265,39 +268,50 @@ fun BlacklistPage(
                 modifier = Modifier.padding(horizontal = 12.dp).padding(top = 4.dp, bottom = 12.dp)
             )
 
-            val cardColor = MiuixTheme.colorScheme.background
+            val cardColor = MiuixTheme.colorScheme.surfaceContainer
 
-            // ── 应用列表卡片（可滚动） ──
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    cornerRadius = 20.dp,
-                    colors = CardDefaults.defaultColors(
-                        color = cardColor,
-                        contentColor = MiuixTheme.colorScheme.onSurface
-                    )
+            // ── 应用列表 / 加载中 ──
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
+                    InfiniteProgressIndicator(size = 24.dp)
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        cornerRadius = 20.dp,
+                        colors = CardDefaults.defaultColors(
+                            color = cardColor,
+                            contentColor = MiuixTheme.colorScheme.onSurface
+                        )
                     ) {
-                        filteredApps.forEachIndexed { index, app ->
-                            val isInSet = appSet.contains(app.packageName)
-                            AppListItem(
-                                app = app,
-                                isBlacklisted = isInSet,
-                                currentValue = appCurrentValues[app.packageName] ?: "",
-                                onToggle = { toggleApp(app.packageName) },
-                                onCurrentValueChange = { updateAppCurrent(app.packageName, it) },
-                                showCurrentField = !isWhitelist,
-                                useMonet = useMonet,
-                                modifier = if (index == 0) Modifier.padding(top = 16.dp) else Modifier
-                            )
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            filteredApps.forEachIndexed { index, app ->
+                                val isInSet = appSet.contains(app.packageName)
+                                AppListItem(
+                                    app = app,
+                                    isBlacklisted = isInSet,
+                                    currentValue = appCurrentValues[app.packageName] ?: "",
+                                    onToggle = { toggleApp(app.packageName) },
+                                    onCurrentValueChange = { updateAppCurrent(app.packageName, it) },
+                                    showCurrentField = !isWhitelist,
+                                    useMonet = useMonet,
+                                    modifier = if (index == 0) Modifier.padding(top = 16.dp) else Modifier
+                                )
+                            }
                         }
                     }
                 }

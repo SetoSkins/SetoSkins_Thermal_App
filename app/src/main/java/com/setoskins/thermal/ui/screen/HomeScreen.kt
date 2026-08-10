@@ -239,7 +239,6 @@ fun HomeScreen(
         item(key = "config_card") {
             MiuixCard {
                 Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                    BasicComponent(title = "简洁版配置", summary = "目前无法更改", endActions = { ThemedSwitch(checked = false, onCheckedChange = null, enabled = false, useMonet = useMonet) })
                     BasicComponent(title = "模块简介显示充电信息", summary = "Magisk/KSU里显示电流、电量等充电信息,可能耗一丢丢电", endActions = { ThemedSwitch(checked = switch5, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch5", "模块简介显示充电信息", !switch5) { switch5 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                     BasicComponent(title = "充电时显示灵动岛", summary = "充电时在屏幕显示灵动岛风格充电信息（需后台运行）", endActions = { ThemedSwitch(checked = switch16, onCheckedChange = null, useMonet = useMonet) }, onClick = { switch16 = !switch16; prefs.edit().putBoolean("switch16", switch16).apply(); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                 }
@@ -272,7 +271,7 @@ fun HomeScreen(
                     .padding(horizontal = 4.dp),
                 cornerRadius = 16.dp,
                 colors = CardDefaults.defaultColors(
-                    color = MiuixTheme.colorScheme.background,
+                    color = MiuixTheme.colorScheme.surfaceContainer,
                     contentColor = MiuixTheme.colorScheme.onSurface
                 )
             ) {
