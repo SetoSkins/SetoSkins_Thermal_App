@@ -34,6 +34,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.setoskins.thermal.data.ModuleDetector
@@ -112,6 +113,9 @@ fun SpeedControlSection(
         }
     }
     var showPermissionDialog by rememberSaveable { mutableStateOf(false) }
+    var permDialogInternalShow by remember { mutableStateOf(false) }
+    var permPendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(showPermissionDialog) { if (showPermissionDialog) { permDialogInternalShow = true; permPendingAction = null } }
 
     // ── 文本字段状态 ──
     var currentValue by rememberSaveable { mutableStateOf(prefs.getString("currentValue", "22000000") ?: "22000000") }
@@ -253,7 +257,7 @@ fun SpeedControlSection(
                             onValueChange = { limit1Temp = it.toInt().toString() },
                             valueRange = 20f..50f, steps = 30, suffix = "°C",
                             onClickLabel = {
-                                dialogState = DialogState("调整一限温度阈值", "输入温度 (20-50 °C)", limit1Temp, 20..50) { v ->
+                                dialogState = DialogState("调整一限温度阈值", "输入温度 (20°C-50°C)", limit1Temp, 20..50) { v ->
                                     updateText("limit1Temp", "一限温度阈值", v.toString()) { limit1Temp = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -272,7 +276,7 @@ fun SpeedControlSection(
                             onValueChange = { limit2Temp = it.toInt().toString() },
                             valueRange = 20f..50f, steps = 30, suffix = "°C",
                             onClickLabel = {
-                                dialogState = DialogState("调整二限温度阈值", "输入温度 (20-50 °C)", limit2Temp, 20..50) { v ->
+                                dialogState = DialogState("调整二限温度阈值", "输入温度 (20°C-50°C)", limit2Temp, 20..50) { v ->
                                     updateText("limit2Temp", "二限温度阈值", v.toString()) { limit2Temp = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -291,7 +295,7 @@ fun SpeedControlSection(
                             onValueChange = { limit3Temp = it.toInt().toString() },
                             valueRange = 20f..50f, steps = 30, suffix = "°C",
                             onClickLabel = {
-                                dialogState = DialogState("调整三限温度阈值", "输入温度 (20-50 °C)", limit3Temp, 20..50) { v ->
+                                dialogState = DialogState("调整三限温度阈值", "输入温度 (20°C-50°C)", limit3Temp, 20..50) { v ->
                                     updateText("limit3Temp", "三限温度阈值", v.toString()) { limit3Temp = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -304,7 +308,15 @@ fun SpeedControlSection(
                             value = delayTempThreshold.toFloatOrNull() ?: 10f,
                             onValueChange = { delayTempThreshold = it.toInt().toString() },
                             valueRange = 5f..30f, steps = 25, suffix = " S",
-                            onClickLabel = {}
+                            onClickLabel = {
+                                dialogState = DialogState(
+                                    "调整延迟温度阈值",
+                                    "输入延迟时间 (5S-30S)",
+                                    delayTempThreshold,
+                                    5..30
+                                ) { v -> delayTempThreshold = v.toString() }
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
                         )
                     }
                 }
@@ -331,7 +343,7 @@ fun SpeedControlSection(
                             onValueChange = { step1Level = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整一限电量阈值", "输入电量 (0-100 %)", step1Level, 0..100) { v ->
+                                dialogState = DialogState("调整一限电量阈值", "输入电量 (0%-100%)", step1Level, 0..100) { v ->
                                     updateText("step1Level", "一限电量阈值", v.toString()) { step1Level = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -350,7 +362,7 @@ fun SpeedControlSection(
                             onValueChange = { step2Level = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整二限电量阈值", "输入电量 (0-100 %)", step2Level, 0..100) { v ->
+                                dialogState = DialogState("调整二限电量阈值", "输入电量 (0%-100%)", step2Level, 0..100) { v ->
                                     updateText("step2Level", "二限电量阈值", v.toString()) { step2Level = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -369,7 +381,7 @@ fun SpeedControlSection(
                             onValueChange = { step3Level = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整三限电量阈值", "输入电量 (0-100 %)", step3Level, 0..100) { v ->
+                                dialogState = DialogState("调整三限电量阈值", "输入电量 (0%-100%)", step3Level, 0..100) { v ->
                                     updateText("step3Level", "三限电量阈值", v.toString()) { step3Level = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -423,7 +435,7 @@ fun SpeedControlSection(
                             onValueChange = { stopChargeLevel = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整电量检测阈值", "输入电量检测阈值范围 0-100", stopChargeLevel, 0..100) { v ->
+                                dialogState = DialogState("调整电量检测阈值", "输入电量检测阈值范围 (0%-100%)", stopChargeLevel, 0..100) { v ->
                                     updateText("stopChargeLevel", "电量检测阈值", v.toString()) { stopChargeLevel = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -435,7 +447,7 @@ fun SpeedControlSection(
                             onValueChange = { resumeChargeLevel = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整恢复充电电量", "输入恢复充电电量范围 0-100", resumeChargeLevel, 0..100) { v ->
+                                dialogState = DialogState("调整恢复充电电量", "输入恢复充电电量范围 (0%-100%)", resumeChargeLevel, 0..100) { v ->
                                     updateText("resumeChargeLevel", "恢复充电电量", v.toString()) { resumeChargeLevel = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -546,7 +558,7 @@ fun SpeedControlSection(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors()
                         ) {
-                            Text(if (isZh) "取消" else "Cancel")
+                            Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold)
                         }
                         Button(
                             onClick = {
@@ -556,7 +568,7 @@ fun SpeedControlSection(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColorsPrimary()
                         ) {
-                            Text(if (isZh) "授权" else "Grant")
+                            Text(if (isZh) "授权" else "Grant", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

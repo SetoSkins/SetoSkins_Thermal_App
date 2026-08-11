@@ -36,42 +36,32 @@ object ModuleDetector {
 
     /**
      * 检测设备是否有 root 权限。
+     * 极简且最稳定的检测方式：尝试执行 su 并检查退出码。
      */
     suspend fun requestRoot(): Boolean = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Requesting root...")
-        
-        val process = try {
-            // 直接执行 su -c id，不再预检 which su，因为某些环境下 which 可能被限
-            Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to exec su: ${e.message}")
-            return@withContext false
-        }
-        
-        val result = withTimeoutOrNull(TIMEOUT_MS) {
-            try {
-                // 读取输出
-                val output = process.inputStream.bufferedReader().use { it.readText() }
-                val errorOutput = process.errorStream.bufferedReader().use { it.readText() }
-                val exitCode = process.waitFor()
-                Log.d(TAG, "su -c id output: $output, error: $errorOutput, exitCode: $exitCode")
-                
-                // 只要包含 uid=0 就算成功
-                exitCode == 0 && output.contains("uid=0")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during root check: ${e.message}")
-                false
+        Log.d("SetoRootCheck", "Starting simplified root check...")
+        var process: Process? = null
+        try {
+            process = Runtime.getRuntime().exec("su")
+            // 尝试写入 exit 并关闭流，触发进程结束
+            process.outputStream.use { 
+                it.write("exit\n".toByteArray())
+                it.flush()
             }
+            val result = withTimeoutOrNull(2000L) { // 缩短至 2 秒，避免用户等待
+                val exitCode = process.waitFor()
+                Log.d("SetoRootCheck", "su process exited with: $exitCode")
+                exitCode == 0
+            }
+            val finalResult = result ?: false
+            Log.d("SetoRootCheck", "Final root result: $finalResult")
+            finalResult
+        } catch (e: Exception) {
+            Log.d("SetoRootCheck", "Root check exception: ${e.message}")
+            false
+        } finally {
+            process?.destroy()
         }
-        
-        if (result == null) {
-            Log.w(TAG, "Root check timed out (5s), killing process")
-            process.destroyForcibly()
-        }
-        
-        val finalResult = result ?: false
-        Log.d(TAG, "Root check final result: $finalResult")
-        finalResult
     }
 
     /**
@@ -253,6 +243,12 @@ object ModuleDetector {
             val output = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'")).inputStream.bufferedReader().use { it.readText() }
             output.ifEmpty { "日志文件为空" }
         }.getOrDefault("无法读取日志文件")
+    }
+
+    suspend fun restartDevice(): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot")).waitFor() == 0
+        }.getOrDefault(false)
     }
 
     suspend fun clearLog(): Boolean = withContext(Dispatchers.IO) {

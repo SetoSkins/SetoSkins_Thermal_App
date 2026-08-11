@@ -120,7 +120,7 @@ fun ThemedTextField(
     }
 }
 
-// ── ConfigDialog：统一对话框，消除 8 个重复 OverlayDialog ──
+// ── ConfigDialog：统一对话框 ──
 
 @Composable
 fun ConfigDialog(
@@ -133,15 +133,21 @@ fun ConfigDialog(
     onConfirm: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
     var inputValue by remember { mutableStateOf(initialValue) }
-    LaunchedEffect(show) { if (show) inputValue = initialValue }
+    var internalShow by remember { mutableStateOf(show) }
+    LaunchedEffect(show) { if (show) { inputValue = initialValue; internalShow = true } }
     OverlayDialog(
-        show = show,
+        show = internalShow,
         title = title,
         summary = summary,
-        onDismissRequest = onDismiss,
+        onDismissRequest = { internalShow = false },
+        onDismissFinished = { if (!internalShow) onDismiss() },
         content = {
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 TextField(
                     value = inputValue,
                     onValueChange = { if (it.all { char -> char.isDigit() } || it.isEmpty()) inputValue = it },
@@ -149,18 +155,103 @@ fun ConfigDialog(
                     singleLine = true
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = onDismiss, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
-                        Text(if (isZh) "取消" else "Cancel")
+                    Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        internalShow = false
+                    }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                        Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold)
                     }
                     Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         val v = inputValue.toIntOrNull()
                         if (v != null && v in validationRange) {
                             onConfirm(v)
-                            onDismiss()
+                            internalShow = false
                         }
                     }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
-                        Text(if (isZh) "确认" else "Confirm")
+                        Text(if (isZh) "确认" else "Confirm", fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+    )
+}
+
+// ── RootCheckDialog ──
+
+@Composable
+fun RootCheckDialog(
+    show: Boolean,
+    isZh: Boolean,
+    onDismiss: () -> Unit,
+    onExit: () -> Unit
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var internalShow by remember { mutableStateOf(show) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
+    OverlayDialog(
+        show = internalShow,
+        title = if (isZh) "缺少 Root 权限" else "Root Access Missing",
+        summary = if (isZh) "未授权 Root 权限，部分功能将无法使用。请确保已授权 Root 管理器。" 
+                  else "Root access not detected. Some features will not work. Please authorize a Root manager.",
+        onDismissRequest = { /* 不允许通过外部消失 */ },
+        onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
+        content = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pendingAction = onDismiss
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                    Text(if (isZh) "忽略" else "Ignore", fontWeight = FontWeight.Bold)
+                }
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pendingAction = onExit
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                    Text(if (isZh) "退出" else "Exit", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    )
+}
+
+// ── RestartDialog ──
+
+@Composable
+fun RestartDialog(
+    show: Boolean,
+    isZh: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var internalShow by remember { mutableStateOf(show) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
+    OverlayDialog(
+        show = internalShow,
+        title = if (isZh) "重启设备" else "Restart Device",
+        summary = if (isZh) "确定要重启设备吗？" else "Are you sure you want to restart the device?",
+        onDismissRequest = { internalShow = false },
+        onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
+        content = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pendingAction = onDismiss
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                    Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold)
+                }
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pendingAction = onConfirm
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                    Text(if (isZh) "确认" else "Confirm", fontWeight = FontWeight.Bold)
                 }
             }
         }

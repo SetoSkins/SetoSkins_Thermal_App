@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text as MaterialText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,15 +57,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ThemedSwitch
+import com.setoskins.thermal.ui.component.VerticalScrollBar
+import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
 fun BypassListPage(
     useMonet: Boolean,
@@ -128,25 +135,48 @@ fun BypassListPage(
                     .padding(horizontal = 4.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = if (isZh) "返回" else "Back",
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(50))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onBack() }
-                        .padding(12.dp),
-                    tint = MiuixTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (isZh) "旁路充电名单" else "Bypass Charging List",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MiuixTheme.colorScheme.onSurface
-                )
+                if (useMonet) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = if (isZh) "返回" else "Back",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(50))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onBack() }
+                            .padding(12.dp),
+                        tint = MiuixTheme.colorScheme.onSurface
+                    )
+                    MaterialText(
+                        text = if (isZh) "旁路充电名单" else "Bypass Charging List",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MiuixTheme.colorScheme.onSurface
+                    )
+                } else {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.padding(start = 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = if (isZh) "返回" else "Back",
+                                tint = MiuixTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                        Text(
+                            text = if (isZh) "旁路充电名单" else "Bypass Charging List",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 26.dp, top = 12.dp, bottom = 4.dp)
+                        )
+                    }
+                }
             }
 
             SearchBar(
@@ -168,12 +198,14 @@ fun BypassListPage(
                     InfiniteProgressIndicator(size = 24.dp)
                 }
             } else {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
+                val scrollState = rememberScrollState()
+                Box(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         cornerRadius = 20.dp,
@@ -263,6 +295,10 @@ fun BypassListPage(
                             }
                         }
                     }
+                    }
+                    VerticalScrollBar(
+                        adapter = rememberScrollBarAdapter(scrollState)
+                    )
                 }
             }
         }

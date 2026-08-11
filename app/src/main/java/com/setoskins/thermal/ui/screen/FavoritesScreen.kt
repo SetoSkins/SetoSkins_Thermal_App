@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -49,6 +50,8 @@ import com.setoskins.thermal.ui.component.BatteryInfoCard
 import com.setoskins.thermal.ui.component.LogLineChart
 import com.setoskins.thermal.ui.component.MiuixCard
 import com.setoskins.thermal.ui.component.SectionTitle
+import com.setoskins.thermal.ui.component.VerticalScrollBar
+import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -56,6 +59,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
 fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, contentPaddingTop: Dp = 0.dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -130,7 +134,14 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         }
     }
 
-    LazyColumn(modifier = modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp)) {
+    val listState = rememberLazyListState()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp)
+        ) {
         item(key = "battery_card") { BatteryInfoCard() }
         item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (8).dp)) } }
         item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
@@ -151,6 +162,10 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                 }
             }
         }
+    }
+        VerticalScrollBar(
+            adapter = rememberScrollBarAdapter(listState)
+        )
     }
 }
 

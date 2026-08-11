@@ -23,6 +23,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton as MaterialIconButton
+import androidx.compose.material3.Text as MaterialText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,12 +42,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.R
+import com.setoskins.thermal.ui.component.VerticalScrollBar
+import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
 fun DonatePage(
     useMonet: Boolean,
@@ -99,21 +106,45 @@ fun DonatePage(
     ) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MiuixTheme.colorScheme.onBackground
+                if (useMonet) {
+                    MaterialIconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MiuixTheme.colorScheme.onBackground
+                        )
+                    }
+                    MaterialText(
+                        text = if (isZh) "捐赠" else "Donate",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MiuixTheme.colorScheme.onBackground
                     )
+                } else {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.padding(start = 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = "Back",
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                        Text(
+                            text = if (isZh) "捐赠" else "Donate",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = MiuixTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(start = 26.dp, top = 12.dp, bottom = 4.dp)
+                        )
+                    }
                 }
-                Text(
-                    text = if (isZh) "捐赠" else "Donate",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MiuixTheme.colorScheme.onBackground
-                )
             }
-            Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(scrollState).padding(horizontal = 20.dp)) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 20.dp)) {
                 Spacer(Modifier.height(16.dp))
                 Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(80.dp).clip(CircleShape).align(Alignment.CenterHorizontally))
                 Spacer(Modifier.height(12.dp))
@@ -160,7 +191,11 @@ fun DonatePage(
                 }
                 Spacer(Modifier.height(24.dp))
             }
+            VerticalScrollBar(
+                adapter = rememberScrollBarAdapter(scrollState)
+            )
         }
+    }
     }
 }
 

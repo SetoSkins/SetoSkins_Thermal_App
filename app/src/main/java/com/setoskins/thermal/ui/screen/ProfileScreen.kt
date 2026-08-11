@@ -39,10 +39,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode as ComposeBlendMode
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -52,8 +54,10 @@ import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.R
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ColorAppIconTint
+import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
+import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -73,9 +77,11 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
 fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val hapticFeedback = LocalHapticFeedback.current
     var versionName by remember { mutableStateOf("1.0") }
     var versionCode by remember { mutableStateOf(0L) }
     var appName by remember { mutableStateOf("") }
@@ -101,19 +107,54 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConf
             Text(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().graphicsLayer { val versionCodeProgress = ((progress - 0.05f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - versionCodeProgress; scaleX = 1 - (versionCodeProgress * 0.05f); scaleY = 1 - (versionCodeProgress * 0.05f) }, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, text = "$versionName ($versionCode) | release", fontSize = 15.sp, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(80.dp))
         }
-        LazyColumn(modifier = modifier.fillMaxSize(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 16.dp)) {
+        Box(modifier = modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.fillMaxSize(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 16.dp)) {
             item(key = "logoSpacer") { Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter, content = { }) }
             item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }) } }
             item(key = "setoskins_link") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { val uriHandler = LocalUriHandler.current; ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) } }
             item(key = "config_io") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) {
-                    ArrowPreference(title = if (isZh) "导出软件配置" else "Export App Config", onClick = { exportLauncher.launch("SetoSkins_配置_备份.prop") })
-                    ArrowPreference(title = if (isZh) "导入软件配置" else "Import App Config", onClick = { importLauncher.launch(arrayOf("*/*")) })
+                    ArrowPreference(title = if (isZh) "导出软件配置" else "Export App Config", onClick = { 
+                        scope.launch { 
+                            if (!ModuleDetector.requestRoot()) { 
+                                Toast.makeText(context, if (isZh) "需要 Root 权限" else "Root access required", Toast.LENGTH_SHORT).show()
+                                return@launch 
+                            }
+                            exportLauncher.launch("SetoSkins_配置_备份.prop") 
+                        } 
+                    })
+                    ArrowPreference(title = if (isZh) "导入软件配置" else "Import App Config", onClick = { 
+                        scope.launch { 
+                            if (!ModuleDetector.requestRoot()) { 
+                                Toast.makeText(context, if (isZh) "需要 Root 权限" else "Root access required", Toast.LENGTH_SHORT).show()
+                                return@launch 
+                            }
+                            importLauncher.launch(arrayOf("*/*")) 
+                        } 
+                    })
                     var showResetDialog by remember { mutableStateOf(false) }
+                    var resetDialogInternalShow by remember { mutableStateOf(false) }
+                    var resetPendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+                    LaunchedEffect(showResetDialog) { if (showResetDialog) { resetDialogInternalShow = true; resetPendingAction = null } }
                     ArrowPreference(title = if (isZh) "重置模块配置" else "Reset Module Config", onClick = { showResetDialog = true })
-                    OverlayDialog(show = showResetDialog, title = if (isZh) "重置模块配置" else "Reset Module Config", summary = if (isZh) "确定要重置模块配置吗？所有开关将被关闭。" else "Are you sure you want to reset the module config? All switches will be turned off.", onDismissRequest = { showResetDialog = false }, content = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) { Button(onClick = { showResetDialog = false }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) { Text(if (isZh) "取消" else "Cancel") }; Button(onClick = { scope.launch { val success = ModuleDetector.resetConfig(); if (success) { prefs.edit().clear().apply(); kotlinx.coroutines.delay(200); onConfigImported(); Toast.makeText(context, if (isZh) "已重置并关闭所有开关" else "All configs reset and turned off", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "重置失败" else "Reset Failed", Toast.LENGTH_SHORT).show() } }; showResetDialog = false }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) { Text(if (isZh) "确定" else "Confirm") } } })
+                    OverlayDialog(show = resetDialogInternalShow, title = if (isZh) "重置模块配置" else "Reset Module Config", summary = if (isZh) "确定要重置模块配置吗？所有开关将被关闭。" else "Are you sure you want to reset the module config? All switches will be turned off.", onDismissRequest = { resetDialogInternalShow = false }, onDismissFinished = { if (!resetDialogInternalShow) { resetPendingAction?.invoke(); showResetDialog = false } }, content = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) { 
+                        Button(onClick = { 
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            resetDialogInternalShow = false 
+                        }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) { Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold) }; 
+                        Button(onClick = { 
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            resetPendingAction = {
+                                scope.launch { val success = ModuleDetector.resetConfig(); if (success) { prefs.edit().clear().apply(); kotlinx.coroutines.delay(200); onConfigImported(); Toast.makeText(context, if (isZh) "已重置并关闭所有开关" else "All configs reset and turned off", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "重置失败" else "Reset Failed", Toast.LENGTH_SHORT).show() } }
+                            }
+                            resetDialogInternalShow = false 
+                        }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) { Text(if (isZh) "确定" else "Confirm", fontWeight = FontWeight.Bold) } } })
                 } }
             item(key = "donate") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate) } }
             item(key = "check_update") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "检查更新" else "Check Update", onClick = { Toast.makeText(context, if (isZh) "功能正在开发" else "Feature is under development", Toast.LENGTH_SHORT).show() }) } }
+        }
+            VerticalScrollBar(
+                adapter = rememberScrollBarAdapter(listState)
+            )
         }
     }
 }

@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,7 +30,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,8 +66,10 @@ import com.setoskins.thermal.ui.component.RedNotInstalledCard
 import com.setoskins.thermal.ui.component.SliderRow
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
+import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.YellowUpdateCard
 import com.setoskins.thermal.ui.component.compactSmallTitle
+import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
@@ -72,7 +79,7 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
 fun HomeScreen(
     useMonet: Boolean,
@@ -318,8 +325,12 @@ fun HomeScreen(
         if (exceptKey != "switch18" && switch18) updateSwitch("switch18", "全局旁路", false) { switch18 = false }
     }
 
-    LazyColumn(
-            modifier = modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
+    val listState = rememberLazyListState()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
@@ -466,7 +477,7 @@ fun HomeScreen(
                                     onClickLabel = {
                                         dialogState = DialogState(
                                             "调整全局到达温度",
-                                            "输入温度 (20-50 °C)",
+                                            "输入温度 (20°C-50°C)",
                                             globalBypassTargetTemp,
                                             20..50
                                         ) { v ->
@@ -486,7 +497,7 @@ fun HomeScreen(
                                     },
                                     valueRange = 20f..50f, steps = 30, suffix = "°C",
                                     onClickLabel = {
-                                        dialogState = DialogState("调整全局恢复温度", "输入温度 (20-50 °C)", globalBypassRecoveryTemp, 20..50) { v ->
+                                        dialogState = DialogState("调整全局恢复温度", "输入温度 (20°C-50°C)", globalBypassRecoveryTemp, 20..50) { v ->
                                             globalBypassRecoveryTemp = v.toString()
                                         }
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -550,7 +561,7 @@ fun HomeScreen(
                                     },
                                     valueRange = 20f..50f, steps = 30, suffix = "°C",
                                     onClickLabel = {
-                                        dialogState = DialogState("调整应用到达温度", "输入温度 (20-50 °C)", appBypassTargetTemp, 20..50) { v ->
+                                        dialogState = DialogState("调整应用到达温度", "输入温度 (20°C-50°C)", appBypassTargetTemp, 20..50) { v ->
                                             appBypassTargetTemp = v.toString()
                                         }
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -567,7 +578,7 @@ fun HomeScreen(
                                     },
                                     valueRange = 20f..50f, steps = 30, suffix = "°C",
                                     onClickLabel = {
-                                        dialogState = DialogState("调整应用恢复温度", "输入温度 (20-50 °C)", appBypassRecoveryTemp, 20..50) { v ->
+                                        dialogState = DialogState("调整应用恢复温度", "输入温度 (20°C-50°C)", appBypassRecoveryTemp, 20..50) { v ->
                                             appBypassRecoveryTemp = v.toString()
                                         }
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -622,6 +633,11 @@ fun HomeScreen(
             }
         }
 
+    }
+
+        VerticalScrollBar(
+            adapter = rememberScrollBarAdapter(listState)
+        )
     }
 
     // ── 滑块数值输入对话框 ──

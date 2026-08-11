@@ -6,11 +6,11 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.0"
-kotlin = "2.2.10"
+kotlin = "2.4.10"
 composeBom = "2025.12.00"
 foundation = "1.11.2"
 animation = "1.11.2"
-miuix = "0.9.1"
+miuix = "0.9.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -40,5 +40,6 @@ miuix-navigation3-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-navigati
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+k-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
