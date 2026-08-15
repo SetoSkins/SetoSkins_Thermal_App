@@ -409,7 +409,7 @@ fun MyApplicationApp(
                 }
             }
 
-            if (floatingNavBar) {
+            if (floatingNavBar && !showRestartDialog && !showRootDialog) {
                 ThemedNavigationBar(
                     currentDestination = currentDestination,
                     onDestinationSelected = { dest ->

@@ -235,7 +235,7 @@ fun RestartDialog(
         show = internalShow,
         title = if (isZh) "重启设备" else "Restart Device",
         summary = if (isZh) "确定要重启设备吗？" else "Are you sure you want to restart the device?",
-        onDismissRequest = { internalShow = false },
+        onDismissRequest = { pendingAction = onDismiss; internalShow = false },
         onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
         content = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
