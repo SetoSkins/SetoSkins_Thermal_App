@@ -86,6 +86,7 @@ fun HomeScreen(
     reloadTrigger: Int = 0,
     scrollBehavior: ScrollBehavior? = null,
     contentPaddingTop: Dp = 0.dp,
+    floatingNavBar: Boolean = false,
     onNavigateToBlacklist: () -> Unit = {},
     onNavigateToWhitelist: () -> Unit = {},
     onNavigateToBypassList: () -> Unit = {},
@@ -631,6 +632,10 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        if (floatingNavBar) {
+            item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(60.dp)) }
         }
 
     }

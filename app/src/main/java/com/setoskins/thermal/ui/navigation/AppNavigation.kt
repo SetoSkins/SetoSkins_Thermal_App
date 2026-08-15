@@ -2,17 +2,9 @@ package com.setoskins.thermal.ui.navigation
 
 
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -23,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,7 +43,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -104,7 +97,13 @@ fun MyApplicationApp(
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { AppDestinations.entries.size }
+    )
+    val currentDestination by remember(pagerState) {
+        derivedStateOf { AppDestinations.entries[pagerState.currentPage] }
+    }
     var reloadTrigger by remember { mutableIntStateOf(0) }
     var logReloadTrigger by remember { mutableIntStateOf(0) }
     var showDonatePage by remember { mutableStateOf(false) }
@@ -312,7 +311,11 @@ fun MyApplicationApp(
                     bottomBar = if (floatingNavBar) ({}) else ({
                         ThemedNavigationBar(
                             currentDestination = currentDestination,
-                            onDestinationSelected = { currentDestination = it },
+                            onDestinationSelected = { dest ->
+                                scope.launch {
+                                    pagerState.animateScrollToPage(AppDestinations.entries.indexOf(dest))
+                                }
+                            },
                             useMonet = useMonet,
                             backdrop = backdrop,
                             showBlur = showBlur,
@@ -321,23 +324,19 @@ fun MyApplicationApp(
                     })
                 ) { innerPadding ->
                     Box(modifier = Modifier.fillMaxSize()) {
-                        AnimatedContent(
-                            targetState = currentDestination,
-                            transitionSpec = {
-                                val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                                val slideAnimation = tween<IntOffset>(durationMillis = 320, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
-                                slideInHorizontally(animationSpec = slideAnimation, initialOffsetX = { it * direction }) + fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) togetherWith
-                                    slideOutHorizontally(animationSpec = slideAnimation, targetOffsetX = { -it * direction }) + fadeOut(animationSpec = tween(220, easing = LinearOutSlowInEasing))
-                            },
-                            label = "page_transition"
-                        ) { destination ->
-                            when (destination) {
+                        HorizontalPager(
+                            state = pagerState,
+                            beyondViewportPageCount = 1,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
                                     HomeScreen(
                                         useMonet = useMonet,
                                         reloadTrigger = reloadTrigger,
                                         scrollBehavior = homeScrollBehavior,
                                         contentPaddingTop = innerPadding.calculateTopPadding(),
+                                        floatingNavBar = floatingNavBar,
                                         onNavigateToBlacklist = { showBlacklistPage = true },
                                         onNavigateToWhitelist = { showWhitelistPage = true },
                                         onNavigateToBypassList = { showBypassListPage = true },
@@ -413,7 +412,11 @@ fun MyApplicationApp(
             if (floatingNavBar) {
                 ThemedNavigationBar(
                     currentDestination = currentDestination,
-                    onDestinationSelected = { currentDestination = it },
+                    onDestinationSelected = { dest ->
+                        scope.launch {
+                            pagerState.animateScrollToPage(AppDestinations.entries.indexOf(dest))
+                        }
+                    },
                     useMonet = useMonet,
                     backdrop = backdrop,
                     showBlur = showBlur,

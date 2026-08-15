@@ -153,6 +153,9 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
                 } }
             item(key = "donate") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate) } }
             item(key = "check_update") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "检查更新" else "Check Update", onClick = { Toast.makeText(context, if (isZh) "功能正在开发" else "Feature is under development", Toast.LENGTH_SHORT).show() }) } }
+            if (floatingNavBar) {
+                item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(60.dp)) }
+            }
         }
             VerticalScrollBar(
                 adapter = rememberScrollBarAdapter(listState)

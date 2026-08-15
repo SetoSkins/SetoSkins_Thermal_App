@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,19 +26,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Text
@@ -63,9 +69,22 @@ fun MaterialFloatingNavigationBar(
     val density = LocalDensity.current
 
     val indicatorOffset = remember { Animatable(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    val dragScope = rememberCoroutineScope()
+
+    val highlightedIndex by remember {
+        derivedStateOf {
+            if (totalWidth > 0f && itemCount > 0) {
+                val itemWidth = totalWidth / itemCount
+                (indicatorOffset.value / itemWidth).roundToInt().coerceIn(0, itemCount - 1)
+            } else {
+                selectedIndex
+            }
+        }
+    }
 
     LaunchedEffect(selectedIndex, totalWidth) {
-        if (totalWidth > 0f && itemCount > 0) {
+        if (totalWidth > 0f && itemCount > 0 && !isDragging) {
             val targetOffset = (totalWidth / itemCount) * selectedIndex
             indicatorOffset.animateTo(
                 targetValue = targetOffset,
@@ -82,7 +101,7 @@ fun MaterialFloatingNavigationBar(
 
     Box(
         modifier = modifier
-            .padding(horizontal = 56.dp)
+            .padding(horizontal = 68.dp)
             .fillMaxWidth()
             .padding(bottom = bottomPadding)
             .height(56.dp)
@@ -97,7 +116,7 @@ fun MaterialFloatingNavigationBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             items.forEachIndexed { index, item ->
-                val isSelected = index == selectedIndex
+                val isSelected = index == highlightedIndex
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -127,7 +146,7 @@ fun MaterialFloatingNavigationBar(
             }
         }
 
-        // 选中指示器（胶囊形，匹配 MiuiX）
+        // 选中指示器（胶囊形，匹配 MiuiX，支持拖拽切换页面）
         if (totalWidth > 0f && itemCount > 0) {
             val itemWidth = totalWidth / itemCount
             val indicatorOffsetPx = indicatorOffset.value
@@ -135,9 +154,45 @@ fun MaterialFloatingNavigationBar(
                 modifier = Modifier
                     .offset { IntOffset(x = indicatorOffsetPx.roundToInt(), y = 0) }
                     .width(with(density) { itemWidth.toDp() })
-                    .padding(horizontal = 4.dp)
-                    .height(48.dp)
+                    .height(56.dp)
                     .background(selectedBgColor, indicatorShape)
+                    .pointerInput(selectedIndex, itemCount) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { isDragging = true },
+                            onDragEnd = {
+                                isDragging = false
+                                val targetIndex = (indicatorOffset.value / itemWidth)
+                                    .roundToInt()
+                                    .coerceIn(0, itemCount - 1)
+                                if (targetIndex != selectedIndex) {
+                                    onItemClick(targetIndex)
+                                } else {
+                                    dragScope.launch {
+                                        indicatorOffset.animateTo(
+                                            itemWidth * selectedIndex,
+                                            tween(durationMillis = 300)
+                                        )
+                                    }
+                                }
+                            },
+                            onDragCancel = {
+                                isDragging = false
+                                dragScope.launch {
+                                    indicatorOffset.animateTo(
+                                        itemWidth * selectedIndex,
+                                        tween(durationMillis = 300)
+                                    )
+                                }
+                            },
+                            onHorizontalDrag = { _, dragAmount ->
+                                val newValue = (indicatorOffset.value + dragAmount)
+                                    .coerceIn(0f, (itemCount - 1) * itemWidth)
+                                dragScope.launch {
+                                    indicatorOffset.snapTo(newValue)
+                                }
+                            }
+                        )
+                    }
             )
         }
     }

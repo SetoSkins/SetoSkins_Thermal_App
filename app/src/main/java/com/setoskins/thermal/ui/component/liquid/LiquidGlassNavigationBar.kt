@@ -350,7 +350,7 @@ internal fun IosLiquidGlassNavigationBar(
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
-                .padding(bottom = bottomPaddingValue, start = 56.dp, end = 56.dp)
+                .padding(bottom = bottomPaddingValue, start = 68.dp, end = 68.dp)
                 .fillMaxWidth(),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -498,7 +498,7 @@ internal fun IosLiquidGlassNavigationBar(
                                     alpha = dampedDrag.pressProgress,
                                 )
                             }
-                            .height(48.dp)
+                            .height(52.dp)
                             .width(tabWidthDp),
                     )
                 } else {
@@ -512,7 +512,7 @@ internal fun IosLiquidGlassNavigationBar(
                             .then(dampedDrag.modifier)
                             .clip(pillShape)
                             .background(accentColor.copy(alpha = 0.15f), pillShape)
-                            .height(48.dp)
+                            .height(52.dp)
                             .width(tabWidthDp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
@@ -522,7 +522,7 @@ internal fun IosLiquidGlassNavigationBar(
                                     .clearAndSetSemantics {}
                                     .wrapContentWidth(align = Alignment.Start, unbounded = true)
                                     .requiredWidth(with(density) { (totalWidthPx - 8.dp.toPx()).toDp() })
-                                    .height(48.dp)
+                                    .height(52.dp)
                                     .graphicsLayer {
                                         val progressOffset = dampedDrag.value * tabWidthPx
                                         translationX = if (isLtr) -progressOffset else progressOffset
