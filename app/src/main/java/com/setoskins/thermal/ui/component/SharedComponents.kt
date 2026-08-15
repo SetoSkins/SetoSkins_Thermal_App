@@ -131,7 +131,8 @@ fun ConfigDialog(
     validationRange: IntRange,
     isZh: Boolean,
     onConfirm: (Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDismissStart: () -> Unit = {}
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     var inputValue by remember { mutableStateOf(initialValue) }
@@ -141,7 +142,7 @@ fun ConfigDialog(
         show = internalShow,
         title = title,
         summary = summary,
-        onDismissRequest = { internalShow = false },
+        onDismissRequest = { onDismissStart(); internalShow = false },
         onDismissFinished = { if (!internalShow) onDismiss() },
         content = {
             Column(
@@ -157,6 +158,7 @@ fun ConfigDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = {
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDismissStart()
                         internalShow = false
                     }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
                         Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold)
@@ -184,7 +186,8 @@ fun RootCheckDialog(
     show: Boolean,
     isZh: Boolean,
     onDismiss: () -> Unit,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    onDismissStart: () -> Unit = {}
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     var internalShow by remember { mutableStateOf(show) }
@@ -201,6 +204,7 @@ fun RootCheckDialog(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDismissStart()
                     pendingAction = onDismiss
                     internalShow = false
                 }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
@@ -225,7 +229,8 @@ fun RestartDialog(
     show: Boolean,
     isZh: Boolean,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDismissStart: () -> Unit = {}
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     var internalShow by remember { mutableStateOf(show) }
@@ -235,12 +240,13 @@ fun RestartDialog(
         show = internalShow,
         title = if (isZh) "重启设备" else "Restart Device",
         summary = if (isZh) "确定要重启设备吗？" else "Are you sure you want to restart the device?",
-        onDismissRequest = { pendingAction = onDismiss; internalShow = false },
+        onDismissRequest = { onDismissStart(); pendingAction = onDismiss; internalShow = false },
         onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
         content = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDismissStart()
                     pendingAction = onDismiss
                     internalShow = false
                 }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {

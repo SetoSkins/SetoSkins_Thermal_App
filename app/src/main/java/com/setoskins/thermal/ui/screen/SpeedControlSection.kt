@@ -81,6 +81,7 @@ fun SpeedControlSection(
     updateText: (String, String, String, (String) -> Unit) -> Unit,
     onShowBlacklist: () -> Unit = {},
     onShowWhitelist: () -> Unit = {},
+    onDialogVisibilityChange: (Boolean) -> Unit = {},
     switch4: Boolean,
     switch10: Boolean,
     switch11: Boolean,
@@ -143,6 +144,24 @@ fun SpeedControlSection(
 
     // ── 对话框状态（统一管理，替代 8 个独立 show*Dialog） ──
     var dialogState by remember { mutableStateOf<DialogState?>(null) }
+    var dialogDismissStarted by remember { mutableStateOf(false) }
+    LaunchedEffect(dialogState) {
+        if (dialogState != null) {
+            dialogDismissStarted = false
+            onDialogVisibilityChange(true)
+        } else if (!dialogDismissStarted) {
+            onDialogVisibilityChange(false)
+        }
+    }
+    var permDismissStarted by remember { mutableStateOf(false) }
+    LaunchedEffect(showPermissionDialog) {
+        if (showPermissionDialog) {
+            permDismissStarted = false
+            onDialogVisibilityChange(true)
+        } else if (!permDismissStarted) {
+            onDialogVisibilityChange(false)
+        }
+    }
 
     // ── 配置同步：增量更新，仅处理变化的 key ──
     // configSynced 用 rememberSaveable 避免 LazyColumn 回收/重建时丢失状态
@@ -541,7 +560,8 @@ fun SpeedControlSection(
                     validationRange = state.range,
                     isZh = isZh,
                     onConfirm = state.onConfirm,
-                    onDismiss = { dialogState = null }
+                    onDismiss = { dialogState = null },
+                    onDismissStart = { dialogDismissStarted = true; onDialogVisibilityChange(false) }
                 )
             }
 
@@ -550,11 +570,11 @@ fun SpeedControlSection(
                 show = showPermissionDialog,
                 title = if (isZh) "需要权限" else "Permission Required",
                 summary = if (isZh) "获取已安装应用列表需要查询所有应用权限，请在接下来的对话框中授权。" else "Access to installed apps requires the \"Query all packages\" permission. Please grant it in the next dialog.",
-                onDismissRequest = { showPermissionDialog = false },
+                onDismissRequest = { permDismissStarted = true; onDialogVisibilityChange(false); showPermissionDialog = false },
                 content = {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(
-                            onClick = { showPermissionDialog = false },
+                            onClick = { permDismissStarted = true; onDialogVisibilityChange(false); showPermissionDialog = false },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors()
                         ) {

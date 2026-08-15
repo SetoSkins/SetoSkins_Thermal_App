@@ -81,7 +81,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, modifier: Modifier = Modifier) {
+fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, onDialogVisibilityChange: (Boolean) -> Unit = {}, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     var versionName by remember { mutableStateOf("1.0") }
@@ -134,14 +134,23 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
                         } 
                     })
                     var showResetDialog by remember { mutableStateOf(false) }
+                    var resetDismissStarted by remember { mutableStateOf(false) }
+                    LaunchedEffect(showResetDialog) {
+                        if (showResetDialog) {
+                            resetDismissStarted = false
+                            onDialogVisibilityChange(true)
+                        } else if (!resetDismissStarted) {
+                            onDialogVisibilityChange(false)
+                        }
+                    }
                     var resetDialogInternalShow by remember { mutableStateOf(false) }
                     var resetPendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
                     LaunchedEffect(showResetDialog) { if (showResetDialog) { resetDialogInternalShow = true; resetPendingAction = null } }
                     ArrowPreference(title = if (isZh) "重置模块配置" else "Reset Module Config", onClick = { showResetDialog = true })
-                    OverlayDialog(show = resetDialogInternalShow, title = if (isZh) "重置模块配置" else "Reset Module Config", summary = if (isZh) "确定要重置模块配置吗？所有开关将被关闭。" else "Are you sure you want to reset the module config? All switches will be turned off.", onDismissRequest = { resetDialogInternalShow = false }, onDismissFinished = { if (!resetDialogInternalShow) { resetPendingAction?.invoke(); showResetDialog = false } }, content = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) { 
+                    OverlayDialog(show = resetDialogInternalShow, title = if (isZh) "重置模块配置" else "Reset Module Config", summary = if (isZh) "确定要重置模块配置吗？所有开关将被关闭。" else "Are you sure you want to reset the module config? All switches will be turned off.", onDismissRequest = { resetDismissStarted = true; onDialogVisibilityChange(false); resetDialogInternalShow = false }, onDismissFinished = { if (!resetDialogInternalShow) { resetPendingAction?.invoke(); showResetDialog = false } }, content = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) { 
                         Button(onClick = { 
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            resetDialogInternalShow = false 
+                            resetDismissStarted = true; onDialogVisibilityChange(false); resetDialogInternalShow = false 
                         }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) { Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold) }; 
                         Button(onClick = { 
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)

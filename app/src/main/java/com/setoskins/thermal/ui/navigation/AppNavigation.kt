@@ -2,9 +2,14 @@ package com.setoskins.thermal.ui.navigation
 
 
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -122,15 +127,22 @@ fun MyApplicationApp(
 
     // ── Root 检测 ──
     var showRootDialog by rememberSaveable { mutableStateOf(false) }
+
+    // ── 重启对话框 ──
+    var showRestartDialog by remember { mutableStateOf(false) }
+    var barVisible by remember { mutableStateOf(true) }
+    var dialogCount by remember { mutableIntStateOf(0) }
+    val onDialogVisibilityChange: (Boolean) -> Unit = remember {
+        { visible -> if (visible) dialogCount++ else if (dialogCount > 0) dialogCount-- }
+    }
+
     LaunchedEffect(Unit) {
         if (!ModuleDetector.requestRoot()) {
             kotlinx.coroutines.delay(1000L)
             showRootDialog = true
+            barVisible = false
         }
     }
-
-    // ── 重启对话框 ──
-    var showRestartDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(showBlacklistPage) {
         if (showBlacklistPage) {
@@ -294,6 +306,7 @@ fun MyApplicationApp(
                                             onClick = {
                                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 showRestartDialog = true
+                                                barVisible = false
                                             }
                                         ) {
                                             Icon(
@@ -340,6 +353,7 @@ fun MyApplicationApp(
                                         onNavigateToBlacklist = { showBlacklistPage = true },
                                         onNavigateToWhitelist = { showWhitelistPage = true },
                                         onNavigateToBypassList = { showBypassListPage = true },
+                                        onDialogVisibilityChange = onDialogVisibilityChange,
                                         modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
                                     )
                                 }
@@ -361,6 +375,7 @@ fun MyApplicationApp(
                                         onConfigImported = { reloadTrigger++ },
                                         onNavigateToDonate = { showDonatePage = true },
                                         reduceEffects = reduceExpensiveEffects,
+                                        onDialogVisibilityChange = onDialogVisibilityChange,
                                         modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
                                     )
                                 }
@@ -369,13 +384,14 @@ fun MyApplicationApp(
 
                         // ── Root 检测对话框 (模仿工作正常的 ConfigDialog 模式) ──
                         if (showRootDialog) {
-		                            RootCheckDialog(
-		                                show = true,
-		                                isZh = isZh,
-		                                onDismiss = { showRootDialog = false },
-		                                onExit = { (context as? Activity)?.finish() }
-		                            )
-		                        }
+                            RootCheckDialog(
+                                show = true,
+                                isZh = isZh,
+                                onDismiss = { showRootDialog = false },
+                                onExit = { (context as? Activity)?.finish() },
+                                onDismissStart = { barVisible = true }
+                            )
+                        }
 
                         // ── 重启对话框 ──
                         if (showRestartDialog) {
@@ -386,7 +402,8 @@ fun MyApplicationApp(
                                     showRestartDialog = false
                                     scope.launch { ModuleDetector.restartDevice() }
                                 },
-                                onDismiss = { showRestartDialog = false }
+                                onDismiss = { showRestartDialog = false },
+                                onDismissStart = { barVisible = true }
                             )
                         }
                     }
@@ -409,7 +426,12 @@ fun MyApplicationApp(
                 }
             }
 
-            if (floatingNavBar && !showRestartDialog && !showRootDialog) {
+            AnimatedVisibility(
+                visible = floatingNavBar && barVisible && dialogCount == 0,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
                 ThemedNavigationBar(
                     currentDestination = currentDestination,
                     onDestinationSelected = { dest ->
@@ -420,8 +442,7 @@ fun MyApplicationApp(
                     useMonet = useMonet,
                     backdrop = backdrop,
                     showBlur = showBlur,
-                    floatingNavBar = true,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    floatingNavBar = true
                 )
             }
         }

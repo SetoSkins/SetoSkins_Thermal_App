@@ -90,6 +90,7 @@ fun HomeScreen(
     onNavigateToBlacklist: () -> Unit = {},
     onNavigateToWhitelist: () -> Unit = {},
     onNavigateToBypassList: () -> Unit = {},
+    onDialogVisibilityChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -125,6 +126,15 @@ fun HomeScreen(
     var globalBypassMaxCurrent by rememberSaveable { mutableStateOf(prefs.getString("globalBypassMaxCurrent", "22000000") ?: "22000000") }
     var globalBypassStopLevel by rememberSaveable { mutableStateOf(prefs.getString("globalBypassStopLevel", "10") ?: "10") }
     var dialogState by remember { mutableStateOf<DialogState?>(null) }
+    var dialogDismissStarted by remember { mutableStateOf(false) }
+    LaunchedEffect(dialogState) {
+        if (dialogState != null) {
+            dialogDismissStarted = false
+            onDialogVisibilityChange(true)
+        } else if (!dialogDismissStarted) {
+            onDialogVisibilityChange(false)
+        }
+    }
     val isChargingState = rememberSaveable { mutableStateOf(false) }
 
     // ── 模块状态 ──
@@ -400,6 +410,7 @@ fun HomeScreen(
                 updateText = updateText,
                 onShowBlacklist = onNavigateToBlacklist,
                 onShowWhitelist = onNavigateToWhitelist,
+                onDialogVisibilityChange = onDialogVisibilityChange,
                 switch4 = switch4,
                 switch10 = switch10,
                 switch11 = switch11,
@@ -656,7 +667,8 @@ fun HomeScreen(
             validationRange = state.range,
             isZh = isZh,
             onConfirm = state.onConfirm,
-            onDismiss = { dialogState = null }
+            onDismiss = { dialogState = null },
+            onDismissStart = { dialogDismissStarted = true; onDialogVisibilityChange(false) }
         )
     }
 
