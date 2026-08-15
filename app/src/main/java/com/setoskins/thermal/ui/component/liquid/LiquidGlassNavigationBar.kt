@@ -38,6 +38,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -211,6 +212,7 @@ internal fun IosLiquidGlassNavigationBar(
     }
 
     var currentIndex by remember { mutableIntStateOf(selectedIndex) }
+    var isExternalUpdate by remember { mutableStateOf(false) }
 
     class DampedDragHolder {
         var instance: DampedDragAnimation? = null
@@ -266,13 +268,20 @@ internal fun IosLiquidGlassNavigationBar(
     }
 
     LaunchedEffect(selectedIndex) {
-        if (currentIndex != selectedIndex) currentIndex = selectedIndex
+        if (currentIndex != selectedIndex) {
+            isExternalUpdate = true
+            currentIndex = selectedIndex
+        }
     }
     val onItemClickUpdated by rememberUpdatedState(onItemClick)
     LaunchedEffect(dampedDrag) {
         snapshotFlow { currentIndex }.drop(1).collectLatest { index ->
             dampedDrag.animateToValue(index.toFloat())
-            onItemClickUpdated(index)
+            if (isExternalUpdate) {
+                isExternalUpdate = false
+            } else {
+                onItemClickUpdated(index)
+            }
         }
     }
 
