@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -56,6 +57,7 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -72,6 +74,8 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.RestartDialog
 import com.setoskins.thermal.ui.component.RootCheckDialog
+import com.setoskins.thermal.ui.component.liquid.IosLiquidGlassNavigationBar
+import com.setoskins.thermal.ui.component.MaterialFloatingNavigationBar
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.screen.HomeScreen
 import com.setoskins.thermal.ui.screen.FavoritesScreen
@@ -93,7 +97,9 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
 @Composable
 fun MyApplicationApp(
     useMonet: Boolean,
-    onUseMonetChange: (Boolean) -> Unit
+    onUseMonetChange: (Boolean) -> Unit,
+    floatingNavBar: Boolean,
+    onFloatingNavBarChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
@@ -303,15 +309,16 @@ fun MyApplicationApp(
                             )
                         }
                     },
-                    bottomBar = {
+                    bottomBar = if (floatingNavBar) ({}) else ({
                         ThemedNavigationBar(
                             currentDestination = currentDestination,
                             onDestinationSelected = { currentDestination = it },
                             useMonet = useMonet,
                             backdrop = backdrop,
-                            showBlur = showBlur
+                            showBlur = showBlur,
+                            floatingNavBar = false
                         )
-                    }
+                    })
                 ) { innerPadding ->
                     Box(modifier = Modifier.fillMaxSize()) {
                         AnimatedContent(
@@ -350,6 +357,8 @@ fun MyApplicationApp(
                                     ProfileScreen(
                                         useMonet = useMonet,
                                         onUseMonetChange = onUseMonetChange,
+                                        floatingNavBar = floatingNavBar,
+                                        onFloatingNavBarChange = onFloatingNavBarChange,
                                         onConfigImported = { reloadTrigger++ },
                                         onNavigateToDonate = { showDonatePage = true },
                                         reduceEffects = reduceExpensiveEffects,
@@ -399,6 +408,18 @@ fun MyApplicationApp(
                             .graphicsLayer { alpha = 1f - collapsedFraction.coerceIn(0f, 1f) }
                     )
                 }
+            }
+
+            if (floatingNavBar) {
+                ThemedNavigationBar(
+                    currentDestination = currentDestination,
+                    onDestinationSelected = { currentDestination = it },
+                    useMonet = useMonet,
+                    backdrop = backdrop,
+                    showBlur = showBlur,
+                    floatingNavBar = true,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
             }
         }
 
@@ -495,13 +516,40 @@ fun ThemedNavigationBar(
     useMonet: Boolean,
     backdrop: LayerBackdrop? = null,
     showBlur: Boolean = false,
+    floatingNavBar: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    if (floatingNavBar) {
+        if (useMonet) {
+            val items = remember {
+                AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.icon) }
+            }
+            val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
+            MaterialFloatingNavigationBar(
+                items = items,
+                selectedIndex = selectedIndex,
+                onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
+                modifier = modifier,
+            )
+        } else {
+            iOSLikeFloatingNavigationBar(
+                currentDestination = currentDestination,
+                onDestinationSelected = onDestinationSelected,
+                backdrop = backdrop,
+                showBlur = showBlur,
+                useMonet = useMonet,
+                modifier = modifier,
+            )
+        }
+        return
+    }
     val barAlpha = 0.25f
     if (useMonet) {
         val miuixColors = MiuixTheme.colorScheme
+        val isDark = isSystemInDarkTheme()
         val navModifier = if (showBlur) modifier.fillMaxWidth().then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) else modifier.fillMaxWidth()
-        NavigationBar(modifier = navModifier, containerColor = miuixColors.surface.copy(alpha = barAlpha), contentColor = miuixColors.onSurface) {
+        val barColor = if (isDark) miuixColors.surface.copy(alpha = barAlpha) else Color.White.copy(alpha = barAlpha)
+        NavigationBar(modifier = navModifier, containerColor = barColor, contentColor = miuixColors.onSurface) {
             AppDestinations.entries.forEach { destination ->
                 NavigationBarItem(
                     icon = { Icon(imageVector = destination.icon, contentDescription = destination.label) },
@@ -525,4 +573,32 @@ fun ThemedNavigationBar(
             }
         }
     }
+}
+
+/**
+ * iOS 风格悬浮底栏：移植 miuix example 的 [com.setoskins.thermal.ui.component.liquid.IosLiquidGlassNavigationBar]，
+ * 实现真正的 iOS 液态玻璃（Liquid Glass）切换指示器，带折射、色散、内阴影与高光。
+ */
+@Composable
+private fun iOSLikeFloatingNavigationBar(
+    currentDestination: AppDestinations,
+    onDestinationSelected: (AppDestinations) -> Unit,
+    backdrop: LayerBackdrop?,
+    showBlur: Boolean,
+    useMonet: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val items = remember {
+        AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.icon) }
+    }
+    val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
+    IosLiquidGlassNavigationBar(
+        items = items,
+        selectedIndex = selectedIndex,
+        onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
+        backdrop = backdrop,
+        isBlurActive = showBlur && backdrop != null,
+        useMonet = useMonet,
+        modifier =  modifier,
+    )
 }

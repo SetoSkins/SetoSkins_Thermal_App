@@ -54,11 +54,13 @@ import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.R
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ColorAppIconTint
+import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -79,7 +81,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, modifier: Modifier = Modifier) {
+fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     var versionName by remember { mutableStateOf("1.0") }
@@ -110,7 +112,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, onConf
         Box(modifier = modifier.fillMaxSize()) {
             LazyColumn(modifier = Modifier.fillMaxSize(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 16.dp)) {
             item(key = "logoSpacer") { Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter, content = { }) }
-            item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }) } }
+            item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }); BasicComponent(title = if (isZh) "启用悬浮底栏" else "Floating Nav Bar", summary = if (isZh) "在屏幕底部使用悬浮样式的导航栏" else "Use floating-style navigation bar at the bottom of the screen", endActions = { ThemedSwitch(checked = floatingNavBar, onCheckedChange = null, useMonet = useMonet) }, onClick = { onFloatingNavBarChange(!floatingNavBar); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } }
             item(key = "setoskins_link") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { val uriHandler = LocalUriHandler.current; ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) } }
             item(key = "config_io") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) {
                     ArrowPreference(title = if (isZh) "导出软件配置" else "Export App Config", onClick = { 

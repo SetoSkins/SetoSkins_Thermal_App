@@ -35,15 +35,22 @@ class MainActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences("settings", MODE_PRIVATE)
         val savedUseMonet = prefs.getBoolean("useMonet", false)
+        val savedFloatingNavBar = prefs.getBoolean("floatingNavBar", false)
 
         setContent {
             var useMonet by remember { mutableStateOf(savedUseMonet) }
+            var floatingNavBar by remember { mutableStateOf(savedFloatingNavBar) }
             MyApplicationTheme(useMonet = useMonet) {
                 MyApplicationApp(
                     useMonet = useMonet,
                     onUseMonetChange = { value ->
                         useMonet = value
                         prefs.edit().putBoolean("useMonet", value).apply()
+                    },
+                    floatingNavBar = floatingNavBar,
+                    onFloatingNavBarChange = { value ->
+                        floatingNavBar = value
+                        prefs.edit().putBoolean("floatingNavBar", value).apply()
                     }
                 )
             }
@@ -55,6 +62,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GreetingPreview() {
     MyApplicationTheme(useMonet = false) {
-        MyApplicationApp(useMonet = false, onUseMonetChange = {})
+        MyApplicationApp(useMonet = false, onUseMonetChange = {}, floatingNavBar = false, onFloatingNavBarChange = {})
     }
 }
