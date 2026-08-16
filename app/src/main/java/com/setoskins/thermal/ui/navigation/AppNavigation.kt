@@ -328,7 +328,8 @@ fun MyApplicationApp(
                             onDestinationSelected = { dest ->
                                 scope.launch {
                                     pagerState.animateScrollToPage(
-                                        AppDestinations.entries.indexOf(dest)
+                                        AppDestinations.entries.indexOf(dest),
+                                        animationSpec = tween(420, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
                                     )
                                 }
                             },
@@ -343,7 +344,11 @@ fun MyApplicationApp(
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 1,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            flingBehavior = PagerDefaults.flingBehavior(
+                                state = pagerState,
+                                snapAnimationSpec = tween(390, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
+                            )
                         ) { page ->
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
@@ -440,7 +445,8 @@ fun MyApplicationApp(
                     onDestinationSelected = { dest ->
                                 scope.launch {
                                     pagerState.animateScrollToPage(
-                                        AppDestinations.entries.indexOf(dest)
+                                        AppDestinations.entries.indexOf(dest),
+                                        animationSpec = tween(420, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
                                     )
                                 }
                             },
