@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -326,7 +327,10 @@ fun MyApplicationApp(
                             currentDestination = currentDestination,
                             onDestinationSelected = { dest ->
                                 scope.launch {
-                                    pagerState.animateScrollToPage(AppDestinations.entries.indexOf(dest))
+                                    pagerState.animateScrollToPage(
+                                        AppDestinations.entries.indexOf(dest),
+                                        animationSpec = tween(easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))
+                                    )
                                 }
                             },
                             useMonet = useMonet,
@@ -340,7 +344,11 @@ fun MyApplicationApp(
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 1,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            flingBehavior = PagerDefaults.flingBehavior(
+                                state = pagerState,
+                                snapAnimationSpec = tween(easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))
+                            )
                         ) { page ->
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
@@ -436,7 +444,10 @@ fun MyApplicationApp(
                     currentDestination = currentDestination,
                     onDestinationSelected = { dest ->
                         scope.launch {
-                            pagerState.animateScrollToPage(AppDestinations.entries.indexOf(dest))
+                            pagerState.animateScrollToPage(
+                                AppDestinations.entries.indexOf(dest),
+                                animationSpec = tween(easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))
+                            )
                         }
                     },
                     useMonet = useMonet,

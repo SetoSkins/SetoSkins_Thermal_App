@@ -520,12 +520,12 @@ internal fun IosLiquidGlassNavigationBar(
                             }
                             .then(dampedDrag.modifier)
                             .clip(pillShape)
-                            .background(accentColor.copy(alpha = 0.15f), pillShape)
+                            .background(Color(0xFFEDEDED), pillShape)
                             .height(52.dp)
                             .width(tabWidthDp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        CompositionLocalProvider(LocalContentColor provides accentColor) {
+                        CompositionLocalProvider(LocalContentColor provides tabContentColor) {
                             Row(
                                 modifier = Modifier
                                     .clearAndSetSemantics {}
