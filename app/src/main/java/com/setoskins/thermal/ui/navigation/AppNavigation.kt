@@ -329,7 +329,7 @@ fun MyApplicationApp(
                                 scope.launch {
                                     pagerState.animateScrollToPage(
                                         AppDestinations.entries.indexOf(dest),
-                                        animationSpec = tween(easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))
+                                        animationSpec = tween(350, easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f))
                                     )
                                 }
                             },
@@ -347,7 +347,7 @@ fun MyApplicationApp(
                             modifier = Modifier.fillMaxSize(),
                             flingBehavior = PagerDefaults.flingBehavior(
                                 state = pagerState,
-                                snapAnimationSpec = tween(easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))
+                                snapAnimationSpec = tween(320, easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f))
                             )
                         ) { page ->
                             when (AppDestinations.entries[page]) {
@@ -446,7 +446,7 @@ fun MyApplicationApp(
                         scope.launch {
                             pagerState.animateScrollToPage(
                                 AppDestinations.entries.indexOf(dest),
-                                animationSpec = tween(easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))
+                                animationSpec = tween(350, easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f))
                             )
                         }
                     },

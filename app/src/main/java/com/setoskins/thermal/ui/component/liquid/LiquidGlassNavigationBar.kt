@@ -387,7 +387,7 @@ internal fun IosLiquidGlassNavigationBar(
                             onClick = {},
                         )
                         .then(
-                            if (isBlurActive && backdrop != null) {
+                            if ((isBlurActive || !useMonet) && backdrop != null) {
                                 Modifier.drawBackdrop(
                                     backdrop = backdrop,
                                     shape = { pillShape },
@@ -416,7 +416,7 @@ internal fun IosLiquidGlassNavigationBar(
                                     .background(containerColor, pillShape)
                             },
                         )
-                        .then(if (isBlurActive) interactiveHighlight.modifier else Modifier)
+                        .then(if (isBlurActive || !useMonet) interactiveHighlight.modifier else Modifier)
                         .height(56.dp)
                         .padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
