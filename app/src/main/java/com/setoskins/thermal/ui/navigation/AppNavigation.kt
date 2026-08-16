@@ -328,8 +328,7 @@ fun MyApplicationApp(
                             onDestinationSelected = { dest ->
                                 scope.launch {
                                     pagerState.animateScrollToPage(
-                                        AppDestinations.entries.indexOf(dest),
-                                        animationSpec = tween(420, easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f))
+                                        AppDestinations.entries.indexOf(dest)
                                     )
                                 }
                             },
@@ -344,11 +343,7 @@ fun MyApplicationApp(
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 1,
-                            modifier = Modifier.fillMaxSize(),
-                            flingBehavior = PagerDefaults.flingBehavior(
-                                state = pagerState,
-                                snapAnimationSpec = tween(390, easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f))
-                            )
+                            modifier = Modifier.fillMaxSize()
                         ) { page ->
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
@@ -443,17 +438,16 @@ fun MyApplicationApp(
                 ThemedNavigationBar(
                     currentDestination = currentDestination,
                     onDestinationSelected = { dest ->
-                        scope.launch {
-                            pagerState.animateScrollToPage(
-                                AppDestinations.entries.indexOf(dest),
-                                animationSpec = tween(420, easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f))
-                            )
-                        }
-                    },
-                    useMonet = useMonet,
-                    backdrop = backdrop,
-                    showBlur = showBlur,
-                    floatingNavBar = true
+                                scope.launch {
+                                    pagerState.animateScrollToPage(
+                                        AppDestinations.entries.indexOf(dest)
+                                    )
+                                }
+                            },
+                            useMonet = useMonet,
+                            backdrop = backdrop,
+                            showBlur = showBlur,
+                            floatingNavBar = true
                 )
             }
         }

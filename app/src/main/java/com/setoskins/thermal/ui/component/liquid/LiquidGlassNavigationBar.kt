@@ -71,6 +71,7 @@ import androidx.compose.ui.util.lerp
 import com.setoskins.thermal.ui.component.animation.DampedDragAnimation
 import com.setoskins.thermal.ui.component.animation.InteractiveHighlight
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BadgedBox
@@ -267,11 +268,16 @@ internal fun IosLiquidGlassNavigationBar(
         ).also { holder.instance = it }
     }
 
-    LaunchedEffect(selectedIndex) {
-        if (currentIndex != selectedIndex) {
-            isExternalUpdate = true
-            currentIndex = selectedIndex
-        }
+    LaunchedEffect(Unit) {
+        snapshotFlow { selectedIndex }
+            .drop(1)
+            .debounce(180)
+            .collect { index ->
+                if (currentIndex != index) {
+                    isExternalUpdate = true
+                    currentIndex = index
+                }
+            }
     }
     val onItemClickUpdated by rememberUpdatedState(onItemClick)
     LaunchedEffect(dampedDrag) {

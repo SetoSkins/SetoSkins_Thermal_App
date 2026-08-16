@@ -143,6 +143,14 @@ internal class DampedDragAnimation(
         }
     }
 
+    fun snapToValue(value: Float) {
+        animationScope.launch {
+            mutatorMutex.mutate {
+                valueAnimation.snapTo(value.coerceIn(valueRange))
+            }
+        }
+    }
+
     private fun updateVelocity() {
         velocityTracker.addPosition(nowMillis(), Offset(value, 0f))
         val span = (valueRange.endInclusive - valueRange.start).coerceAtLeast(1e-6f)
