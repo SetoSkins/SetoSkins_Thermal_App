@@ -303,6 +303,13 @@ object ModuleDetector {
         }.getOrDefault(BatteryInfo())
     }
 
+    suspend fun readThermalThrottleCount(): Int = withContext(Dispatchers.IO) {
+        runCatching {
+            val content = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'")).inputStream.bufferedReader().readText()
+            Regex("触发内核墙限流").findAll(content).count()
+        }.getOrDefault(0)
+    }
+
     data class LogDataPoint(val time: String, val level: Float, val temp: Float, val watt: Float)
 
     suspend fun getParsedLogData(): List<LogDataPoint> = withContext(Dispatchers.IO) {

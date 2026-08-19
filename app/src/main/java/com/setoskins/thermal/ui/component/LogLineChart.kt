@@ -128,11 +128,11 @@ private data class ChartData(
 )
 
 @Composable
-private fun rememberChartData(points: List<ModuleDetector.LogDataPoint>, maxWatt: Float, maxTemp: Float): ChartData = remember(points, maxWatt, maxTemp) {
+private fun rememberChartData(points: List<ModuleDetector.LogDataPoint>, maxWatt: Float, maxTemp: Float, minTemp: Float): ChartData = remember(points, maxWatt, maxTemp, minTemp) {
     val timeSeconds = points.map { parseTimeSeconds(it.time) }
     val wattNorm = points.map { (it.watt / maxWatt).coerceIn(0f, 1f) }
     val levelNorm = points.map { it.level / 100f }
-    val tempNorm = points.map { (it.temp / maxTemp).coerceIn(0f, 1f) }
+    val tempNorm = points.map { ((it.temp - minTemp) / (maxTemp - minTemp)).coerceIn(0f, 1f) }
     ChartData(timeSeconds = timeSeconds, wattNorm = wattNorm, levelNorm = levelNorm, tempNorm = tempNorm)
 }
 
@@ -149,10 +149,17 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     
     val maxWattPoint = remember(points) { points.maxOfOrNull { it.watt } ?: 0f }
     val maxWatt = remember(singleCurveMode, maxWattPoint) { if (singleCurveMode != null) 100f else maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f) }
-    val maxTemp = 100f
+    val maxTempPoint = remember(points) { points.maxOfOrNull { it.temp } ?: 0f }
+    val minTemp = if (singleCurveMode == "temp") 20f else 0f
+    val maxTemp = remember(singleCurveMode, maxTempPoint) {
+        if (singleCurveMode == "temp") {
+            val n = maxOf(2, kotlin.math.ceil((maxTempPoint - 20f) / 20f).toInt())
+            20f + n * 20f
+        } else 100f
+    }
 
     // ── 预计算所有数据，避免 Canvas 内重复计算 ──
-    val chartData = rememberChartData(points, maxWatt, maxTemp)
+    val chartData = rememberChartData(points, maxWatt, maxTemp, minTemp)
     
     var touchIndex by remember { mutableStateOf(-1) }
     val animatedTouchIndex = remember { Animatable(-1f) }
@@ -228,11 +235,11 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     }
                 }
             }
-            // 到达80%时标记：距离上一个标记 ≤5 分钟则替换，>5 分钟则追加
+            // 到达80%时标记：距离上一个标记 ≤10 分钟则替换，>10 分钟则追加
             val m80 = (timeSeconds[charge80Index] - baseTimeSeconds) / 60
             if (data.isNotEmpty()) {
                 val lastMarkM = (timeSeconds[data.last().first] - baseTimeSeconds) / 60
-                if (m80 - lastMarkM <= 5) {
+                if (m80 - lastMarkM <= 10) {
                     data[data.lastIndex] = charge80Index to "${m80}m"
                 } else {
                     data.add(charge80Index to "${m80}m")
@@ -308,12 +315,12 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 val fracIndex = (idx - 1) + frac
                 data.add(fracIndex to "${minute}m")
             }
-            // 到达80%时生成刻度：距离上一个 ≤5 分钟则替换，>5 分钟则追加
+            // 到达80%时生成刻度：距离上一个 ≤10 分钟则替换，>10 分钟则追加
             val m80 = (timeSeconds[charge80Idx] - baseTimeSeconds) / 60
             if (data.isNotEmpty()) {
                 val lastLabel = data.last().second
                 val lastM = lastLabel.substringBefore("m").toLongOrNull() ?: 0L
-                if (m80 - lastM <= 5) {
+                if (m80 - lastM <= 10) {
                     data[data.lastIndex] = charge80Idx.toFloat() to "${m80}m"
                 } else {
                     data.add(charge80Idx.toFloat() to "${m80}m")
@@ -351,6 +358,16 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 targetValue = if (isSingleCurveMode && !isTouching) 3f else 1f,
                 animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
                 label = "outer_duration_weight"
+            )
+            val centerSpacerWeight by animateFloatAsState(
+                targetValue = if (isTouching && singleCurveMode != null) 1.5f else 0f,
+                animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+                label = "center_spacer_weight"
+            )
+            val rightWeight by animateFloatAsState(
+                targetValue = if (isTouching && singleCurveMode != null) 1.5f else 3f,
+                animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
+                label = "right_weight"
             )
             val summaryTransition = updateTransition(targetState = shouldCollapse, label = "log_summary_transition")
             val wattWeight by summaryTransition.animateFloat(
@@ -397,13 +414,16 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         isZh = isZh
                     )
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (centerSpacerWeight > 0.01f) {
+                        Spacer(modifier = Modifier.weight(centerSpacerWeight))
+                    }
                     Box(modifier = Modifier.weight(outerDurationWeight), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(durationValue, fontSize = 14.sp, color = primaryColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
                             Text(if (isZh) "时长" else "Dur", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
-                    Row(modifier = Modifier.weight(3f), verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.weight(rightWeight), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.weight(wattWeight).graphicsLayer { alpha = wattAlpha; scaleX = wattScale; scaleY = wattScale }, contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(wattValue, fontSize = 14.sp, color = wattColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
@@ -475,7 +495,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 yAxisPaint.color = yAxisTextColor.copy(alpha = yAxisAlpha).toArgb()
                 val (labelMin, labelMax, labelSuffix) = when (singleCurveMode) {
                     "level" -> Triple(0f, 100f, "%")
-                    "temp" -> Triple(20f, 60f, "°")
+                    "temp" -> Triple(minTemp, maxTemp, "°C")
                     else -> Triple(0f, 100f, "W")
                 }
                 for (i in 0..4) {
@@ -568,6 +588,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
 
                     // ── 绘制 marker 竖线（单曲线模式下隐藏） ──
                     if (singleCurveMode == null) {
+                    val minWattInt = markerData.minOf { (index, _) -> points[index].watt.roundToInt() }
                     markerData.forEach { (index, _) ->
                         val x = index * sp
                         drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
@@ -581,7 +602,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             drawCircle(wattColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
                             if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                 markerPaint.color = wattColor.copy(alpha = markerAlpha).toArgb()
-                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, y - 10.dp.toPx(), markerPaint)
+                                val labelY = if (p.watt.roundToInt() == minWattInt) y + 22.dp.toPx() else y - 10.dp.toPx()
+                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, labelY, markerPaint)
                             }
                         }
                         // 温度 marker

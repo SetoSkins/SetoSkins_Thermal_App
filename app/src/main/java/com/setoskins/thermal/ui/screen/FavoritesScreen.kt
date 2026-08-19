@@ -143,7 +143,7 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp)
         ) {
         item(key = "battery_card") { BatteryInfoCard() }
-        item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (8).dp)) } }
+        item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (4).dp)) } }
         item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
                 WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
             } }
@@ -155,7 +155,7 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                         Text(text = logContent, fontSize = 13.sp, color = if (isCenterText && logContent != "正在加载日志...") secondaryColor else onSurfaceColor, textAlign = if (isCenterText) TextAlign.Center else TextAlign.Start, modifier = if (isCenterText) Modifier.fillMaxWidth() else Modifier)
                     }
                 } else {
-                    if (logPoints.isEmpty()) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No Data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
+                    if (logPoints.isEmpty() || logPoints.size < 2) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No Data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
                     else {
                         LogLineChart(points = logPoints, isZh = isZh, showWatt = if (singleCurveMode == "watt") true else showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging, singleCurveMode = singleCurveMode, onSingleCurveModeChange = { singleCurveMode = it })
                     }

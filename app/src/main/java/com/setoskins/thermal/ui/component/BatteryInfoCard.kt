@@ -11,10 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,9 +29,11 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun BatteryInfoCard() {
     var info by remember { mutableStateOf(ModuleDetector.BatteryInfo()) }
+    var throttleCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (isActive) {
             info = ModuleDetector.readBatteryInfo()
+            throttleCount = ModuleDetector.readThermalThrottleCount()
             kotlinx.coroutines.delay(3000)
         }
     }
@@ -71,6 +75,14 @@ fun BatteryInfoCard() {
                 BatteryStatItem("电量", cap, Modifier.weight(1f))
                 BatteryStatItem("充电状态", st, Modifier.weight(1f))
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "触发内核墙限流：$throttleCount",
+                fontSize = 12.sp,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

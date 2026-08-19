@@ -45,10 +45,10 @@
       </SelectionState>
       <SelectionState runConfigName="androidTest">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-06-27T17:43:46.566859400Z">
+        <DropdownSelection timestamp="2026-08-19T05:47:58.782789500Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=be2e557f" />
+              <DeviceId pluginId="Wireless" identifier="serviceName=adb-be2e557f-B9dBP4" />
             </handle>
           </Target>
         </DropdownSelection>

@@ -526,7 +526,7 @@ internal fun IosLiquidGlassNavigationBar(
                             }
                             .then(dampedDrag.modifier)
                             .clip(pillShape)
-                            .background(Color(0xFFEDEDED), pillShape)
+                            .background(if (isDark) Color(0xFF313131) else Color(0xFFEDEDED), pillShape)
                             .height(52.dp)
                             .width(tabWidthDp),
                         contentAlignment = Alignment.CenterStart,

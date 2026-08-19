@@ -69,7 +69,6 @@ import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Info
 
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.utils.overScrollVertical
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.RestartDialog
 import com.setoskins.thermal.ui.component.RootCheckDialog
@@ -362,7 +361,7 @@ fun MyApplicationApp(
                                         onNavigateToWhitelist = { showWhitelistPage = true },
                                         onNavigateToBypassList = { showBypassListPage = true },
                                         onDialogVisibilityChange = onDialogVisibilityChange,
-                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
+                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
                                     )
                                 }
                                 AppDestinations.FAVORITES -> {
@@ -371,7 +370,7 @@ fun MyApplicationApp(
                                         reloadTrigger = logReloadTrigger,
                                         scrollBehavior = favoritesScrollBehavior,
                                         contentPaddingTop = innerPadding.calculateTopPadding(),
-                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
+                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
                                     )
                                 }
                                 AppDestinations.PROFILE -> {
@@ -384,7 +383,7 @@ fun MyApplicationApp(
                                         onNavigateToDonate = { showDonatePage = true },
                                         reduceEffects = reduceExpensiveEffects,
                                         onDialogVisibilityChange = onDialogVisibilityChange,
-                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).overScrollVertical()
+                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
                                     )
                                 }
                             }
