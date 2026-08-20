@@ -57,6 +57,10 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
+import com.setoskins.thermal.ui.component.animation.customOverScroll
+import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.ExperimentalFoundationApi
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
@@ -137,32 +141,35 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
     val listState = rememberLazyListState()
 
     Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp)
-        ) {
-        item(key = "battery_card") { BatteryInfoCard() }
-        item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (4).dp)) } }
-        item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
-                WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
-            } }
-        item(key = "log_content") { MiuixCard(modifier = Modifier.padding(top = 16.dp)) {
-                if (selectedIndex == 0) {
-                    val secondaryColor = MiuixTheme.colorScheme.onSurfaceSecondary
-                    val onSurfaceColor = MiuixTheme.colorScheme.onSurface
-                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = if (isCenterText) Alignment.Center else Alignment.TopStart) {
-                        Text(text = logContent, fontSize = 13.sp, color = if (isCenterText && logContent != "正在加载日志...") secondaryColor else onSurfaceColor, textAlign = if (isCenterText) TextAlign.Center else TextAlign.Start, modifier = if (isCenterText) Modifier.fillMaxWidth() else Modifier)
-                    }
-                } else {
-                    if (logPoints.isEmpty() || logPoints.size < 2) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No Data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
-                    else {
-                        LogLineChart(points = logPoints, isZh = isZh, showWatt = if (singleCurveMode == "watt") true else showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging, singleCurveMode = singleCurveMode, onSingleCurveModeChange = { singleCurveMode = it })
+        @OptIn(ExperimentalFoundationApi::class)
+        CompositionLocalProvider(LocalOverscrollFactory provides null) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().customOverScroll().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 76.dp)
+            ) {
+                item(key = "battery_card") { BatteryInfoCard() }
+                item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (4).dp)) } }
+                item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
+                        WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
+                    } }
+                item(key = "log_content") { MiuixCard(modifier = Modifier.padding(top = 16.dp)) {
+                        if (selectedIndex == 0) {
+                            val secondaryColor = MiuixTheme.colorScheme.onSurfaceSecondary
+                            val onSurfaceColor = MiuixTheme.colorScheme.onSurface
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = if (isCenterText) Alignment.Center else Alignment.TopStart) {
+                                Text(text = logContent, fontSize = 13.sp, color = if (isCenterText && logContent != "正在加载日志...") secondaryColor else onSurfaceColor, textAlign = if (isCenterText) TextAlign.Center else TextAlign.Start, modifier = if (isCenterText) Modifier.fillMaxWidth() else Modifier)
+                            }
+                        } else {
+                            if (logPoints.isEmpty() || logPoints.size < 2) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No Data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
+                            else {
+                                LogLineChart(points = logPoints, isZh = isZh, showWatt = if (singleCurveMode == "watt") true else showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging, singleCurveMode = singleCurveMode, onSingleCurveModeChange = { singleCurveMode = it })
+                            }
+                        }
                     }
                 }
             }
         }
-    }
         VerticalScrollBar(
             adapter = rememberScrollBarAdapter(listState)
         )

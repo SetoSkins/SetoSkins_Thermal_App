@@ -77,7 +77,11 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import com.setoskins.thermal.ui.component.animation.customOverScroll
+import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.runtime.CompositionLocalProvider
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.foundation.ExperimentalFoundationApi
 
 @OptIn(ExperimentalMaterial3Api::class, top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
@@ -339,12 +343,14 @@ fun HomeScreen(
     val listState = rememberLazyListState()
 
     Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp)
-        ) {
+        @OptIn(ExperimentalFoundationApi::class)
+        CompositionLocalProvider(LocalOverscrollFactory provides null) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().customOverScroll().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(11.dp)
+            ) {
         item(key = "status_card") {
             if (!moduleInstalled) RedNotInstalledCard()
             else if (hasUpdate) YellowUpdateCard()
@@ -649,6 +655,7 @@ fun HomeScreen(
             item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(60.dp)) }
         }
 
+    }
     }
 
         VerticalScrollBar(
