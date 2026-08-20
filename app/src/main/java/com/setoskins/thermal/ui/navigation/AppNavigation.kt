@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -82,6 +81,7 @@ import com.setoskins.thermal.ui.screen.ProfileScreen
 import com.setoskins.thermal.ui.screen.DonatePage
 import com.setoskins.thermal.ui.screen.BlacklistPage
 import com.setoskins.thermal.ui.screen.BypassListPage
+import android.util.Log
 import android.app.Activity
 import androidx.compose.ui.res.painterResource
 import com.setoskins.thermal.R
@@ -335,8 +335,7 @@ fun MyApplicationApp(
                             useMonet = useMonet,
                             backdrop = backdrop,
                             showBlur = showBlur,
-                            floatingNavBar = false,
-                            pagerState = pagerState
+                            floatingNavBar = false
                         )
                     })
                 ) { innerPadding ->
@@ -453,8 +452,7 @@ fun MyApplicationApp(
                             useMonet = useMonet,
                             backdrop = backdrop,
                             showBlur = showBlur,
-                            floatingNavBar = true,
-                            pagerState = pagerState
+                            floatingNavBar = true
                 )
             }
         }
@@ -553,7 +551,6 @@ fun ThemedNavigationBar(
     backdrop: LayerBackdrop? = null,
     showBlur: Boolean = false,
     floatingNavBar: Boolean = false,
-    pagerState: PagerState? = null,
     modifier: Modifier = Modifier
 ) {
     if (floatingNavBar) {
@@ -566,7 +563,6 @@ fun ThemedNavigationBar(
                 items = items,
                 selectedIndex = selectedIndex,
                 onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
-                pagerState = pagerState,
                 modifier = modifier,
             )
         } else {
@@ -576,7 +572,6 @@ fun ThemedNavigationBar(
                 backdrop = backdrop,
                 showBlur = showBlur,
                 useMonet = useMonet,
-                pagerState = pagerState,
                 modifier = modifier,
             )
         }
@@ -625,7 +620,6 @@ private fun iOSLikeFloatingNavigationBar(
     backdrop: LayerBackdrop?,
     showBlur: Boolean,
     useMonet: Boolean = false,
-    pagerState: PagerState? = null,
     modifier: Modifier = Modifier,
 ) {
     val items = remember {
@@ -639,7 +633,6 @@ private fun iOSLikeFloatingNavigationBar(
         backdrop = backdrop,
         isBlurActive = showBlur && backdrop != null,
         useMonet = useMonet,
-        pagerState = pagerState,
         modifier =  modifier,
     )
 }

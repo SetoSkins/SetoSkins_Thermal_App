@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +55,6 @@ fun MaterialFloatingNavigationBar(
     items: List<NavigationItem>,
     selectedIndex: Int,
     onItemClick: (Int) -> Unit,
-    pagerState: PagerState? = null,
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -85,22 +83,13 @@ fun MaterialFloatingNavigationBar(
         }
     }
 
-    LaunchedEffect(selectedIndex, totalWidth, pagerState?.currentPage, pagerState?.currentPageOffsetFraction) {
+    LaunchedEffect(selectedIndex, totalWidth) {
         if (totalWidth > 0f && itemCount > 0 && !isDragging) {
-            val itemWidth = totalWidth / itemCount
-            val targetOffset = if (pagerState != null) {
-                (pagerState.currentPage + pagerState.currentPageOffsetFraction) * itemWidth
-            } else {
-                selectedIndex * itemWidth
-            }
-            if (pagerState != null) {
-                indicatorOffset.snapTo(targetOffset)
-            } else {
-                indicatorOffset.animateTo(
-                    targetValue = targetOffset,
-                    animationSpec = tween(durationMillis = 300)
-                )
-            }
+            val targetOffset = (totalWidth / itemCount) * selectedIndex
+            indicatorOffset.animateTo(
+                targetValue = targetOffset,
+                animationSpec = tween(durationMillis = 300)
+            )
         }
     }
 

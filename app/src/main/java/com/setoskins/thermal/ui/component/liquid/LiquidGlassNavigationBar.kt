@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -72,6 +71,7 @@ import androidx.compose.ui.util.lerp
 import com.setoskins.thermal.ui.component.animation.DampedDragAnimation
 import com.setoskins.thermal.ui.component.animation.InteractiveHighlight
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BadgedBox
@@ -172,7 +172,6 @@ internal fun IosLiquidGlassNavigationBar(
     backdrop: LayerBackdrop?,
     isBlurActive: Boolean,
     useMonet: Boolean = false,
-    pagerState: PagerState? = null,
     modifier: Modifier = Modifier,
     badge: (Int) -> (@Composable () -> Unit)? = { null },
 ) {
@@ -269,25 +268,22 @@ internal fun IosLiquidGlassNavigationBar(
         ).also { holder.instance = it }
     }
 
-    LaunchedEffect(selectedIndex) {
-        if (currentIndex != selectedIndex) {
-            isExternalUpdate = true
-            currentIndex = selectedIndex
-        }
-    }
-
-    LaunchedEffect(pagerState?.currentPage, pagerState?.currentPageOffsetFraction) {
-        if (pagerState != null) {
-            val progress = pagerState.currentPage + pagerState.currentPageOffsetFraction
-            dampedDrag.snapToValue(progress)
-        }
-    }
-
+    LaunchedEffect(Unit) {
+	        snapshotFlow { selectedIndex }
+	            .drop(1)
+	            .debounce(180)
+	            .collect { index ->
+	                if (currentIndex != index) {
+	                    isExternalUpdate = true
+	                    currentIndex = index
+	                }
+	            }
+	    }
     val onItemClickUpdated by rememberUpdatedState(onItemClick)
     LaunchedEffect(dampedDrag) {
-        snapshotFlow { currentIndex }.collectLatest { index ->
+        snapshotFlow { currentIndex }.drop(1).collectLatest { index ->
+            dampedDrag.animateToValue(index.toFloat())
             if (isExternalUpdate) {
-                dampedDrag.animateToValue(index.toFloat())
                 isExternalUpdate = false
             } else {
                 onItemClickUpdated(index)
