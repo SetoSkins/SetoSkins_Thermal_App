@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -324,6 +325,7 @@ fun MyApplicationApp(
                     bottomBar = if (floatingNavBar) ({}) else ({
                         ThemedNavigationBar(
                             currentDestination = currentDestination,
+                            pagerState = pagerState,
                             onDestinationSelected = { dest ->
                                 scope.launch {
                                     pagerState.animateScrollToPage(
@@ -441,6 +443,7 @@ fun MyApplicationApp(
             ) {
                 ThemedNavigationBar(
                     currentDestination = currentDestination,
+                    pagerState = pagerState,
                     onDestinationSelected = { dest ->
                                 scope.launch {
                                     pagerState.animateScrollToPage(
@@ -548,6 +551,7 @@ fun ThemedNavigationBar(
     currentDestination: AppDestinations,
     onDestinationSelected: (AppDestinations) -> Unit,
     useMonet: Boolean,
+    pagerState: PagerState? = null,
     backdrop: LayerBackdrop? = null,
     showBlur: Boolean = false,
     floatingNavBar: Boolean = false,
@@ -562,12 +566,14 @@ fun ThemedNavigationBar(
             MaterialFloatingNavigationBar(
                 items = items,
                 selectedIndex = selectedIndex,
+                pagerState = pagerState,
                 onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
-                modifier = modifier,
+                 modifier = modifier,
             )
         } else {
             iOSLikeFloatingNavigationBar(
                 currentDestination = currentDestination,
+                pagerState = pagerState,
                 onDestinationSelected = onDestinationSelected,
                 backdrop = backdrop,
                 showBlur = showBlur,
@@ -619,6 +625,7 @@ private fun iOSLikeFloatingNavigationBar(
     onDestinationSelected: (AppDestinations) -> Unit,
     backdrop: LayerBackdrop?,
     showBlur: Boolean,
+    pagerState: PagerState? = null,
     useMonet: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -629,6 +636,7 @@ private fun iOSLikeFloatingNavigationBar(
     IosLiquidGlassNavigationBar(
         items = items,
         selectedIndex = selectedIndex,
+        pagerState = pagerState,
         onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
         backdrop = backdrop,
         isBlurActive = showBlur && backdrop != null,

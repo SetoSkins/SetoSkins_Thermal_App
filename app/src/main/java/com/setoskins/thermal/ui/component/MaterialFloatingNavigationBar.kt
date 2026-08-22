@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,12 +49,14 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
 fun MaterialFloatingNavigationBar(
     items: List<NavigationItem>,
     selectedIndex: Int,
+    pagerState: androidx.compose.foundation.pager.PagerState?,
     onItemClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -70,6 +73,7 @@ fun MaterialFloatingNavigationBar(
 
     val indicatorOffset = remember { Animatable(0f) }
     var isDragging by remember { mutableStateOf(false) }
+    var suppressFollow by remember { mutableStateOf(false) }
     val dragScope = rememberCoroutineScope()
 
     val highlightedIndex by remember {
@@ -83,13 +87,14 @@ fun MaterialFloatingNavigationBar(
         }
     }
 
-    LaunchedEffect(selectedIndex, totalWidth) {
-        if (totalWidth > 0f && itemCount > 0 && !isDragging) {
-            val targetOffset = (totalWidth / itemCount) * selectedIndex
-            indicatorOffset.animateTo(
-                targetValue = targetOffset,
-                animationSpec = tween(durationMillis = 300)
-            )
+    LaunchedEffect(totalWidth, itemCount, pagerState) {
+        val state = pagerState ?: return@LaunchedEffect
+        snapshotFlow { state.currentPage + state.currentPageOffsetFraction }.collect { pos ->
+            val settled = abs(pos - pos.roundToInt()) < 0.002f
+            if (suppressFollow && settled) suppressFollow = false
+            if (!isDragging && !suppressFollow && totalWidth > 0f && itemCount > 0) {
+                indicatorOffset.snapTo((totalWidth / itemCount) * pos)
+            }
         }
     }
 
@@ -165,6 +170,7 @@ fun MaterialFloatingNavigationBar(
                                     .roundToInt()
                                     .coerceIn(0, itemCount - 1)
                                 if (targetIndex != selectedIndex) {
+                                    suppressFollow = true
                                     onItemClick(targetIndex)
                                 } else {
                                     dragScope.launch {

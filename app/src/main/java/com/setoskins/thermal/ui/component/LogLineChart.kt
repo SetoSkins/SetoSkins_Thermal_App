@@ -636,7 +636,13 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val x = animatedIndex * sp
                         val p = points[animatedIndex.toInt().coerceIn(points.indices)]
                         val idx = animatedIndex.toInt().coerceIn(points.indices)
-                        drawLine(primaryColor.copy(alpha = alpha), Offset(x, 0f), Offset(x, h), strokeWidth = 1.5.dp.toPx())
+                        val touchLineColor = when (singleCurveMode) {
+                        "watt" -> wattColor
+                        "level" -> levelColor
+                        "temp" -> tempColor
+                        else -> primaryColor
+                    }
+                    drawLine(touchLineColor.copy(alpha = alpha), Offset(x, 0f), Offset(x, h), strokeWidth = 1.5.dp.toPx())
                         val textOffsetX = 12.dp.toPx()
                         val rightLimit = w - 8.dp.toPx()
 

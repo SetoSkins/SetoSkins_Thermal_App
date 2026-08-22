@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,7 +72,6 @@ import androidx.compose.ui.util.lerp
 import com.setoskins.thermal.ui.component.animation.DampedDragAnimation
 import com.setoskins.thermal.ui.component.animation.InteractiveHighlight
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BadgedBox
@@ -171,6 +171,7 @@ internal fun IosLiquidGlassNavigationBar(
     onItemClick: (Int) -> Unit,
     backdrop: LayerBackdrop?,
     isBlurActive: Boolean,
+    pagerState: PagerState? = null,
     useMonet: Boolean = false,
     modifier: Modifier = Modifier,
     badge: (Int) -> (@Composable () -> Unit)? = { null },
@@ -214,6 +215,8 @@ internal fun IosLiquidGlassNavigationBar(
 
     var currentIndex by remember { mutableIntStateOf(selectedIndex) }
     var isExternalUpdate by remember { mutableStateOf(false) }
+    var isIndicatorDragging by remember { mutableStateOf(false) }
+    var suppressFollow by remember { mutableStateOf(false) }
 
     class DampedDragHolder {
         var instance: DampedDragAnimation? = null
@@ -242,10 +245,12 @@ internal fun IosLiquidGlassNavigationBar(
                 }
                 globalTouchX in 0f..totalWidthPx
             },
-            onDragStarted = {},
+            onDragStarted = { isIndicatorDragging = true },
             onDragStopped = {
+                isIndicatorDragging = false
                 val targetIndex = targetValue.roundToInt().coerceIn(0, tabsCount - 1)
                 if (currentIndex != targetIndex) {
+                    suppressFollow = true
                     currentIndex = targetIndex
                 } else {
                     animateToValue(targetIndex.toFloat())
@@ -268,21 +273,24 @@ internal fun IosLiquidGlassNavigationBar(
         ).also { holder.instance = it }
     }
 
-    LaunchedEffect(Unit) {
-	        snapshotFlow { selectedIndex }
-	            .drop(1)
-	            .debounce(180)
-	            .collect { index ->
-	                if (currentIndex != index) {
-	                    isExternalUpdate = true
-	                    currentIndex = index
-	                }
-	            }
-	    }
+    LaunchedEffect(dampedDrag, pagerState) {
+        val state = pagerState ?: return@LaunchedEffect
+        snapshotFlow { state.currentPage + state.currentPageOffsetFraction }.collect { pos ->
+            val settled = abs(pos - pos.roundToInt()) < 0.002f
+            if (suppressFollow && settled) suppressFollow = false
+            if (!isIndicatorDragging && !suppressFollow) {
+                dampedDrag.snapToValue(pos)
+            }
+            val settledIndex = pos.roundToInt().coerceIn(0, tabsCount - 1)
+            if (settled && !isIndicatorDragging && !suppressFollow && currentIndex != settledIndex) {
+                isExternalUpdate = true
+                currentIndex = settledIndex
+            }
+        }
+    }
     val onItemClickUpdated by rememberUpdatedState(onItemClick)
     LaunchedEffect(dampedDrag) {
         snapshotFlow { currentIndex }.drop(1).collectLatest { index ->
-            dampedDrag.animateToValue(index.toFloat())
             if (isExternalUpdate) {
                 isExternalUpdate = false
             } else {
