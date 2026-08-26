@@ -37,6 +37,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -55,6 +56,7 @@ import kotlin.math.roundToInt
 @Composable
 fun MaterialFloatingNavigationBar(
     items: List<NavigationItem>,
+    filledIcons: List<ImageVector>? = null,
     selectedIndex: Int,
     pagerState: androidx.compose.foundation.pager.PagerState?,
     onItemClick: (Int) -> Unit,
@@ -135,7 +137,7 @@ fun MaterialFloatingNavigationBar(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = item.icon,
+                        imageVector = if (isSelected && filledIcons != null) filledIcons[index] else item.icon,
                         contentDescription = item.label,
                         tint = if (isSelected) selectedContentColor else unselectedContentColor,
                         modifier = Modifier.size(22.dp)

@@ -56,6 +56,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -167,6 +168,7 @@ private fun rememberGravityRotatedHighlight(
 @Composable
 internal fun IosLiquidGlassNavigationBar(
     items: List<NavigationItem>,
+    filledIcons: List<ImageVector>? = null,
     selectedIndex: Int,
     onItemClick: (Int) -> Unit,
     backdrop: LayerBackdrop?,
@@ -354,7 +356,7 @@ internal fun IosLiquidGlassNavigationBar(
                 BadgedBox(badge = { badge(index)?.invoke() }) {
                     Icon(
                         modifier = Modifier.size(22.dp),
-                        imageVector = item.icon,
+                        imageVector = if (index == currentIndex && filledIcons != null) filledIcons[index] else item.icon,
                         // Decorative: the adjacent label names the item; avoids TalkBack double-read.
                         contentDescription = null,
                     )

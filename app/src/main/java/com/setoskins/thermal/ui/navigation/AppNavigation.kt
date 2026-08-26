@@ -25,7 +25,12 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -87,10 +92,10 @@ import android.app.Activity
 import androidx.compose.ui.res.painterResource
 import com.setoskins.thermal.R
 
-enum class AppDestinations(val label: String, val icon: ImageVector) {
-    HOME("主页", Icons.Filled.Home),
-    FAVORITES("日志", MiuixIcons.File),
-    PROFILE("关于", MiuixIcons.Info),
+enum class AppDestinations(val label: String, val icon: ImageVector, val filledIcon: ImageVector) {
+    HOME("主页", Icons.Outlined.Home, Icons.Filled.Home),
+    FAVORITES("日志", Icons.Outlined.Description, Icons.Filled.Description),
+    PROFILE("关于", Icons.Outlined.Info, Icons.Filled.Info),
 }
 
 @Composable
@@ -560,11 +565,12 @@ fun ThemedNavigationBar(
     if (floatingNavBar) {
         if (useMonet) {
             val items = remember {
-                AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.icon) }
+                AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.filledIcon) }
             }
             val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
             MaterialFloatingNavigationBar(
                 items = items,
+                filledIcons = null,
                 selectedIndex = selectedIndex,
                 pagerState = pagerState,
                 onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
@@ -591,10 +597,11 @@ fun ThemedNavigationBar(
         val barColor = if (isDark) miuixColors.surface.copy(alpha = barAlpha) else Color.White.copy(alpha = barAlpha)
         NavigationBar(modifier = navModifier, containerColor = barColor, contentColor = miuixColors.onSurface) {
             AppDestinations.entries.forEach { destination ->
+                val isSelected = destination == currentDestination
                 NavigationBarItem(
-                    icon = { Icon(imageVector = destination.icon, contentDescription = destination.label) },
+                    icon = { Icon(imageVector = if (isSelected) destination.filledIcon else destination.icon, contentDescription = destination.label) },
                     label = { androidx.compose.material3.Text(text = destination.label) },
-                    selected = destination == currentDestination,
+                    selected = isSelected,
                     onClick = { if (destination != currentDestination) onDestinationSelected(destination) },
                     colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                         selectedIconColor = miuixColors.primary,
@@ -630,11 +637,12 @@ private fun iOSLikeFloatingNavigationBar(
     modifier: Modifier = Modifier,
 ) {
     val items = remember {
-        AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.icon) }
+        AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.filledIcon) }
     }
     val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
     IosLiquidGlassNavigationBar(
         items = items,
+        filledIcons = null,
         selectedIndex = selectedIndex,
         pagerState = pagerState,
         onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
