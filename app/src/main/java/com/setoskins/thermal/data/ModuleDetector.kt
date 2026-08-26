@@ -33,6 +33,7 @@ object ModuleDetector {
     private val LEVEL_REGEX = Regex("电量\\s+(\\d+)%?")
     private val TEMP_REGEX = Regex("温度\\s+(\\d+)")
     private val CURRENT_REGEX = Regex("电流\\s+(-?\\d+)")
+    private val THROTTLE_EVENT_REGEX = Regex("\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}.*触发内核墙限流(?!：)")
 
     /**
      * 检测设备是否有 root 权限。
@@ -306,7 +307,8 @@ object ModuleDetector {
     suspend fun readThermalThrottleCount(): Int = withContext(Dispatchers.IO) {
         runCatching {
             val content = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'")).inputStream.bufferedReader().readText()
-            Regex("触发内核墙限流").findAll(content).count()
+            // 仅匹配带有时间戳的限流日志，排除“触发内核墙限流：x”这种统计文本
+            THROTTLE_EVENT_REGEX.findAll(content).count()
         }.getOrDefault(0)
     }
 

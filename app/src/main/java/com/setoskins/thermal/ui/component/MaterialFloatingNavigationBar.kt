@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Icon
+import androidx.compose.material3.Icon
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -136,12 +136,17 @@ fun MaterialFloatingNavigationBar(
                     verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = if (isSelected && filledIcons != null) filledIcons[index] else item.icon,
-                        contentDescription = item.label,
-                        tint = if (isSelected) selectedContentColor else unselectedContentColor,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    Box(
+                        modifier = Modifier.size(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isSelected && filledIcons != null) filledIcons[index] else item.icon,
+                            contentDescription = item.label,
+                            tint = if (isSelected) selectedContentColor else unselectedContentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                     Text(
                         text = item.label,
                         fontSize = 11.sp,
