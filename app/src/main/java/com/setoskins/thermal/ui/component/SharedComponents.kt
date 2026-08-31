@@ -30,6 +30,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -262,6 +263,72 @@ fun RestartDialog(
             }
         }
     )
+}
+
+// ── UpdateDialog ──
+
+@Composable
+fun UpdateDialog(
+    show: Boolean,
+    version: String,
+    releaseNotes: String,
+    isZh: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    onDismissStart: () -> Unit = {}
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var internalShow by remember { mutableStateOf(show) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
+    OverlayDialog(
+        show = internalShow,
+        title = if (isZh) "发现新版本 $version" else "New Version Found $version",
+        onDismissRequest = { onDismissStart(); pendingAction = onDismiss; internalShow = false },
+        onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
+        content = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = releaseNotes,
+                    fontSize = 14.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDismissStart()
+                        pendingAction = onDismiss
+                        internalShow = false
+                    }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                        Text(if (isZh) "以后再说" else "Later", fontWeight = FontWeight.Bold)
+                    }
+                    Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        pendingAction = onConfirm
+                        internalShow = false
+                    }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                        Text(if (isZh) "立即更新" else "Update Now", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun UpdateDialogPreview() {
+    MiuixTheme {
+        UpdateDialog(
+            show = true,
+            version = "1.2.3",
+            releaseNotes = "1. 适配 MIUIX 风格\n2. 适配 Material You 动态取色\n3. 优化温控逻辑\n4. 修复已知问题",
+            isZh = true,
+            onConfirm = {},
+            onDismiss = {}
+        )
+    }
 }
 
 // ── SliderRow：Slider + 可点击数值标签（精确输入入口） ──

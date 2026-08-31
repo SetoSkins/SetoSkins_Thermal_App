@@ -56,6 +56,11 @@ import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ColorAppIconTint
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.VerticalScrollBar
+import com.setoskins.thermal.ui.component.UpdateDialog
+import com.setoskins.thermal.data.UpdateManager
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
@@ -99,6 +104,32 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
         appName = context.applicationInfo.loadLabel(context.packageManager).toString()
     }
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"; val scope = rememberCoroutineScope(); val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateDismissStarted by remember { mutableStateOf(false) }
+
+    UpdateDialog(
+        show = showUpdateDialog,
+        version = updateInfo?.latestVersion ?: "",
+        releaseNotes = updateInfo?.releaseNotes ?: "",
+        isZh = isZh,
+        onConfirm = {
+            updateInfo?.downloadUrl?.let { url ->
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                context.startActivity(intent)
+            }
+            onDialogVisibilityChange(false)
+            showUpdateDialog = false
+        },
+        onDismiss = {
+            updateDismissStarted = true
+            onDialogVisibilityChange(false)
+            showUpdateDialog = false
+        }
+    )
+
     val exportLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.CreateDocument("text/plain"), onResult = { uri -> uri?.let { scope.launch { val content = ModuleDetector.readConfigRaw(); if (content.isNotEmpty()) { context.contentResolver.openOutputStream(it)?.use { s -> s.write(content.toByteArray()) }; Toast.makeText(context, if (isZh) "导出成功" else "Export Success", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "导出失败：内容为空" else "Export Failed: Empty content", Toast.LENGTH_SHORT).show() } } } })
     val importLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument(), onResult = { uri -> uri?.let { scope.launch { try { val tempFile = java.io.File(context.cacheDir, "temp_config_import.prop"); context.contentResolver.openInputStream(it)?.use { input -> tempFile.outputStream().use { output -> input.copyTo(output) } }; val success = ModuleDetector.importConfigFile(tempFile.absolutePath); tempFile.delete(); if (success) { onConfigImported(); Toast.makeText(context, if (isZh) "导入成功，配置已重载" else "Import Success, Config reloaded", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "导入失败" else "Import Failed", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { Toast.makeText(context, "错误: ${e.message}", Toast.LENGTH_SHORT).show() } } } })
     val listState = rememberLazyListState(); val density = LocalDensity.current; var logoHeightDp by remember { mutableStateOf(300.dp) }; val fadeDistancePx = remember(density) { with(density) { 360.dp.toPx() } }
@@ -168,7 +199,37 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
                                 }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) { Text(if (isZh) "确定" else "Confirm", fontWeight = FontWeight.Bold) } } })
                         } }
                     item(key = "donate") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate) } }
-                    item(key = "check_update") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "检查更新" else "Check Update", onClick = { Toast.makeText(context, if (isZh) "功能正在开发" else "Feature is under development", Toast.LENGTH_SHORT).show() }) } }
+                    item(key = "check_update") { 
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), 
+                            cornerRadius = 24.dp, 
+                            colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)
+                        ) { 
+                            Box(modifier = Modifier.clickable { 
+                                if (!isCheckingUpdate) {
+                                    isCheckingUpdate = true
+                                    Toast.makeText(context, if (isZh) "正在检查更新..." else "Checking for updates...", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        val info = UpdateManager.checkAppUpdate(context)
+                                        isCheckingUpdate = false
+                                        if (info.hasUpdate) {
+                                            updateInfo = info
+                                            showUpdateDialog = true
+                                            onDialogVisibilityChange(true)
+                                        } else {
+                                            Toast.makeText(context, if (isZh) "已是最新版本" else "Already up to date", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            }) {
+                                ArrowPreference(
+                                    title = if (isZh) "检查更新" else "Check Update", 
+                                    onClick = null
+                                ) 
+                            }
+                        } 
+                    }
                     if (floatingNavBar) {
                         item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(60.dp)) }
                     }

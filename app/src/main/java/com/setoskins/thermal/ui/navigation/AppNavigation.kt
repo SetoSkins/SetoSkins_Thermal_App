@@ -76,8 +76,10 @@ import top.yukonga.miuix.kmp.icon.extended.Info
 
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.setoskins.thermal.data.ModuleDetector
+import com.setoskins.thermal.data.UpdateManager
 import com.setoskins.thermal.ui.component.RestartDialog
 import com.setoskins.thermal.ui.component.RootCheckDialog
+import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.ui.component.liquid.IosLiquidGlassNavigationBar
 import com.setoskins.thermal.ui.component.MaterialFloatingNavigationBar
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
@@ -89,6 +91,8 @@ import com.setoskins.thermal.ui.screen.BlacklistPage
 import com.setoskins.thermal.ui.screen.BypassListPage
 import android.util.Log
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.res.painterResource
 import com.setoskins.thermal.R
 
@@ -136,6 +140,11 @@ fun MyApplicationApp(
 
     // ── 重启对话框 ──
     var showRestartDialog by remember { mutableStateOf(false) }
+    
+    // ── 更新对话框 ──
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
+    
     var barVisible by remember { mutableStateOf(true) }
     var dialogCount by remember { mutableIntStateOf(0) }
     val onDialogVisibilityChange: (Boolean) -> Unit = remember {
@@ -147,6 +156,15 @@ fun MyApplicationApp(
             kotlinx.coroutines.delay(1000L)
             showRootDialog = true
             barVisible = false
+        }
+        // App 启动时执行一次静默更新检查
+        scope.launch {
+            val info = UpdateManager.checkAppUpdate(context)
+            if (info.hasUpdate) {
+                updateInfo = info
+                showUpdateDialog = true
+                onDialogVisibilityChange(true)
+            }
         }
     }
 
@@ -418,6 +436,28 @@ fun MyApplicationApp(
                                 },
                                 onDismiss = { showRestartDialog = false },
                                 onDismissStart = { barVisible = true }
+                            )
+                        }
+
+                        // ── 更新对话框 ──
+                        if (showUpdateDialog) {
+                            UpdateDialog(
+                                show = true,
+                                version = updateInfo?.latestVersion ?: "",
+                                releaseNotes = updateInfo?.releaseNotes ?: "",
+                                isZh = isZh,
+                                onConfirm = {
+                                    updateInfo?.downloadUrl?.let { url ->
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        context.startActivity(intent)
+                                    }
+                                    onDialogVisibilityChange(false)
+                                    showUpdateDialog = false
+                                },
+                                onDismiss = {
+                                    onDialogVisibilityChange(false)
+                                    showUpdateDialog = false
+                                }
                             )
                         }
                     }
