@@ -7,4 +7,9 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="blue">#0d84ff</color>
+
+    <!-- 自适应图标颜色 (参考 SetoHook Material You 方案) -->
+    <color name="ic_launcher_background">@android:color/system_accent1_300</color>
+    <color name="ic_launcher_foreground">#FFFFFF</color>
 </resources>
