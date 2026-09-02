@@ -60,6 +60,7 @@ import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.data.UpdateManager
 import android.content.Intent
 import android.net.Uri
+import android.widget.ImageView
 import androidx.compose.foundation.clickable
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
@@ -86,6 +87,7 @@ import com.setoskins.thermal.ui.component.animation.customOverScroll
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -140,7 +142,10 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
     BgEffectBackground(dynamicBackground = dynamicBackground, isOs3Effect = true, isFullSize = true, modifier = Modifier.fillMaxSize(), bgModifier = if (backdrop != null && !reduceEffects) Modifier.layerBackdrop(backdrop) else Modifier, alpha = { 1f - progress }) {
         Box(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(top = 12.dp).align(Alignment.TopCenter).graphicsLayer { alpha = aboutProgress }, contentAlignment = Alignment.Center) { Text(text = "关于", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.onBackground) }
         Column(modifier = Modifier.fillMaxWidth().padding(top = 170.dp).onSizeChanged { size -> with(density) { logoHeightDp = size.height.toDp() } }, horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(88.dp).graphicsLayer { val iconProgress = ((progress - 0.35f) / 0.15f).coerceIn(0f, 1f); clip = true; shape = RoundedCornerShape(24.dp); alpha = 1 - iconProgress; scaleX = 1 - (iconProgress * 0.05f); scaleY = 1 - (iconProgress * 0.05f) }.background(Color.White).padding(15.dp)) { Icon(imageVector = MiuixIcons.Contacts, contentDescription = "App Icon", modifier = Modifier.fillMaxSize(), tint = ColorAppIconTint) }
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(88.dp).graphicsLayer { val iconProgress = ((progress - 0.35f) / 0.15f).coerceIn(0f, 1f); clip = true; shape = RoundedCornerShape(28.dp); alpha = 1 - iconProgress; scaleX = 1 - (iconProgress * 0.05f); scaleY = 1 - (iconProgress * 0.05f) }) {
+                Image(painter = painterResource(id = R.drawable.ic_launcher_background), contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f })
+                Image(painter = painterResource(id = R.drawable.ic_launcher_foreground), contentDescription = "App Icon", modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f })
+            }
             Text(modifier = Modifier.padding(top = 16.dp).fillMaxWidth().graphicsLayer { val projectNameProgress = ((progress - 0.20f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - projectNameProgress; scaleX = 1 - (projectNameProgress * 0.05f); scaleY = 1 - (projectNameProgress * 0.05f) }.then(if (backdrop != null && !reduceEffects) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(16.dp), blurRadius = 96f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier), text = appName, color = MiuixTheme.colorScheme.onBackground, fontWeight = FontWeight.ExtraBold, fontSize = 42.sp, textAlign = TextAlign.Center)
             Text(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().graphicsLayer { val versionCodeProgress = ((progress - 0.05f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - versionCodeProgress; scaleX = 1 - (versionCodeProgress * 0.05f); scaleY = 1 - (versionCodeProgress * 0.05f) }, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, text = "$versionName ($versionCode) | release", fontSize = 15.sp, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(80.dp))
