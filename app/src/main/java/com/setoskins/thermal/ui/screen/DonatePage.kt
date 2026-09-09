@@ -22,10 +22,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton as MaterialIconButton
 import androidx.compose.material3.Text as MaterialText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -44,15 +48,20 @@ import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.R
 import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
+import com.setoskins.thermal.ui.component.animation.customOverScroll
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-@OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
+@OptIn(ExperimentalScrollBarApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DonatePage(
     useMonet: Boolean,
@@ -64,6 +73,9 @@ fun DonatePage(
     val isDark = isSystemInDarkTheme()
     val colors = MiuixTheme.colorScheme
     val scrollState = rememberScrollState()
+    val scrollBehavior = MiuixScrollBehavior()
+    val title = if (isZh) "捐赠" else "Donate"
+    
     val donateCardShape = remember { RoundedCornerShape(24.dp) }
     val donateCardColor = remember(isDark, useMonet) {
         if (isDark) colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
@@ -104,47 +116,58 @@ fun DonatePage(
             }
             .background(if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
                 if (useMonet) {
-                    MaterialIconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
-                    }
-                    MaterialText(
-                        text = if (isZh) "捐赠" else "Donate",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MiuixTheme.colorScheme.onBackground
-                    )
-                } else {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.padding(start = 16.dp)
-                        ) {
+                    Row(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        MaterialIconButton(onClick = onDismiss) {
                             Icon(
-                                imageVector = MiuixIcons.Back,
+                                imageVector = Icons.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = MiuixTheme.colorScheme.onBackground,
-                                modifier = Modifier.size(26.dp)
+                                tint = MiuixTheme.colorScheme.onBackground
                             )
                         }
-                        Text(
-                            text = if (isZh) "捐赠" else "Donate",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = MiuixTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(start = 26.dp, top = 12.dp, bottom = 4.dp)
+                        MaterialText(
+                            text = title,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MiuixTheme.colorScheme.onBackground
                         )
                     }
+                } else {
+                    TopAppBar(
+                        title = title,
+                        largeTitle = title,
+                        largeTitleColor = Color.Transparent,
+                        scrollBehavior = scrollBehavior,
+                        navigationIcon = {
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.padding(start = 0.dp)
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.Back,
+                                    contentDescription = "Back",
+                                    tint = MiuixTheme.colorScheme.onBackground,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    )
                 }
-            }
-            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 20.dp)) {
+            },
+            modifier = Modifier
+        ) { innerPadding ->
+            Box(modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding())) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .customOverScroll()
+                        .then(if (useMonet) Modifier else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 20.dp)
+                ) {
                 Spacer(Modifier.height(16.dp))
                 Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(80.dp).clip(CircleShape).align(Alignment.CenterHorizontally))
                 Spacer(Modifier.height(12.dp))
@@ -191,11 +214,31 @@ fun DonatePage(
                 }
                 Spacer(Modifier.height(24.dp))
             }
+
             VerticalScrollBar(
-                adapter = rememberScrollBarAdapter(scrollState)
+                adapter = rememberScrollBarAdapter(scrollState),
+                modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
-    }
+        }
+
+        if (!useMonet) {
+            val collapsedFraction by remember { derivedStateOf { scrollBehavior.state.collapsedFraction } }
+            Text(
+                text = title,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Normal,
+                color = MiuixTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(top = 52.dp, start = 26.dp)
+                    .graphicsLayer {
+                        val fraction = collapsedFraction.coerceIn(0f, 1f)
+                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
+                        translationY = -fraction * 45.dp.toPx()
+                    }
+            )
+        }
     }
 }
 

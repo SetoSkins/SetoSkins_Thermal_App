@@ -89,10 +89,13 @@ import com.setoskins.thermal.ui.screen.ProfileScreen
 import com.setoskins.thermal.ui.screen.DonatePage
 import com.setoskins.thermal.ui.screen.BlacklistPage
 import com.setoskins.thermal.ui.screen.BypassListPage
-import android.util.Log
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.util.Log
+import android.view.HapticFeedbackConstants
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import com.setoskins.thermal.R
 
@@ -280,6 +283,7 @@ fun MyApplicationApp(
         else -> ""
     }
     val isDark = isSystemInDarkTheme()
+    val view = LocalView.current
 
     Box(
         modifier = Modifier
@@ -298,6 +302,7 @@ fun MyApplicationApp(
                     containerColor = Color.Transparent,
                     topBar = {
                         if (currentDestination != AppDestinations.PROFILE) {
+                            val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior?.state?.collapsedFraction ?: 0f } }
                             TopAppBar(
                                 title = activeTitle,
                                 largeTitle = activeTitle,
@@ -305,7 +310,6 @@ fun MyApplicationApp(
                                 color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
                                 scrollBehavior = activeScrollBehavior,
                                 bottomContent = {
-                                    val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior?.state?.collapsedFraction ?: 0f } }
                                     val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
                                     Spacer(modifier = Modifier.height(height))
                                 },
@@ -474,8 +478,13 @@ fun MyApplicationApp(
                         color = MiuixTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .statusBarsPadding()
-                            .padding(top = 64.dp, start = 26.dp)
-                            .graphicsLayer { alpha = 1f - collapsedFraction.coerceIn(0f, 1f) }
+                            .padding(top = 64.dp, start = 28.dp)
+                            .graphicsLayer {
+                                val fraction = collapsedFraction.coerceIn(0f, 1f)
+                                // 采用 miuix 官方 largeTitleAlpha = 1 - fraction*3，与小标题出现阈值 (fraction*3 >= 1) 对齐，避免双标题重叠
+                                alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
+                                translationY = -fraction * 45.dp.toPx()
+                            }
                     )
                 }
             }

@@ -38,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text as MaterialText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -65,6 +67,7 @@ import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
 import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
+import com.setoskins.thermal.ui.component.animation.customOverScroll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,7 +76,9 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -99,6 +104,8 @@ fun BlacklistPage(
     val effectiveWhitelist = isWhitelist && isWhitelistMode
     val prefsKey = if (effectiveWhitelist) "whitelist_apps" else "blacklist_apps"
     val title = if (isWhitelist) "无温控应用名单" else "分应用调速名单"
+    val scrollBehavior = MiuixScrollBehavior()
+    val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
     val configPath = "/data/adb/modules/SetoSkins/黑名单.prop"
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -181,17 +188,17 @@ fun BlacklistPage(
                 scaleY = 1f
             }
             .background(bgColor)
-            .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // ── 顶部栏（固定） ──
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (useMonet) {
+            if (useMonet) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
                         imageVector = Icons.Filled.ArrowBack,
                         contentDescription = if (isZh) "返回" else "Back",
@@ -211,28 +218,27 @@ fun BlacklistPage(
                         fontWeight = FontWeight.SemiBold,
                         color = MiuixTheme.colorScheme.onSurface
                     )
-                } else {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                }
+            } else {
+                TopAppBar(
+                    title = title,
+                    largeTitle = title,
+                    largeTitleColor = Color.Transparent,
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
                         IconButton(
                             onClick = onBack,
-                            modifier = Modifier.padding(start = 16.dp)
+                            modifier = Modifier.padding(start = 0.dp)
                         ) {
                             Icon(
                                 imageVector = MiuixIcons.Back,
                                 contentDescription = if (isZh) "返回" else "Back",
-                                tint = MiuixTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(26.dp)
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
-                        Text(
-                            text = title,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = MiuixTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(start = 26.dp, top = 12.dp, bottom = 4.dp)
-                        )
                     }
-                }
+                )
             }
             // ── 白名单模式切换（仅无温控应用名单页显示） ──
             if (isWhitelist) {
@@ -322,6 +328,8 @@ fun BlacklistPage(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .customOverScroll()
+                            .then(if (useMonet) Modifier else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
                             .verticalScroll(scrollState)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
@@ -358,6 +366,24 @@ fun BlacklistPage(
                     )
                 }
             }
+        }
+
+        // ── 大标题（滚动折叠时淡出并上移，仅非 Monet 模式） ──
+        if (!useMonet) {
+            Text(
+                text = title,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Normal,
+                color = MiuixTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(top = 52.dp, start = 26.dp)
+                    .graphicsLayer {
+                        val fraction = collapsedFraction.coerceIn(0f, 1f)
+                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
+                        translationY = -fraction * 45.dp.toPx()
+                    }
+            )
         }
     }
 }

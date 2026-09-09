@@ -1,5 +1,11 @@
 package com.setoskins.thermal.ui.component.animation
 
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -19,6 +25,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Velocity
 import kotlinx.coroutines.CoroutineScope
@@ -178,10 +185,12 @@ fun rememberCustomOverscrollState(): CustomOverscrollState {
 fun Modifier.customOverScroll(
     state: CustomOverscrollState = rememberCustomOverscrollState(),
     isVertical: Boolean = true,
+    hapticEnabled: Boolean = true,
 ): Modifier {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val windowInfo = LocalWindowInfo.current
+    val view = LocalView.current
 
     var containerSizePx by remember { mutableFloatStateOf(0f) }
     var rawAccumulation by remember { mutableFloatStateOf(0f) }
@@ -191,6 +200,22 @@ fun Modifier.customOverScroll(
     val offsetThreshold = 1f
     val springEngine = remember { SpringEngine() }
 
+    fun performLightHaptic() {
+        if (!hapticEnabled) return
+        // 使用系统中最轻微的触感反馈
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // SEGMENT_FREQUENT_TICK 是标准中最轻微的
+            // 移除 FLAG_IGNORE_GLOBAL_SETTING，让其能够跟随系统的震动强度设置，从而实现更轻的表现
+            view.performHapticFeedback(
+                HapticFeedbackConstants.SEGMENT_FREQUENT_TICK,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+            )
+        } else {
+            // 旧版本使用 TEXT_HANDLE_MOVE 替代 CLOCK_TICK，通常震感更轻
+            view.performHapticFeedback(HapticFeedbackConstants.TEXT_HANDLE_MOVE)
+        }
+    }
+
     fun resetState() {
         state.offset = 0f
         rawAccumulation = 0f
@@ -198,10 +223,16 @@ fun Modifier.customOverScroll(
 
     fun applyDrag(delta: Float) {
         if (delta == 0f || containerSizePx == 0f) return
+        val oldOffset = state.offset
         rawAccumulation += delta
         rawAccumulation = rawAccumulation.coerceIn(-containerSizePx, containerSizePx)
         val normalized = min(abs(rawAccumulation) / containerSizePx, 1.0f)
         state.offset = sign(rawAccumulation) * SpringMath.obtainDampingDistance(normalized, containerSizePx)
+
+        // 当从无越界进入越界状态时触发震动（支持顶端 offset > 0 和 底端 offset < 0）
+        if (oldOffset == 0f && state.offset != 0f) {
+            performLightHaptic()
+        }
     }
 
     fun syncRawAccumulationFromOffset() {
@@ -310,6 +341,10 @@ fun Modifier.customOverScroll(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 val velocity = (if (isVertical) available.y else available.x) / 1.53333f
+                // 惯性撞击边缘时触发震动，增加一个小阈值避免极其微小的滑动也震动
+                if (abs(velocity) > 150f) {
+                    performLightHaptic()
+                }
                 startSpringAnimation(velocity)
                 return if (isVertical) Velocity(0f, velocity) else Velocity(velocity, 0f)
             }
