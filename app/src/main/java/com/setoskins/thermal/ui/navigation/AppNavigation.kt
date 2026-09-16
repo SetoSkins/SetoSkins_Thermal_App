@@ -272,12 +272,22 @@ fun MyApplicationApp(
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
     val favoritesScrollBehavior = MiuixScrollBehavior()
-    val activeScrollBehavior = when (currentDestination) {
+    // pager 连续滚动位置：currentPage 会在翻页动画中途翻转，必须叠加偏移分数才能得到连续进度
+    val pagerScrollPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
+    // 日志页(1) → 关于页(2) 的过渡进度：0 = 完全在主页/日志侧，1 = 完全到达关于页
+    val profileTransition = (pagerScrollPosition - 1f).coerceIn(0f, 1f)
+    // 进出关于页的过渡中保持非关于页的标题/操作，避免动画中途顶栏内容突变
+    val topBarDestination = if (profileTransition > 0f) {
+        AppDestinations.entries[pagerState.currentPage.coerceAtMost(1)]
+    } else {
+        currentDestination
+    }
+    val activeScrollBehavior = when (topBarDestination) {
         AppDestinations.HOME -> homeScrollBehavior
         AppDestinations.FAVORITES -> favoritesScrollBehavior
         else -> null
     }
-    val activeTitle = when (currentDestination) {
+    val activeTitle = when (topBarDestination) {
         AppDestinations.HOME -> "Seto温控"
         AppDestinations.FAVORITES -> "日志"
         else -> ""
@@ -301,7 +311,7 @@ fun MyApplicationApp(
                 Scaffold(
                     containerColor = Color.Transparent,
                     topBar = {
-                        if (currentDestination != AppDestinations.PROFILE) {
+                        if (profileTransition < 1f) {
                             val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior?.state?.collapsedFraction ?: 0f } }
                             TopAppBar(
                                 title = activeTitle,
@@ -309,12 +319,14 @@ fun MyApplicationApp(
                                 largeTitleColor = Color.Transparent,
                                 color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
                                 scrollBehavior = activeScrollBehavior,
+                                // 进出关于页时随翻页进度左右平移（与日志页滑动同步），不做淡出
+                                modifier = Modifier.graphicsLayer { translationX = -screenWidth.toPx() * profileTransition },
                                 bottomContent = {
                                     val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
                                     Spacer(modifier = Modifier.height(height))
                                 },
                                 actions = {
-                                    if (currentDestination == AppDestinations.FAVORITES) {
+                                    if (topBarDestination == AppDestinations.FAVORITES) {
                                         val haptic = LocalHapticFeedback.current
                                         IconButton(
                                             onClick = {
@@ -329,7 +341,7 @@ fun MyApplicationApp(
                                             )
                                         }
                                     }
-                                    if (currentDestination == AppDestinations.HOME) {
+                                    if (topBarDestination == AppDestinations.HOME) {
                                         IconButton(
                                             onClick = {
                                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -468,7 +480,7 @@ fun MyApplicationApp(
                 }
             }
 
-            if (currentDestination != AppDestinations.PROFILE) {
+            if (profileTransition < 1f) {
                 if (activeScrollBehavior != null) {
                     val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior.state.collapsedFraction } }
                     Text(
@@ -483,6 +495,8 @@ fun MyApplicationApp(
                                 val fraction = collapsedFraction.coerceIn(0f, 1f)
                                 // 采用 miuix 官方 largeTitleAlpha = 1 - fraction*3，与小标题出现阈值 (fraction*3 >= 1) 对齐，避免双标题重叠
                                 alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
+                                // 进出关于页时随翻页进度左右平移，与顶栏及页面滑动保持同步
+                                translationX = -screenWidth.toPx() * profileTransition
                                 translationY = -fraction * 45.dp.toPx()
                             }
                     )
