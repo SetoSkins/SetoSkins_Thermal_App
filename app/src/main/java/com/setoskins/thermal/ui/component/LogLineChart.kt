@@ -187,6 +187,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     val baseTimeSeconds = chartData.timeSeconds.firstOrNull() ?: 0L
     val endTimeSeconds = chartData.timeSeconds.lastOrNull() ?: 0L
     val totalDurationMinutes = ((endTimeSeconds - baseTimeSeconds) / 60).coerceAtLeast(0L)
+    val markerStepMinutes = if (totalDurationMinutes <= 30L) 5L else 10L
     val averageWatt = remember(points) { points.map { it.watt }.average().toFloat() }
     val averageTemp = remember(points) { points.map { it.temp }.average().toFloat() }
     val minLevel = remember(points) { points.minOfOrNull { it.level.toInt() } ?: 0 }
@@ -194,7 +195,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     val isTouching = touchIndex in points.indices
 
     // ── markerData：使用预计算的 timeSeconds，不再重复调用 parseTimeSeconds ──
-    val markerData = remember(points, chartData.timeSeconds, baseTimeSeconds, isCharging) {
+    val markerData = remember(points, chartData.timeSeconds, baseTimeSeconds, isCharging, markerStepMinutes) {
         val data = mutableListOf<Pair<Int, String>>()
         if (points.isEmpty()) return@remember data
         val timeSeconds = chartData.timeSeconds
@@ -205,13 +206,13 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             var lastIdxAdded = false
             points.indices.forEach { index ->
                 val m = (timeSeconds[index] - baseTimeSeconds) / 60
-                if (lastM == -1L || m - lastM >= 10) {
+                if (lastM == -1L || m - lastM >= markerStepMinutes) {
                     data.add(index to "${m}m")
                     lastM = m
                     if (index == lastIdx) lastIdxAdded = true
                 }
             }
-            // 最后一个点如果还没被加入（距离上一个标记不足10分钟），按间隙处理
+            // 最后一个点如果还没被加入（距离上一个标记不足一个步长），按间隙处理
             if (!lastIdxAdded) {
                 val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
                 val lastMark = data.lastOrNull()
@@ -225,11 +226,11 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }
         } else {
             var lastM = -1L
-            // 80%之前正常每10分钟标记，80%后停止
+            // 80%之前正常按步长标记，80%后停止
             points.indices.forEach { index ->
                 if (index < charge80Index) {
                     val m = (timeSeconds[index] - baseTimeSeconds) / 60
-                    if (lastM == -1L || m - lastM >= 10) {
+                    if (lastM == -1L || m - lastM >= markerStepMinutes) {
                         data.add(index to "${m}m")
                         lastM = m
                     }
@@ -279,16 +280,16 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         data
     }
 
-    // ── 时间轴刻度标记（每10分钟整点，充电时80%后停止，100%再生一次） ──
+    // ── 时间轴刻度标记（按步长标记，充电时80%后停止，100%再生一次） ──
     val timeAxisMarkers = remember(points, chartData.timeSeconds, baseTimeSeconds, totalDurationMinutes) {
         val data = mutableListOf<Pair<Float, String>>()
         if (points.size < 2) return@remember data
         val timeSeconds = chartData.timeSeconds
-        val step = 10L
+        val step = markerStepMinutes
         val charge80Idx = points.indexOfFirst { it.level >= 80f }
 
         if (charge80Idx == -1) {
-            // 无充电：正常生成每10分钟刻度
+            // 无充电：正常生成每步长刻度
             for (minute in step..<totalDurationMinutes step step) {
                 val targetSeconds = baseTimeSeconds + minute * 60
                 var idx = timeSeconds.indexOfFirst { it >= targetSeconds }
@@ -301,7 +302,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 data.add(fracIndex to "${minute}m")
             }
         } else {
-            // 充电：80%之前正常生成每10分钟刻度，80%后停止
+            // 充电：80%之前正常生成每步长刻度，80%后停止
             val charge80Time = timeSeconds[charge80Idx]
             for (minute in step..<totalDurationMinutes step step) {
                 val targetSeconds = baseTimeSeconds + minute * 60
