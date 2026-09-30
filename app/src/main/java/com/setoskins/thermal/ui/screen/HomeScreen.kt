@@ -67,7 +67,7 @@ import com.setoskins.thermal.ui.component.SliderRow
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
 import com.setoskins.thermal.ui.component.VerticalScrollBar
-import com.setoskins.thermal.ui.component.YellowUpdateCard
+import com.setoskins.thermal.ui.component.UpdateWarningCard
 import com.setoskins.thermal.ui.component.compactSmallTitle
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import kotlinx.coroutines.launch
@@ -325,7 +325,7 @@ fun HomeScreen(
         writeBypassConfigFile()
     }
 
-    // ── 九开关互斥：调速区 + 旁路充电区，任一个打开时关闭其余八个 ──
+
     val homeExclusiveActive = switch17 || switch18
     val speedExclusiveActive = switch4 || switch10 || switch11 || switch12 || switch13 || switch8 || switch9
     val turnOffAllOtherExclusive: (String) -> Unit = { exceptKey ->
@@ -352,9 +352,21 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(11.dp)
             ) {
         item(key = "status_card") {
-            if (!moduleInstalled) RedNotInstalledCard()
-            else if (hasUpdate) YellowUpdateCard()
-            else GreenActivatedCard(useMonet = useMonet, version = moduleVersion)
+            val cardMode = when {
+                !moduleInstalled -> 0
+                hasUpdate -> 1
+                else -> 2
+            }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                when (cardMode) {
+                    0 -> RedNotInstalledCard(useMonet = useMonet)
+                    1 -> Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                        UpdateWarningCard(useMonet = useMonet)
+                        GreenActivatedCard(useMonet = useMonet, version = moduleVersion)
+                    }
+                    else -> GreenActivatedCard(useMonet = useMonet, version = moduleVersion)
+                }
+            }
         }
         item(key = "config_title") {
             SmallTitle(text = "配置", modifier = Modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 10.dp.roundToPx()) { placeable.place(0, 0) } })

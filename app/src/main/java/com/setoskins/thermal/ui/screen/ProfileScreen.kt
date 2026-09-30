@@ -69,6 +69,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.ImageView
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
@@ -104,6 +105,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, onDialogVisibilityChange: (Boolean) -> Unit = {}, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
+    val uriHandler = LocalUriHandler.current
+    val repoUrl = "https://github.com/SetoSkins/SetoSkins_Thermal_App"
     var versionName by remember { mutableStateOf("1.0") }
     var versionCode by remember { mutableStateOf(0L) }
     var appName by remember { mutableStateOf("") }
@@ -147,6 +150,10 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
     val spacerHeightPx = remember(density) { with(density) { 170.dp.toPx() } }; val aboutProgress by remember { derivedStateOf { val idx = listState.firstVisibleItemIndex; val offset = listState.firstVisibleItemScrollOffset.toFloat(); if (idx <= 0) (offset / spacerHeightPx).coerceIn(0f, 1f) else 1f } }
     val shaderSupported = remember { isRuntimeShaderSupported() }; val backdrop = rememberBlurBackdrop(); val dynamicBackground = shaderSupported && !reduceEffects; val isInDark = isSystemInDarkTheme(); var noiseCoefficient by remember { mutableFloatStateOf(BlurDefaults.NoiseCoefficient) }
     val logoBlend = if (isInDark) listOf(BlendColorEntry(Color(0xe6a1a1a1), BlurBlendMode.ColorDodge), BlendColorEntry(Color(0x4de6e6e6), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af500), BlurBlendMode.Lab)) else listOf(BlendColorEntry(Color(0xcc4a4a4a), BlurBlendMode.ColorBurn), BlendColorEntry(Color(0xff4f4f4f), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af200), BlurBlendMode.Lab))
+    val blurEnabled = backdrop != null
+    val cardBlend = if (isInDark) listOf(BlendColorEntry(Color(0x4DA9A9A9), BlurBlendMode.Luminosity), BlendColorEntry(Color(0x1A9C9C9C), BlurBlendMode.PlusDarker)) else listOf(BlendColorEntry(Color(0x340034F9), BlurBlendMode.Overlay), BlendColorEntry(Color(0xB3FFFFFF), BlurBlendMode.HardLight))
+    val aboutBlurModifier = if (backdrop != null) Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(24.dp), blurRadius = 60f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = cardBlend)) else Modifier
+    val aboutCardColor = if (blurEnabled) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer
     val appIconContext = LocalContext.current
     val logoMask = remember {
         val viewportSize = 108
@@ -167,18 +174,18 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
         drawable.draw(canvas)
         bitmap.asImageBitmap()
     }
-    BgEffectBackground(dynamicBackground = dynamicBackground, isOs3Effect = true, isFullSize = true, modifier = Modifier.fillMaxSize(), bgModifier = if (backdrop != null && !reduceEffects) Modifier.layerBackdrop(backdrop) else Modifier, alpha = { 1f - progress }) {
+    BgEffectBackground(dynamicBackground = dynamicBackground, isOs3Effect = true, isFullSize = true, modifier = Modifier.fillMaxSize(), bgModifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier, alpha = { 1f - progress }) {
         Box(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(top = 12.dp).align(Alignment.TopCenter).graphicsLayer { alpha = aboutProgress }, contentAlignment = Alignment.Center) { Text(text = "关于", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.onBackground) }
-        Column(modifier = Modifier.fillMaxWidth().padding(top = 180.dp).onSizeChanged { size -> with(density) { logoHeightDp = size.height.toDp() } }, horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(88.dp).offset(y = 4.dp).graphicsLayer { val iconProgress = ((progress - 0.35f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - iconProgress; scaleX = 1 - (iconProgress * 0.05f); scaleY = 1 - (iconProgress * 0.05f) }.then(if (backdrop != null && !reduceEffects) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(28.dp), blurRadius = 96f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(top = 200.dp).onSizeChanged { size -> with(density) { logoHeightDp = size.height.toDp() } }, horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(88.dp).graphicsLayer { val iconProgress = ((progress - 0.35f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - iconProgress; scaleX = 1 - (iconProgress * 0.05f); scaleY = 1 - (iconProgress * 0.05f) }.then(if (backdrop != null) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(28.dp), blurRadius = 96f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier).clip(RoundedCornerShape(28.dp)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { uriHandler.openUri(repoUrl) }) {
                 val iconTileColor = MiuixTheme.colorScheme.onSurface
                 Canvas(modifier = Modifier.matchParentSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
                     drawRoundRect(color = iconTileColor, cornerRadius = CornerRadius(28.dp.toPx(), 28.dp.toPx()))
                     drawImage(image = logoMask, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()), blendMode = ComposeBlendMode.DstOut)
                 }
             }
-            Text(modifier = Modifier.padding(top = 16.dp).fillMaxWidth().graphicsLayer { val projectNameProgress = ((progress - 0.20f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - projectNameProgress; scaleX = 1 - (projectNameProgress * 0.05f); scaleY = 1 - (projectNameProgress * 0.05f) }.then(if (backdrop != null && !reduceEffects) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(16.dp), blurRadius = 96f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier), text = appName, color = MiuixTheme.colorScheme.onBackground, fontWeight = FontWeight.ExtraBold, fontSize = 42.sp, textAlign = TextAlign.Center)
-            Text(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().graphicsLayer { val versionCodeProgress = ((progress - 0.05f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - versionCodeProgress; scaleX = 1 - (versionCodeProgress * 0.05f); scaleY = 1 - (versionCodeProgress * 0.05f) }, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, text = "$versionName ($versionCode) | release", fontSize = 15.sp, textAlign = TextAlign.Center)
+            Text(modifier = Modifier.padding(top = 12.dp).fillMaxWidth().graphicsLayer { val projectNameProgress = ((progress - 0.20f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - projectNameProgress; scaleX = 1 - (projectNameProgress * 0.05f); scaleY = 1 - (projectNameProgress * 0.05f) }.then(if (backdrop != null) { Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(16.dp), blurRadius = 96f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = logoBlend), contentBlendMode = ComposeBlendMode.DstIn) } else Modifier).clip(RoundedCornerShape(16.dp)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { uriHandler.openUri(repoUrl) }, text = appName, color = MiuixTheme.colorScheme.onBackground, fontWeight = FontWeight.ExtraBold, fontSize = 42.sp, textAlign = TextAlign.Center)
+            Text(modifier = Modifier.padding(top = 12.dp).fillMaxWidth().graphicsLayer { val versionCodeProgress = ((progress - 0.05f) / 0.15f).coerceIn(0f, 1f); alpha = 1 - versionCodeProgress; scaleX = 1 - (versionCodeProgress * 0.05f); scaleY = 1 - (versionCodeProgress * 0.05f) }, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, text = "$versionName ($versionCode) | release", fontSize = 15.sp, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(80.dp))
         }
         Box(modifier = modifier.fillMaxSize()) {
@@ -186,10 +193,32 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
             CompositionLocalProvider(LocalOverscrollFactory provides null) {
                 LazyColumn(modifier = Modifier.fillMaxSize().customOverScroll(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 16.dp)) {
                 
-                    item(key = "logoSpacer") { Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter, content = { }) }
-                    item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }); BasicComponent(title = if (isZh) "启用悬浮底栏" else "Floating Nav Bar", summary = if (isZh) "在屏幕底部使用悬浮样式的导航栏" else "Use floating-style navigation bar at the bottom of the screen", endActions = { ThemedSwitch(checked = floatingNavBar, onCheckedChange = null, useMonet = useMonet) }, onClick = { onFloatingNavBarChange(!floatingNavBar); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } }
-                    item(key = "setoskins_link") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { val uriHandler = LocalUriHandler.current; ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) } }
-                    item(key = "config_io") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) {
+                    item(key = "logoSpacer") {
+                        Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 30.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(88.dp)
+                                        .clip(RoundedCornerShape(28.dp))
+                                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { uriHandler.openUri(repoUrl) }
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 12.dp)
+                                        .fillMaxWidth(0.7f)
+                                        .height(52.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { uriHandler.openUri(repoUrl) }
+                                )
+                            }
+                        }
+                    }
+                    item(key = "setoskins_link") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) } }
+                    item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }); BasicComponent(title = if (isZh) "启用悬浮底栏" else "Floating Nav Bar", summary = if (isZh) "在屏幕底部使用悬浮样式的导航栏" else "Use floating-style navigation bar at the bottom of the screen", endActions = { ThemedSwitch(checked = floatingNavBar, onCheckedChange = null, useMonet = useMonet) }, onClick = { onFloatingNavBarChange(!floatingNavBar); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } }
+                    item(key = "config_io") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) {
                             ArrowPreference(title = if (isZh) "导出软件配置" else "Export App Config", onClick = { 
                                 scope.launch { 
                                     if (!ModuleDetector.requestRoot()) { 
@@ -235,13 +264,13 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
                                     resetDialogInternalShow = false 
                                 }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) { Text(if (isZh) "确定" else "Confirm", fontWeight = FontWeight.Bold) } } })
                         } }
-                    item(key = "donate") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate) } }
+                    item(key = "donate") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate) } }
                     item(key = "check_update") { 
                         Spacer(modifier = Modifier.height(16.dp))
                         Card(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), 
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), 
                             cornerRadius = 24.dp, 
-                            colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.25f), contentColor = MiuixTheme.colorScheme.onSurface)
+                            colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)
                         ) { 
                             Box(modifier = Modifier.clickable { 
                                 if (!isCheckingUpdate) {
