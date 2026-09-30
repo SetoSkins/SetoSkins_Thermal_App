@@ -141,7 +141,7 @@ private fun GreenActivatedCardMaterial(version: String) {
     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(containerBg).padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "模块已激活", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = onContainer)
+                Text(text = "已激活", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = onContainer)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = version.ifEmpty { "" }, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = onContainerSub)
             }
@@ -218,7 +218,7 @@ private fun GreenActivatedCardMiuix(version: String) {
                     Icon(modifier = Modifier.size(110.dp), imageVector = Icons.Rounded.CheckCircleOutline, tint = iconTint, contentDescription = null)
                 }
                 Box(modifier = Modifier.fillMaxSize().padding(16.dp, 14.dp), contentAlignment = Alignment.TopStart) {
-                    Column { Text(text = "模块已激活", fontSize = 22.sp, fontWeight = FontWeight.Bold); Spacer(modifier = Modifier.height(1.dp)); Text(text = sub, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+                    Column { Text(text = "已激活", fontSize = 22.sp, fontWeight = FontWeight.Bold); Spacer(modifier = Modifier.height(1.dp)); Text(text = sub, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
