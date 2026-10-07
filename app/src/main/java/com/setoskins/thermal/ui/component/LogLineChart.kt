@@ -466,20 +466,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }) {
                 val markerPaint = remember { Paint().apply { textSize = 32f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER } }
                 val touchPaint = remember { Paint().apply { textSize = 34f; typeface = android.graphics.Typeface.DEFAULT_BOLD; textAlign = Paint.Align.LEFT } }
-                val density = LocalDensity.current
-
-                // ── 电量标签重叠检测 ──
-                val levelLabelBelow = remember(showLevel, chartData.levelNorm, density) {
-                    if (!showLevel || chartData.levelNorm.isEmpty()) return@remember false
-                    val chartHeightPx = with(density) { 220.dp.toPx() }
-                    val zoneHPx = chartHeightPx * 0.25f
-                    val px10 = with(density) { 10.dp.toPx() }
-                    val px22 = with(density) { 22.dp.toPx() }
-                    chartData.levelNorm.any { v ->
-                        val y = (1f - v) * zoneHPx
-                        y - px10 < 0f || y + px22 > zoneHPx
-                    }
-                }
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val w = size.width; val h = size.height
@@ -532,13 +518,15 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
 
                     // ── 绘制 marker 竖线（单曲线模式下隐藏） ──
                     if (singleCurveMode == null) {
-                        val middleMarkers = if (markerData.size > 2) markerData.subList(1, markerData.size - 1) else emptyList()
-                        val minWattInt = middleMarkers.minOfOrNull { (index, _) -> points[index].watt.roundToInt() }
+                        val firstMarkerIndex = markerData.firstOrNull()?.first ?: -1
                         markerData.forEach { (index, _) ->
                             val x = index * sp
                             drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
 
                             val p = points[index]
+                            val isFirstMarker = (index == firstMarkerIndex)
+                            // 30分钟内第一个点文字往下，其他往上；30分钟后记录时所有都往下
+                            val isLabelBelow = totalDurationMinutes > 30L || isFirstMarker
 
                             // 功耗 marker
                             if (showWatt) {
@@ -547,34 +535,33 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                                 drawCircle(wattColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
                                 if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                     markerPaint.color = wattColor.copy(alpha = markerAlpha).toArgb()
-                                    val isMiddle = index != markerData.first().first && index != markerData.last().first
-                                    val isMinWatt = isMiddle && minWattInt != null && p.watt.roundToInt() == minWattInt
-                                    val labelY = if (isMinWatt) y + 22.dp.toPx() else y - 10.dp.toPx()
-                                drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, labelY, markerPaint)
+                                    val markLabelY = if (isLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
+                                    drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, markLabelY, markerPaint)
+                                }
+                            }
+                            // 温度 marker
+                            if (showTemp) {
+                                val y = tempBaseY + (1f - chartData.tempNorm[index]) * tempZoneH
+                                val markerAlpha = tempCurveAlpha
+                                drawCircle(tempColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
+                                if (animatedIndex < 0f && markerAlpha > 0.001f) {
+                                    markerPaint.color = tempColor.copy(alpha = markerAlpha).toArgb()
+                                    val markLabelY = if (isLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
+                                    drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, markLabelY, markerPaint)
+                                }
+                            }
+                            // 电量 marker
+                            if (showLevel) {
+                                val y = levelBaseY + (1f - chartData.levelNorm[index]) * levelZoneH
+                                val markerAlpha = levelCurveAlpha
+                                drawCircle(levelColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
+                                if (animatedIndex < 0f && markerAlpha > 0.001f) {
+                                    markerPaint.color = levelColor.copy(alpha = markerAlpha).toArgb()
+                                    val markLabelY = if (isLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
+                                    drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, markLabelY, markerPaint)
+                                }
                             }
                         }
-                        // 温度 marker
-                        if (showTemp) {
-                            val y = tempBaseY + (1f - chartData.tempNorm[index]) * tempZoneH
-                            val markerAlpha = tempCurveAlpha
-                            drawCircle(tempColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
-                            if (animatedIndex < 0f && markerAlpha > 0.001f) {
-                                markerPaint.color = tempColor.copy(alpha = markerAlpha).toArgb()
-                                drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, y - 10.dp.toPx(), markerPaint)
-                            }
-                        }
-                        // 电量 marker
-                        if (showLevel) {
-                            val y = levelBaseY + (1f - chartData.levelNorm[index]) * levelZoneH
-                            val markerAlpha = levelCurveAlpha
-                            drawCircle(levelColor.copy(alpha = markerAlpha), radius = 4.5.dp.toPx(), center = Offset(x, y))
-                            if (animatedIndex < 0f && markerAlpha > 0.001f) {
-                                markerPaint.color = levelColor.copy(alpha = markerAlpha).toArgb()
-                                val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                                drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, labelY, markerPaint)
-                            }
-                        }
-                    }
                     }
 
                     // ── 触摸指示器 ──
@@ -584,14 +571,17 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val p = points[animatedIndex.toInt().coerceIn(points.indices)]
                         val idx = animatedIndex.toInt().coerceIn(points.indices)
                         val touchLineColor = when (singleCurveMode) {
-                        "watt" -> wattColor
-                        "level" -> levelColor
-                        "temp" -> tempColor
-                        else -> primaryColor
-                    }
-                    drawLine(touchLineColor.copy(alpha = alpha), Offset(x, 0f), Offset(x, h), strokeWidth = 1.5.dp.toPx())
+                            "watt" -> wattColor
+                            "level" -> levelColor
+                            "temp" -> tempColor
+                            else -> primaryColor
+                        }
+                        drawLine(touchLineColor.copy(alpha = alpha), Offset(x, 0f), Offset(x, h), strokeWidth = 1.5.dp.toPx())
                         val textOffsetX = 12.dp.toPx()
                         val rightLimit = w - 8.dp.toPx()
+
+                        val touchIsFirst = (idx == (markerData.firstOrNull()?.first ?: 0))
+                        val touchLabelBelow = totalDurationMinutes > 30L || touchIsFirst
 
                         // 功耗触摸
                         if (showWatt && wattCurveAlpha > 0.001f) {
@@ -603,7 +593,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val desiredX = x + textOffsetX
                             val textWidth = touchPaint.measureText(value)
                             val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                            drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
+                            val touchLabelY = if (touchLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, touchLabelY, touchPaint)
                         }
                         // 温度触摸（过渡时淡出）
                         if (showTemp && tempCurveAlpha > 0.001f) {
@@ -615,7 +606,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val desiredX = x + textOffsetX
                             val textWidth = touchPaint.measureText(value)
                             val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                            drawContext.canvas.nativeCanvas.drawText(value, tx, y - 12.dp.toPx(), touchPaint)
+                            val touchLabelY = if (touchLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, touchLabelY, touchPaint)
                         }
                         // 电量触摸（过渡时淡出）
                         if (showLevel && levelCurveAlpha > 0.001f) {
@@ -624,11 +616,11 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val touchAlpha = alpha * levelCurveAlpha
                             drawCircle(levelColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
                             touchPaint.color = levelColor.copy(alpha = touchAlpha).toArgb()
-                            val labelY = if (levelLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
+                            val touchLabelY = if (touchLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
                             val desiredX = x + textOffsetX
                             val textWidth = touchPaint.measureText(value)
                             val tx = if (desiredX + textWidth <= rightLimit) desiredX else (x - textOffsetX - textWidth).coerceAtLeast(8.dp.toPx())
-                            drawContext.canvas.nativeCanvas.drawText(value, tx, labelY, touchPaint)
+                            drawContext.canvas.nativeCanvas.drawText(value, tx, touchLabelY, touchPaint)
                         }
                     }
                 }
