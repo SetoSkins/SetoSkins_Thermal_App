@@ -216,9 +216,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             if (!lastIdxAdded) {
                 val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
                 val lastMark = data.lastOrNull()
-                // 间隙 < 3 分钟：替换上一个标记（如 12m 替换 10m、21m 替换 20m）
-                // 间隙 >= 3 分钟：保留两者（如 23m 和 20m 并存）
-                if (lastMark != null && m - lastM < 3) {
+                // 间隙 < 5 分钟：替换上一个标记（如 13m 替换 10m、23m 替换 20m）
+                // 间隙 >= 5 分钟：保留两者（如 26m 和 20m 并存）
+                if (lastMark != null && m - lastM < 5) {
                     data[data.lastIndex] = lastIdx to "${m}m"
                 } else {
                     data.add(lastIdx to "${m}m")
@@ -236,11 +236,11 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     }
                 }
             }
-            // 到达80%时标记：距离上一个标记 ≤10 分钟则替换，>10 分钟则追加
+            // 到达80%时标记：距离上一个标记 < 5 分钟则替换，>= 5 分钟则追加
             val m80 = (timeSeconds[charge80Index] - baseTimeSeconds) / 60
             if (data.isNotEmpty()) {
                 val lastMarkM = (timeSeconds[data.last().first] - baseTimeSeconds) / 60
-                if (m80 - lastMarkM <= 10) {
+                if (m80 - lastMarkM < 5) {
                     data[data.lastIndex] = charge80Index to "${m80}m"
                 } else {
                     data.add(charge80Index to "${m80}m")
@@ -256,7 +256,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
                 data.add(fullIdx to "${m}m")
             }
-            // 末尾点：100% 标记不可替换，其余间隙 < 3 分钟则替换上一个
+            // 末尾点：100% 标记不可替换，其余间隙 < 5 分钟则替换上一个
             if (data.none { it.first == lastIdx }) {
                 val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
                 val lastMark = data.lastOrNull()
@@ -264,7 +264,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     val isLastFull = hasFull && lastMark.first == fullIdx
                     if (!isLastFull) {
                         val lastMarkM = (timeSeconds[lastMark.first] - baseTimeSeconds) / 60
-                        if (m - lastMarkM < 3) {
+                        if (m - lastMarkM < 5) {
                             data[data.lastIndex] = lastIdx to "${m}m"
                         } else {
                             data.add(lastIdx to "${m}m")

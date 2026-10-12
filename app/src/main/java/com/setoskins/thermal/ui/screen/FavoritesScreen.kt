@@ -65,7 +65,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, contentPaddingTop: Dp = 0.dp, modifier: Modifier = Modifier) {
+fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, contentPaddingTop: Dp = 0.dp, isPageActive: Boolean = true, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     var selectedIndex by rememberSaveable { mutableIntStateOf(prefs.getInt("logViewStyle", 0)) }
@@ -109,32 +109,25 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         isCharging = batteryInfo.status == "Charging"
     }
 
+    // 数据预加载：启动/刷新/样式切换/充电状态变化时先读一次，保证进入页面即有数据
     LaunchedEffect(reloadTrigger, selectedIndex, isCharging) {
         if (selectedIndex == 0) {
-            var lastLogContent = ""
-            while (isActive) {
-                val newContent = ModuleDetector.readLog()
-                // 仅当内容变化时更新状态，避免无意义重组
-                if (newContent != lastLogContent) {
-                    lastLogContent = newContent
-                    logContent = newContent
-                }
-                if (isCharging) kotlinx.coroutines.delay(15000) else break
-            }
+            logContent = ModuleDetector.readLog()
         } else {
-            var lastPointsHash = 0
-            while (isActive) {
-                val newPoints = ModuleDetector.getParsedLogData()
-                // 使用 size + 前 3 个和后 3 个数据点 hash 快速判断数据是否变化
-                val newHash = newPoints.size * 31 +
-                    newPoints.take(3).fold(0) { acc, p -> acc * 31 + p.hashCode() } +
-                    newPoints.takeLast(3).fold(0) { acc, p -> acc * 31 + p.hashCode() }
-                if (newHash != lastPointsHash) {
-                    lastPointsHash = newHash
-                    logPoints = newPoints
-                }
-                if (isCharging) kotlinx.coroutines.delay(15000) else break
+            logPoints = ModuleDetector.getParsedLogData()
+        }
+    }
+
+    // 周期刷新仅在停留在日志页且充电时进行：翻页动画期间不再产生 su 子进程开销与中途重组
+    LaunchedEffect(isPageActive, isCharging) {
+        if (!isPageActive || !isCharging) return@LaunchedEffect
+        while (isActive) {
+            if (selectedIndex == 0) {
+                logContent = ModuleDetector.readLog()
+            } else {
+                logPoints = ModuleDetector.getParsedLogData()
             }
+            kotlinx.coroutines.delay(15000)
         }
     }
 
@@ -148,7 +141,7 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                 modifier = Modifier.fillMaxSize().customOverScroll().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 76.dp)
             ) {
-                item(key = "battery_card") { BatteryInfoCard() }
+                item(key = "battery_card") { BatteryInfoCard(isPageActive = isPageActive) }
                 item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (4).dp)) } }
                 item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
                         WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
