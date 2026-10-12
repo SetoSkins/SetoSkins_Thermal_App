@@ -13,6 +13,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,11 +56,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 import top.yukonga.miuix.kmp.basic.NavigationItem
@@ -272,19 +275,6 @@ fun MyApplicationApp(
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
     val favoritesScrollBehavior = MiuixScrollBehavior()
-    // 顶栏目标页：用 derivedStateOf 仅在越过边界时触发重组，避免翻页动画期间每帧重组整个根级组合
-    // 进出关于页的过渡中保持非关于页的标题/操作，避免动画中途顶栏内容突变
-    val topBarDestination by remember(pagerState) {
-        derivedStateOf {
-            val position = pagerState.currentPage + pagerState.currentPageOffsetFraction
-            if (position > 1f) AppDestinations.entries[pagerState.currentPage.coerceAtMost(1)]
-            else AppDestinations.entries[pagerState.currentPage]
-        }
-    }
-    // 顶栏/大标题仅在未完全停到关于页时显示；翻页平移进度改在绘制阶段实时读取，动画期间零重组
-    val showTopBar by remember(pagerState) {
-        derivedStateOf { !(pagerState.currentPage == 2 && pagerState.currentPageOffsetFraction == 0f) }
-    }
     // 日志页(1)是否处于停留状态：用于挂起日志页轮询，避免翻页动画期间产生 su 子进程开销
     val logPageActive by remember(pagerState) {
         derivedStateOf { pagerState.currentPage == 1 && pagerState.currentPageOffsetFraction == 0f }
@@ -292,16 +282,6 @@ fun MyApplicationApp(
     // 翻页动画是否进行中：页面数据落地（模块检测/日志读取等）在此期间挂起，动画结束后再应用，
     // 避免中途重组与首次绘制叠加造成切页顿挫
     val pagerBusy by remember(pagerState) { derivedStateOf { pagerState.isScrollInProgress } }
-    val activeScrollBehavior = when (topBarDestination) {
-        AppDestinations.HOME -> homeScrollBehavior
-        AppDestinations.FAVORITES -> favoritesScrollBehavior
-        else -> null
-    }
-    val activeTitle = when (topBarDestination) {
-        AppDestinations.HOME -> "Seto温控"
-        AppDestinations.FAVORITES -> "日志"
-        else -> ""
-    }
     val isDark = isSystemInDarkTheme()
     val view = LocalView.current
 
@@ -320,57 +300,6 @@ fun MyApplicationApp(
             Box(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
                     containerColor = Color.Transparent,
-                    topBar = {
-                        if (showTopBar) {
-                            val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior?.state?.collapsedFraction ?: 0f } }
-                            TopAppBar(
-                                title = activeTitle,
-                                largeTitle = activeTitle,
-                                largeTitleColor = Color.Transparent,
-                                color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
-                                scrollBehavior = activeScrollBehavior,
-                                // 进出关于页时随翻页进度左右平移（与日志页滑动同步），进度在绘制阶段读取，不做淡出
-                                modifier = Modifier.graphicsLayer { translationX = -screenWidth.toPx() * (pagerState.currentPage + pagerState.currentPageOffsetFraction - 1f).coerceIn(0f, 1f) },
-                                bottomContent = {
-                                    val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
-                                    Spacer(modifier = Modifier.height(height))
-                                },
-                                actions = {
-                                    if (topBarDestination == AppDestinations.FAVORITES) {
-                                        val haptic = LocalHapticFeedback.current
-                                        IconButton(
-                                            onClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = MiuixIcons.Delete,
-                                                contentDescription = "Clear Log",
-                                                tint = MiuixTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                    }
-                                    if (topBarDestination == AppDestinations.HOME) {
-                                        IconButton(
-                                            onClick = {
-                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                showRestartDialog = true
-                                                barVisible = false
-                                            }
-                                        ) {
-                                            Icon(
-                                            painter = painterResource(R.drawable.restart),
-                                            contentDescription = if (isZh) "重启" else "Restart",
-                                            tint = MiuixTheme.colorScheme.onSurface,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                    },
                     bottomBar = if (floatingNavBar) ({}) else ({
                         ThemedNavigationBar(
                             currentDestination = currentDestination,
@@ -402,28 +331,72 @@ fun MyApplicationApp(
                         ) { page ->
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
-                                    HomeScreen(
-                                        useMonet = useMonet,
-                                        reloadTrigger = reloadTrigger,
+                                    // 页面自带顶栏（miuix example 结构）：大标题属于页面本身，翻页时随页面一起滑动
+                                    PageTopBarScaffold(
+                                        title = "Seto温控",
                                         scrollBehavior = homeScrollBehavior,
-                                        contentPaddingTop = innerPadding.calculateTopPadding(),
-                                        floatingNavBar = floatingNavBar,
-                                        onNavigateToBlacklist = { showBlacklistPage = true },
-                                        onNavigateToWhitelist = { showWhitelistPage = true },
-                                        onNavigateToBypassList = { showBypassListPage = true },
-                                        onDialogVisibilityChange = onDialogVisibilityChange,
-                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
-                                    )
+                                        useMonet = useMonet,
+                                        actions = {
+                                            IconButton(
+                                                onClick = {
+                                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    showRestartDialog = true
+                                                    barVisible = false
+                                                }
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.restart),
+                                                    contentDescription = if (isZh) "重启" else "Restart",
+                                                    tint = MiuixTheme.colorScheme.onSurface,
+                                                    modifier = Modifier.size(32.dp)
+                                                )
+                                            }
+                                        }
+                                    ) { contentPaddingTop ->
+                                        HomeScreen(
+                                            useMonet = useMonet,
+                                            reloadTrigger = reloadTrigger,
+                                            scrollBehavior = homeScrollBehavior,
+                                            contentPaddingTop = contentPaddingTop,
+                                            floatingNavBar = floatingNavBar,
+                                            onNavigateToBlacklist = { showBlacklistPage = true },
+                                            onNavigateToWhitelist = { showWhitelistPage = true },
+                                            onNavigateToBypassList = { showBypassListPage = true },
+                                            onDialogVisibilityChange = onDialogVisibilityChange,
+                                            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+                                        )
+                                    }
                                 }
                                 AppDestinations.FAVORITES -> {
-                                    FavoritesScreen(
-                                        useMonet = useMonet,
-                                        reloadTrigger = logReloadTrigger,
+                                    PageTopBarScaffold(
+                                        title = "日志",
                                         scrollBehavior = favoritesScrollBehavior,
-                                        contentPaddingTop = innerPadding.calculateTopPadding(),
-                                        isPageActive = logPageActive,
-                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
-                                    )
+                                        useMonet = useMonet,
+                                        actions = {
+                                            val haptic = LocalHapticFeedback.current
+                                            IconButton(
+                                                onClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
+                                                }
+                                            ) {
+                                                Icon(
+                                                    imageVector = MiuixIcons.Delete,
+                                                    contentDescription = "Clear Log",
+                                                    tint = MiuixTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    ) { contentPaddingTop ->
+                                        FavoritesScreen(
+                                            useMonet = useMonet,
+                                            reloadTrigger = logReloadTrigger,
+                                            scrollBehavior = favoritesScrollBehavior,
+                                            contentPaddingTop = contentPaddingTop,
+                                            isPageActive = logPageActive,
+                                            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+                                        )
+                                    }
                                 }
                                 AppDestinations.PROFILE -> {
                                     ProfileScreen(
@@ -488,29 +461,6 @@ fun MyApplicationApp(
                             )
                         }
                     }
-                }
-            }
-
-            if (showTopBar) {
-                if (activeScrollBehavior != null) {
-                    val collapsedFraction by remember(activeScrollBehavior) { derivedStateOf { activeScrollBehavior.state.collapsedFraction } }
-                    Text(
-                        text = activeTitle,
-                        fontSize = 36.sp,
-                        fontWeight = if (useMonet) FontWeight.ExtraBold else FontWeight.Normal,
-                        color = MiuixTheme.colorScheme.onBackground,
-                        modifier = Modifier
-                            .statusBarsPadding()
-                            .padding(top = 64.dp, start = 28.dp)
-                            .graphicsLayer {
-                                val fraction = collapsedFraction.coerceIn(0f, 1f)
-                                // 采用 miuix 官方 largeTitleAlpha = 1 - fraction*3，与小标题出现阈值 (fraction*3 >= 1) 对齐，避免双标题重叠
-                                alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                                // 进出关于页时随翻页进度左右平移，与顶栏及页面滑动保持同步（绘制阶段读取）
-                                translationX = -screenWidth.toPx() * (pagerState.currentPage + pagerState.currentPageOffsetFraction - 1f).coerceIn(0f, 1f)
-                                translationY = -fraction * 45.dp.toPx()
-                            }
-                    )
                 }
             }
 
@@ -725,4 +675,57 @@ private fun iOSLikeFloatingNavigationBar(
         useMonet = useMonet,
         modifier =  modifier,
     )
+}
+
+/**
+ * 页面级顶栏容器（参考 miuix example 的结构）：每个 pager 页面自带 Scaffold + TopAppBar + 大标题，
+ * 大标题属于页面本身 —— 左右翻页时标题随各自页面一起滑动，不再做独立的平移/淡出动画。
+ * content 回调收到的 Dp 为顶栏高度，用作列表 contentPadding 的 top。
+ */
+@Composable
+private fun PageTopBarScaffold(
+    title: String,
+    scrollBehavior: ScrollBehavior?,
+    useMonet: Boolean,
+    actions: @Composable RowScope.() -> Unit = {},
+    content: @Composable (Dp) -> Unit,
+) {
+    val isDark = isSystemInDarkTheme()
+    val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = title,
+                    largeTitle = title,
+                    largeTitleColor = Color.Transparent,
+                    color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
+                    scrollBehavior = scrollBehavior,
+                    bottomContent = {
+                        val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
+                        Spacer(modifier = Modifier.height(height))
+                    },
+                    actions = actions
+                )
+            }
+        ) { innerPadding ->
+            content(innerPadding.calculateTopPadding())
+        }
+        Text(
+            text = title,
+            fontSize = 36.sp,
+            fontWeight = if (useMonet) FontWeight.ExtraBold else FontWeight.Normal,
+            color = MiuixTheme.colorScheme.onBackground,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(top = 64.dp, start = 28.dp)
+                .graphicsLayer {
+                    val fraction = collapsedFraction.coerceIn(0f, 1f)
+                    // 采用 miuix 官方 largeTitleAlpha = 1 - fraction*3，与小标题出现阈值 (fraction*3 >= 1) 对齐，避免双标题重叠
+                    alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
+                    translationY = -fraction * 45.dp.toPx()
+                }
+        )
+    }
 }
