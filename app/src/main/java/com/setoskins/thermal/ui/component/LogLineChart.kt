@@ -126,6 +126,13 @@ private fun rememberChartData(points: List<ModuleDetector.LogDataPoint>, maxWatt
     ChartData(timeSeconds = timeSeconds, wattNorm = wattNorm, levelNorm = levelNorm, tempNorm = tempNorm)
 }
 
+private fun formatDuration(minutes: Long): String {
+    if (minutes < 60) return "${minutes}m"
+    val h = minutes / 60
+    val m = minutes % 60
+    return if (m == 0L) "${h}h" else "${h}h${m}m"
+}
+
 @Composable
 fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showWatt: Boolean, showLevel: Boolean, showTemp: Boolean, isCharging: Boolean = false, singleCurveMode: String? = null, onSingleCurveModeChange: (String?) -> Unit = {}) {
     val wattColor = ColorWatt
@@ -197,7 +204,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             points.indices.forEach { index ->
                 val m = (timeSeconds[index] - baseTimeSeconds) / 60
                 if (lastM == -1L || m - lastM >= markerStepMinutes) {
-                    data.add(index to "${m}m")
+                    data.add(index to formatDuration(m))
                     lastM = m
                     if (index == lastIdx) lastIdxAdded = true
                 }
@@ -209,9 +216,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 // 间隙 < 5 分钟：替换上一个标记（如 13m 替换 10m、23m 替换 20m）
                 // 间隙 >= 5 分钟：保留两者（如 26m 和 20m 并存）
                 if (lastMark != null && m - lastM < 5) {
-                    data[data.lastIndex] = lastIdx to "${m}m"
+                    data[data.lastIndex] = lastIdx to formatDuration(m)
                 } else {
-                    data.add(lastIdx to "${m}m")
+                    data.add(lastIdx to formatDuration(m))
                 }
             }
         } else {
@@ -221,7 +228,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                 if (index < charge80Index) {
                     val m = (timeSeconds[index] - baseTimeSeconds) / 60
                     if (lastM == -1L || m - lastM >= markerStepMinutes) {
-                        data.add(index to "${m}m")
+                        data.add(index to formatDuration(m))
                         lastM = m
                     }
                 }
@@ -231,12 +238,12 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             if (data.isNotEmpty()) {
                 val lastMarkM = (timeSeconds[data.last().first] - baseTimeSeconds) / 60
                 if (m80 - lastMarkM < 5) {
-                    data[data.lastIndex] = charge80Index to "${m80}m"
+                    data[data.lastIndex] = charge80Index to formatDuration(m80)
                 } else {
-                    data.add(charge80Index to "${m80}m")
+                    data.add(charge80Index to formatDuration(m80))
                 }
             } else {
-                data.add(charge80Index to "${m80}m")
+                data.add(charge80Index to formatDuration(m80))
             }
             val lastIdx = points.lastIndex
             val fullIdx = points.indexOfLast { it.level >= 100f }
@@ -244,7 +251,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             // 到达100%时标记一次
             if (hasFull) {
                 val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
-                data.add(fullIdx to "${m}m")
+                data.add(fullIdx to formatDuration(m))
             }
             // 末尾点：100% 标记不可替换，其余间隙 < 5 分钟则替换上一个
             if (data.none { it.first == lastIdx }) {
@@ -255,15 +262,15 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     if (!isLastFull) {
                         val lastMarkM = (timeSeconds[lastMark.first] - baseTimeSeconds) / 60
                         if (m - lastMarkM < 5) {
-                            data[data.lastIndex] = lastIdx to "${m}m"
+                            data[data.lastIndex] = lastIdx to formatDuration(m)
                         } else {
-                            data.add(lastIdx to "${m}m")
+                            data.add(lastIdx to formatDuration(m))
                         }
                     } else {
-                        data.add(lastIdx to "${m}m")
+                        data.add(lastIdx to formatDuration(m))
                     }
                 } else {
-                    data.add(lastIdx to "${m}m")
+                    data.add(lastIdx to formatDuration(m))
                 }
             }
         }
@@ -279,9 +286,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             val isAnimatingTouch = animatedIndexValue >= 0f
             val activeIndex = if (isAnimatingTouch) animatedIndexValue.toInt().coerceIn(points.indices) else points.lastIndex
             val durationValue = if (isAnimatingTouch) {
-                "${((chartData.timeSeconds[activeIndex] - baseTimeSeconds) / 60).coerceAtLeast(0L)}m"
+                formatDuration(((chartData.timeSeconds[activeIndex] - baseTimeSeconds) / 60).coerceAtLeast(0L))
             } else {
-                "${totalDurationMinutes}m"
+                formatDuration(totalDurationMinutes)
             }
             val wattValue = if (isAnimatingTouch) "%.1f W".format(points[activeIndex].watt) else "%.1f W".format(averageWatt)
             val levelValue = "${minLevel}%→${maxLevel}%"
@@ -638,7 +645,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
 
             // 总时长 — 右对齐
             timeLabelPaint.textAlign = Paint.Align.RIGHT
-            drawContext.canvas.nativeCanvas.drawText("${totalDurationMinutes}m", w, textY, timeLabelPaint)
+            drawContext.canvas.nativeCanvas.drawText(formatDuration(totalDurationMinutes), w, textY, timeLabelPaint)
 
             // 刻度标签 — 居中，防重叠过滤（防与左右两端及前一个标签重叠）
             timeLabelPaint.textAlign = Paint.Align.CENTER
