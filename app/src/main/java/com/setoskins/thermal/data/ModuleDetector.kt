@@ -33,7 +33,6 @@ object ModuleDetector {
     private val LEVEL_REGEX = Regex("电量\\s+(\\d+)%?")
     private val TEMP_REGEX = Regex("温度\\s+(\\d+)")
     private val CURRENT_REGEX = Regex("电流\\s+(-?\\d+)")
-    private val THROTTLE_EVENT_REGEX = Regex("\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}.*触发内核墙限流(?!：)")
 
     /**
      * 检测设备是否有 root 权限。
@@ -306,13 +305,32 @@ object ModuleDetector {
 
     suspend fun readThermalThrottleCount(): Int = withContext(Dispatchers.IO) {
         runCatching {
-            val content = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'")).inputStream.bufferedReader().readText()
-            // 仅匹配带有时间戳的限流日志，排除“触发内核墙限流：x”这种统计文本
-            THROTTLE_EVENT_REGEX.findAll(content).count()
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'"))
+            process.inputStream.bufferedReader().useLines { lines ->
+                lines.count { line ->
+                    line.contains("触发内核墙限流") && !line.contains("：")
+                }
+            }
         }.getOrDefault(0)
     }
 
-    data class LogDataPoint(val time: String, val level: Float, val temp: Float, val watt: Float)
+    data class LogDataPoint(val time: String, val level: Float, val temp: Float, val watt: Float, val timeSeconds: Long = 0L)
+
+    fun fastParseTimeSeconds(time: String): Long {
+        return try {
+            if (time.length < 14) 0L
+            else {
+                val month = (time[0] - '0') * 10 + (time[1] - '0')
+                val day = (time[3] - '0') * 10 + (time[4] - '0')
+                val hour = (time[6] - '0') * 10 + (time[7] - '0')
+                val minute = (time[9] - '0') * 10 + (time[10] - '0')
+                val second = (time[12] - '0') * 10 + (time[13] - '0')
+                ((month * 31L + day) * 24L + hour) * 3600L + minute * 60L + second
+            }
+        } catch (_: Exception) {
+            0L
+        }
+    }
 
     suspend fun getParsedLogData(): List<LogDataPoint> = withContext(Dispatchers.IO) {
         runCatching {
@@ -339,7 +357,8 @@ object ModuleDetector {
                         val ma = maMatch.groupValues[1].toFloat()
                         // 计算瓦数 (W = mA * 4.0 / 1000)
                         val watt = Math.abs(ma * 4.0f / 1000f)
-                        LogDataPoint(time, level, temp, watt)
+                        val timeSec = fastParseTimeSeconds(time)
+                        LogDataPoint(time, level, temp, watt, timeSec)
                     } else null
                 } catch (e: Exception) { null }
             }

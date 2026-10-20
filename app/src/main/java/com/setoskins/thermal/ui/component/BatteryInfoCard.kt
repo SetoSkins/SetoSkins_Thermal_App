@@ -35,13 +35,13 @@ fun BatteryInfoCard(isPageActive: Boolean = true) {
         info = ModuleDetector.readBatteryInfo()
         throttleCount = ModuleDetector.readThermalThrottleCount()
     }
-    // 仅在停留在日志页时轮询刷新：翻页动画期间不再产生 su 子进程与中途重组
+    // 仅在停留在日志页时轮询刷新：进入页面时不立即重复读取，先延迟避免切页动画与 su 调用叠加
     LaunchedEffect(isPageActive) {
         if (!isPageActive) return@LaunchedEffect
         while (isActive) {
+            kotlinx.coroutines.delay(3000)
             info = ModuleDetector.readBatteryInfo()
             throttleCount = ModuleDetector.readThermalThrottleCount()
-            kotlinx.coroutines.delay(3000)
         }
     }
     val tempText = info.temperature.let {

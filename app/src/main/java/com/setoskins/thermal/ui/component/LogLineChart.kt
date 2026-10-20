@@ -1,9 +1,6 @@
 package com.setoskins.thermal.ui.component
 
 import android.graphics.Paint
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.ZoneOffset
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -83,14 +80,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 // 解析时间字符串 "MM-DD HH:mm:ss" 为秒数
-private val timeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-internal fun parseTimeSeconds(time: String): Long = try {
-    // 日志中没有年份，补充一个固定年份以支持跨月/跨天计算
-    val fullTime = "2026-$time"
-    LocalDateTime.parse(fullTime, timeFormatter).toEpochSecond(ZoneOffset.UTC)
-} catch (_: Exception) {
-    0L
-}
+internal fun parseTimeSeconds(time: String): Long = ModuleDetector.fastParseTimeSeconds(time)
 
 // 绘制一条平滑曲线的 Path
 fun DrawScope.drawLogPathZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color) {
@@ -129,7 +119,7 @@ private data class ChartData(
 
 @Composable
 private fun rememberChartData(points: List<ModuleDetector.LogDataPoint>, maxWatt: Float, maxTemp: Float, minTemp: Float): ChartData = remember(points, maxWatt, maxTemp, minTemp) {
-    val timeSeconds = points.map { parseTimeSeconds(it.time) }
+    val timeSeconds = points.map { if (it.timeSeconds != 0L) it.timeSeconds else parseTimeSeconds(it.time) }
     val wattNorm = points.map { (it.watt / maxWatt).coerceIn(0f, 1f) }
     val levelNorm = points.map { it.level / 100f }
     val tempNorm = points.map { ((it.temp - minTemp) / (maxTemp - minTemp)).coerceIn(0f, 1f) }

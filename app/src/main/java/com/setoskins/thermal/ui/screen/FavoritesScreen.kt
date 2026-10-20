@@ -118,16 +118,16 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         }
     }
 
-    // 周期刷新仅在停留在日志页且充电时进行：翻页动画期间不再产生 su 子进程开销与中途重组
+    // 周期刷新仅在停留在日志页且充电时进行：进入页面时不立即重复读取，先延迟避免切页动画与 su 调用叠加
     LaunchedEffect(isPageActive, isCharging) {
         if (!isPageActive || !isCharging) return@LaunchedEffect
         while (isActive) {
+            kotlinx.coroutines.delay(15000)
             if (selectedIndex == 0) {
                 logContent = ModuleDetector.readLog()
             } else {
                 logPoints = ModuleDetector.getParsedLogData()
             }
-            kotlinx.coroutines.delay(15000)
         }
     }
 
