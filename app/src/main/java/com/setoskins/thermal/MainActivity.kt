@@ -1,6 +1,8 @@
 package com.setoskins.thermal
 
+import android.content.res.Configuration
 import android.graphics.Color as AndroidColor
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -21,17 +23,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        val defaultNavBarColor = window.navigationBarColor
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(
-                lightScrim = AndroidColor.TRANSPARENT,
-                darkScrim = AndroidColor.TRANSPARENT
-            ),
-            navigationBarStyle = SystemBarStyle.auto(
-                lightScrim = defaultNavBarColor,
-                darkScrim = defaultNavBarColor
-            )
-        )
+        applySystemBars()
 
         val prefs = getSharedPreferences("settings", MODE_PRIVATE)
         val savedUseMonet = prefs.getBoolean("useMonet", false)
@@ -54,6 +46,34 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+        }
+    }
+
+    /**
+     * 系统栏沉浸（参考 HyperExtreme 的 applyAppSystemBars）：
+     *
+     * 1. 状态栏 / 导航条（小白条）两个 scrim 都用**全透明**。`SystemBarStyle.auto` 的默认
+     *    scrim 是半透明遮罩，会盖在状态栏/导航条后面，看起来就不沉浸。
+     * 2. 关掉导航条的「对比度强制」：系统默认会在透明导航条后面再糊一层 scrim 保证图标可见，
+     *    即使 bar 本身透明也能看出色差（HyperOS 上就是一条灰条）。
+     * 3. 图标明暗用本 App 的深浅色判定（这里跟随系统，与 MyApplicationTheme 一致）。
+     */
+    @Suppress("DEPRECATION")
+    private fun applySystemBars() {
+        val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                lightScrim = AndroidColor.TRANSPARENT,
+                darkScrim = AndroidColor.TRANSPARENT
+            ) { _ -> isDark },
+            navigationBarStyle = SystemBarStyle.auto(
+                lightScrim = AndroidColor.TRANSPARENT,
+                darkScrim = AndroidColor.TRANSPARENT
+            ) { _ -> isDark }
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
         }
     }
 }

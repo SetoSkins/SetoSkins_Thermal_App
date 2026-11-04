@@ -352,6 +352,10 @@ fun MyApplicationApp(
                         )
                     })
                 ) { innerPadding ->
+                    // 悬浮底栏模式：底栏是浮在页面之上的自绘胶囊，系统导航条（小白条）区域必须让页面内容
+                    // 一直画到屏幕最底部。若仍应用 innerPadding.bottom（导航条 inset，约 22dp），
+                    // 内容视口会被整体抬高，露出的页面底色就变成小白条上方那条黑边。
+                    val bottomContentPadding = if (floatingNavBar) 0.dp else innerPadding.calculateBottomPadding()
                     Box(modifier = Modifier.fillMaxSize()) {
                         HorizontalPager(
                             state = pagerState,
@@ -396,7 +400,7 @@ fun MyApplicationApp(
                                             onNavigateToWhitelist = { showWhitelistPage = true },
                                             onNavigateToBypassList = { showBypassListPage = true },
                                             onDialogVisibilityChange = onDialogVisibilityChange,
-                                            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+                                            modifier = Modifier.padding(bottom = bottomContentPadding)
                                         )
                                     }
                                 }
@@ -427,7 +431,7 @@ fun MyApplicationApp(
                                             scrollBehavior = favoritesScrollBehavior,
                                             contentPaddingTop = contentPaddingTop,
                                             isPageActive = logPageActive,
-                                            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+                                            modifier = Modifier.padding(bottom = bottomContentPadding)
                                         )
                                     }
                                 }
@@ -441,7 +445,7 @@ fun MyApplicationApp(
                                         onNavigateToDonate = { showDonatePage = true },
                                         reduceEffects = reduceExpensiveEffects,
                                         onDialogVisibilityChange = onDialogVisibilityChange,
-                                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+                                        modifier = Modifier.padding(bottom = bottomContentPadding)
                                     )
                                 }
                             }
