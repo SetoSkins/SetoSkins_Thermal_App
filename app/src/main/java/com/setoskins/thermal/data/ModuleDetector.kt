@@ -314,6 +314,29 @@ object ModuleDetector {
         }.getOrDefault(0)
     }
 
+    // ── 启动预热 ──
+    // 日志页首次组合时（切页动画进行中）才去起 su 读日志/电池/限流次数，会把这几百毫秒压在动画帧上。
+    // App 启动后先在后台跑一遍，日志页进入时直接 take 缓存，只在结果被取走前有效。
+    @Volatile private var prewarmedLog: String? = null
+    @Volatile private var prewarmedBattery: BatteryInfo? = null
+    @Volatile private var prewarmedThrottle: Int? = null
+    @Volatile private var prewarmStarted = false
+
+    suspend fun prewarm() = withContext(Dispatchers.IO) {
+        if (prewarmStarted) return@withContext
+        prewarmStarted = true
+        prewarmedBattery = readBatteryInfo()
+        prewarmedLog = readLog()
+        prewarmedThrottle = readThermalThrottleCount()
+        Unit
+    }
+
+    fun takePrewarmedBattery(): BatteryInfo? = prewarmedBattery.also { prewarmedBattery = null }
+
+    fun takePrewarmedLog(): String? = prewarmedLog.also { prewarmedLog = null }
+
+    fun takePrewarmedThrottle(): Int? = prewarmedThrottle.also { prewarmedThrottle = null }
+
     data class LogDataPoint(val time: String, val level: Float, val temp: Float, val watt: Float, val timeSeconds: Long = 0L)
 
     fun fastParseTimeSeconds(time: String): Long {

@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -75,6 +77,7 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Info
 
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -84,6 +87,8 @@ import com.setoskins.thermal.ui.component.RestartDialog
 import com.setoskins.thermal.ui.component.RootCheckDialog
 import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.ui.component.liquid.IosLiquidGlassNavigationBar
+import com.setoskins.thermal.ui.component.liquid.NavTab
+import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
 import com.setoskins.thermal.ui.component.MaterialFloatingNavigationBar
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.screen.HomeScreen
@@ -230,6 +235,14 @@ fun MyApplicationApp(
         }
     }
 
+    // 启动后空闲时预热「日志」页的数据（日志文本 / 电池信息 / 限流次数）。
+    // 日志页是在切页动画进行中才首次组合的，如果那时才起 su 进程，几百毫秒的开销会压在动画帧上，
+    // 表现为「第一次切到日志卡一下」。推迟 700ms 让首页首帧先画完。
+    LaunchedEffect(Unit) {
+        delay(700)
+        ModuleDetector.prewarm()
+    }
+
     PredictiveBackHandler(enabled = showBypassListPage) { progress ->
         try {
             progress.collect { backEvent ->
@@ -285,10 +298,24 @@ fun MyApplicationApp(
     val isDark = isSystemInDarkTheme()
     val view = LocalView.current
 
+    // ── 悬浮底栏玻璃的「背景录制」 ──
+    // 与 HyperExtreme 一致：给页面内容挂 `layerBackdrop(backdrop)`，底栏本身必须留在录制层**外面**
+    // （否则玻璃会把自己录进去，采到的是自己 → 鬼影）。
+    // 页面底色也要画在这一层里：Scaffold 的 containerColor 是透明的，若不在这里补底色，
+    // 胶囊后面录到的是透明像素，模糊后就是"底栏发黑"。
+    val pageSurface = if (useMonet) {
+        MiuixTheme.colorScheme.background
+    } else if (isDark) {
+        Color.Black
+    } else {
+        MiuixTheme.colorScheme.surface
+    }
+    val contentRecorded = floatingNavBar && !useMonet && backdrop != null
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
+            .background(pageSurface)
     ) {
         Box(
             modifier = Modifier
@@ -297,7 +324,13 @@ fun MyApplicationApp(
                     translationX = -screenWidth.toPx() * 0.18f * maxOf(transitionProgress.value, blacklistTransitionProgress.value, whitelistTransitionProgress.value)
                 }
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // 页面内容 + 底色一起录进底栏玻璃的 backdrop（底栏在录制层外，见下方 AnimatedVisibility）
+                    .then(if (contentRecorded) Modifier.layerBackdrop(backdrop!!) else Modifier)
+                    .background(pageSurface)
+            ) {
                 Scaffold(
                     containerColor = Color.Transparent,
                     bottomBar = if (floatingNavBar) ({}) else ({
@@ -598,16 +631,48 @@ fun ThemedNavigationBar(
                 selectedIndex = selectedIndex,
                 pagerState = pagerState,
                 onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
-                 modifier = modifier,
+                modifier = modifier,
             )
         } else {
-            iOSLikeFloatingNavigationBar(
-                currentDestination = currentDestination,
-                pagerState = pagerState,
-                onDestinationSelected = onDestinationSelected,
+            val isDark = isSystemInDarkTheme()
+            val selectedIndex = remember {
+                mutableIntStateOf(pagerState?.currentPage ?: AppDestinations.entries.indexOf(currentDestination))
+            }
+            LaunchedEffect(pagerState) {
+                val ps = pagerState ?: return@LaunchedEffect
+                // 只在翻页**停下来**时同步选中项。
+                // 0→2 的动画途中 currentPage 会依次经过 1，若直接跟随它，选中块会被
+                // 「飞向终点 → 拽回中间页 → 再飞向终点」来回拉扯，看起来就是不丝滑。
+                snapshotFlow { ps.currentPage to ps.isScrollInProgress }
+                    .collect { (page, scrolling) ->
+                        if (!scrolling) selectedIndex.intValue = page
+                    }
+            }
+            val tabs = remember {
+                AppDestinations.entries.map { dest ->
+                    NavTab(
+                        label = dest.label,
+                        // 仅 miuix 悬浮底栏的「主页」使用 HyperExtreme 同款圆角房子图标；
+                        // 其它图标与 Material 底栏保持原样。
+                        icon = if (dest == AppDestinations.HOME) MiuixIcons.Home else dest.filledIcon,
+                        onClick = {},
+                    )
+                }
+            }
+            Os4FloatingNavigationBar(
+                tabs = tabs,
+                selectedIndex = selectedIndex,
                 backdrop = backdrop,
-                showBlur = showBlur,
-                useMonet = useMonet,
+                showIcons = true,
+                showLabels = true,
+                // 页面内容已通过下方的 `layerBackdrop(backdrop)` 录进背景副本（底栏本身在录制层外），
+                // 所以这里恢复真正的玻璃模糊，参数与 HyperExtreme 一致。
+                advancedMaterial = true,
+                isDarkTheme = isDark,
+                onTabSelected = { index ->
+                    selectedIndex.intValue = index
+                    onDestinationSelected(AppDestinations.entries[index])
+                },
                 modifier = modifier,
             )
         }
@@ -640,7 +705,9 @@ fun ThemedNavigationBar(
     } else {
         MiuixNavigationBar(modifier = modifier.fillMaxWidth(), color = MiuixTheme.colorScheme.surface.copy(alpha = barAlpha)) {
             AppDestinations.entries.forEach { destination ->
-                MiuixNavigationBarItem(icon = destination.icon, label = destination.label, selected = destination == currentDestination, onClick = { if (destination != currentDestination) onDestinationSelected(destination) })
+                // miuix 风格统一使用悬浮底栏那套「主页」图标（与是否启用悬浮底栏无关）
+                val icon = if (destination == AppDestinations.HOME) MiuixIcons.Home else destination.icon
+                MiuixNavigationBarItem(icon = icon, label = destination.label, selected = destination == currentDestination, onClick = { if (destination != currentDestination) onDestinationSelected(destination) })
             }
         }
     }

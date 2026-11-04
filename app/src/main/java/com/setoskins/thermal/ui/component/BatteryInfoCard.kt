@@ -8,12 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
@@ -22,28 +16,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.data.ModuleDetector
-import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun BatteryInfoCard(isPageActive: Boolean = true) {
-    var info by remember { mutableStateOf(ModuleDetector.BatteryInfo()) }
-    var throttleCount by remember { mutableIntStateOf(0) }
-    // 启动预热一次，保证首次切到日志页时即有数据
-    LaunchedEffect(Unit) {
-        info = ModuleDetector.readBatteryInfo()
-        throttleCount = ModuleDetector.readThermalThrottleCount()
-    }
-    // 仅在停留在日志页时轮询刷新：进入页面时不立即重复读取，先延迟避免切页动画与 su 调用叠加
-    LaunchedEffect(isPageActive) {
-        if (!isPageActive) return@LaunchedEffect
-        while (isActive) {
-            kotlinx.coroutines.delay(3000)
-            info = ModuleDetector.readBatteryInfo()
-            throttleCount = ModuleDetector.readThermalThrottleCount()
-        }
-    }
+fun BatteryInfoCard(info: ModuleDetector.BatteryInfo, throttleCount: Int) {
     val tempText = info.temperature.let {
         if (it.isNotEmpty()) try {
             "${"%.1f".format(it.toInt() / 10.0)}°C"

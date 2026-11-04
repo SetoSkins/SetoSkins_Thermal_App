@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.0"
 coreKtx = "1.10.1"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -11,6 +11,7 @@ composeBom = "2025.12.00"
 foundation = "1.11.2"
 animation = "1.11.2"
 miuix = "0.9.3"
+kyant-shapes = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,6 +39,7 @@ miuix-preference = { group = "top.yukonga.miuix.kmp", name = "miuix-preference",
 miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons", version.ref = "miuix" }
 miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur", version.ref = "miuix" }
 miuix-navigation3-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-navigation3-ui", version.ref = "miuix" }
+kyant-shapes = { group = "io.github.kyant0", name = "shapes", version.ref = "kyant-shapes" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

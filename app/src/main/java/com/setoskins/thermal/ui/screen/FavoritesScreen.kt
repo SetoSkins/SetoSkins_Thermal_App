@@ -75,7 +75,11 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
     var showLevel by rememberSaveable { mutableStateOf(true) }
     var showTemp by rememberSaveable { mutableStateOf(true) }
     var singleCurveMode by rememberSaveable { mutableStateOf<String?>(null) }
-    var isCharging by remember { mutableStateOf(false) }
+    var batteryInfo by remember { mutableStateOf(ModuleDetector.BatteryInfo()) }
+    var throttleCount by remember { mutableIntStateOf(0) }
+    var powerConnected by remember { mutableStateOf(false) }
+    // 充电状态优先取电池信息里的 status，广播作为兜底（不必为这一项单独再起一次 su）
+    val isCharging = batteryInfo.status == "Charging" || (batteryInfo.status.isEmpty() && powerConnected)
     val config = LocalConfiguration.current
     val isZh = remember { config.locales.get(0).language == "zh" }
     val isCenterText = remember(logContent) { logContent == "日志文件为空" || logContent == "无法读取日志文件" || logContent == "正在加载日志..." }
@@ -85,7 +89,7 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         var isRegistered = false
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                isCharging = intent.action == Intent.ACTION_POWER_CONNECTED
+                powerConnected = intent.action == Intent.ACTION_POWER_CONNECTED
             }
         }
         try {
@@ -103,16 +107,27 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         }
     }
 
-    // 初始读取一次充电状态
+    // 首次进页优先取 App 启动时的预热结果，避免在切页动画里起 su 进程
     LaunchedEffect(Unit) {
-        val batteryInfo = ModuleDetector.readBatteryInfo()
-        isCharging = batteryInfo.status == "Charging"
+        batteryInfo = ModuleDetector.takePrewarmedBattery() ?: ModuleDetector.readBatteryInfo()
+        throttleCount = ModuleDetector.takePrewarmedThrottle() ?: ModuleDetector.readThermalThrottleCount()
     }
 
-    // 数据预加载：启动/刷新/样式切换/充电状态变化时先读一次，保证进入页面即有数据
-    LaunchedEffect(reloadTrigger, selectedIndex, isCharging) {
+    // 电池信息轮询：只在停留在日志页时进行（原先在 BatteryInfoCard 内部，上移以便全页共享同一份数据）
+    LaunchedEffect(isPageActive) {
+        if (!isPageActive) return@LaunchedEffect
+        while (isActive) {
+            kotlinx.coroutines.delay(3000)
+            batteryInfo = ModuleDetector.readBatteryInfo()
+            throttleCount = ModuleDetector.readThermalThrottleCount()
+        }
+    }
+
+    // 数据预加载：启动/刷新/样式切换时先读一次，保证进入页面即有数据
+    // 不再把 isCharging 作为 key：它只影响曲线配色，作为 key 会在首次进页时再触发一次 su 读日志
+    LaunchedEffect(reloadTrigger, selectedIndex) {
         if (selectedIndex == 0) {
-            logContent = ModuleDetector.readLog()
+            logContent = ModuleDetector.takePrewarmedLog() ?: ModuleDetector.readLog()
         } else {
             logPoints = ModuleDetector.getParsedLogData()
         }
@@ -141,7 +156,7 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                 modifier = Modifier.fillMaxSize().customOverScroll().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 76.dp)
             ) {
-                item(key = "battery_card") { BatteryInfoCard(isPageActive = isPageActive) }
+                item(key = "battery_card") { BatteryInfoCard(info = batteryInfo, throttleCount = throttleCount) }
                 item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (4).dp)) } }
                 item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
                         WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
