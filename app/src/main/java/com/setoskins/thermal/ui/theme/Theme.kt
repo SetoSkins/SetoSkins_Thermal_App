@@ -16,6 +16,7 @@ import top.yukonga.miuix.kmp.theme.ThemeController
  *
  * - useMonet = true  : 使用 ColorSchemeMode.MonetSystem(Material You / Monet 动态取色)
  * - useMonet = false : 使用 ColorSchemeMode.System(MIUIX 自己的浅蓝/深色主题)
+ * - miuixMonet = true: MIUIX 风格下也可单独开启 Monet 动态取色
  *
  * 为了让 Material3 组件(Switch / NavigationBar / OutlinedTextField 等)在两种主题下
  * 都能跟当前主题保持一致(而不是用 Material3 默认的紫色),这里把 MIUIX 的 colorScheme
@@ -24,12 +25,14 @@ import top.yukonga.miuix.kmp.theme.ThemeController
 @Composable
 fun MyApplicationTheme(
     useMonet: Boolean = false,
+    miuixMonet: Boolean = false,
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val controller = remember(useMonet, darkTheme) {
+    val monetEnabled = useMonet || miuixMonet
+    val controller = remember(monetEnabled, darkTheme) {
         ThemeController(
-            colorSchemeMode = if (useMonet) ColorSchemeMode.MonetSystem else ColorSchemeMode.System,
+            colorSchemeMode = if (monetEnabled) ColorSchemeMode.MonetSystem else ColorSchemeMode.System,
             isDark = darkTheme
         )
     }

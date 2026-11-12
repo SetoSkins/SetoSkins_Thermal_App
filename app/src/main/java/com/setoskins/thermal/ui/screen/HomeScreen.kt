@@ -423,7 +423,7 @@ fun HomeScreen(
         }
         item(key = "speed_title") {
             Spacer(modifier = Modifier.height(12.dp))
-            SmallTitle(text = if (isZh) "调速 (填写单位为微安）（重启生效)" else "Speed control (unit: μA, restart required)", modifier = Modifier.compactSmallTitle())
+            SmallTitle(text = if (isZh) "调速 (填写单位为微安）（开关重启生效)" else "Speed control (unit: μA, switch restart required)", modifier = Modifier.compactSmallTitle())
         }
         item(key = "speed_control") {
             SpeedControlSection(

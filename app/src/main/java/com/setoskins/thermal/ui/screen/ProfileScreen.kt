@@ -4,6 +4,13 @@ import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -102,7 +109,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, onNavigateToCredits: () -> Unit = {}, reduceEffects: Boolean = false, onDialogVisibilityChange: (Boolean) -> Unit = {}, modifier: Modifier = Modifier) {
+fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixMonet: Boolean = false, onMiuixMonetChange: (Boolean) -> Unit = {}, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, onNavigateToCredits: () -> Unit = {}, reduceEffects: Boolean = false, onDialogVisibilityChange: (Boolean) -> Unit = {}, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val uriHandler = LocalUriHandler.current
@@ -217,7 +224,17 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
                         }
                     }
                     item(key = "setoskins_link") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) } }
-                    item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }); BasicComponent(title = if (isZh) "启用悬浮底栏" else "Floating Nav Bar", summary = if (isZh) "在屏幕底部使用悬浮样式的导航栏" else "Use floating-style navigation bar at the bottom of the screen", endActions = { ThemedSwitch(checked = floatingNavBar, onCheckedChange = null, useMonet = useMonet) }, onClick = { onFloatingNavBarChange(!floatingNavBar); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } }
+                    item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) {
+                        WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) })
+                        AnimatedVisibility(
+                            visible = !useMonet,
+                            enter = expandVertically(animationSpec = tween(320, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))) + fadeIn(tween(200)),
+                            exit = shrinkVertically(animationSpec = tween(260, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))) + fadeOut(tween(160))
+                        ) {
+                            BasicComponent(title = if (isZh) "启用Monet颜色" else "Enable Monet Colors", summary = if (isZh) "从壁纸提取颜色作为主题色" else "Derive theme colors from wallpaper", endActions = { ThemedSwitch(checked = miuixMonet, onCheckedChange = null, useMonet = useMonet) }, onClick = { onMiuixMonetChange(!miuixMonet); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        }
+                        BasicComponent(title = if (isZh) "启用悬浮底栏" else "Floating Nav Bar", summary = if (isZh) "在屏幕底部使用悬浮样式的导航栏" else "Use floating-style navigation bar at the bottom of the screen", endActions = { ThemedSwitch(checked = floatingNavBar, onCheckedChange = null, useMonet = useMonet) }, onClick = { onFloatingNavBarChange(!floatingNavBar); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                    } }
                     item(key = "config_io") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) {
                             ArrowPreference(title = if (isZh) "导出软件配置" else "Export App Config", onClick = { 
                                 scope.launch { 

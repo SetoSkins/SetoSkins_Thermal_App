@@ -119,6 +119,8 @@ enum class AppDestinations(val label: String, val labelEn: String, val icon: Ima
 fun MyApplicationApp(
     useMonet: Boolean,
     onUseMonetChange: (Boolean) -> Unit,
+    miuixMonet: Boolean,
+    onMiuixMonetChange: (Boolean) -> Unit,
     floatingNavBar: Boolean,
     onFloatingNavBarChange: (Boolean) -> Unit
 ) {
@@ -473,6 +475,8 @@ fun MyApplicationApp(
                                     ProfileScreen(
                                         useMonet = useMonet,
                                         onUseMonetChange = onUseMonetChange,
+                                        miuixMonet = miuixMonet,
+                                        onMiuixMonetChange = onMiuixMonetChange,
                                         floatingNavBar = floatingNavBar,
                                         onFloatingNavBarChange = onFloatingNavBarChange,
                                         onConfigImported = { reloadTrigger++ },
