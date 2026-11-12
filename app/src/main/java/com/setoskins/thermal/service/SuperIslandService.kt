@@ -125,9 +125,16 @@ class SuperIslandService : Service() {
         return true
     }
 
+    private fun isZh(): Boolean = resources.configuration.locales.get(0).language == "zh"
+
     private fun buildNotification(state: BatteryMonitor.BatteryState): Notification {
-        val contentTitle = "超级岛充电监测"
-        val contentText = "功率: %.1fW | 温度: %.1f°C | 电量: %d%%".format(state.wattage, state.temperature, state.level)
+        val zh = isZh()
+        val contentTitle = if (zh) "超级岛充电监测" else "Charging monitor"
+        val contentText = if (zh) {
+            "功率: %.1fW | 温度: %.1f°C | 电量: %d%%".format(state.wattage, state.temperature, state.level)
+        } else {
+            "Power: %.1fW | Temp: %.1f°C | Battery: %d%%".format(state.wattage, state.temperature, state.level)
+        }
         
         // For Android 15 Status Bar Chip: Only wattage as requested
         val shortText = "%.1fW".format(state.wattage)
@@ -173,12 +180,13 @@ class SuperIslandService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val zh = isZh()
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "超级岛充电信息",
+                if (zh) "超级岛充电信息" else "Charging status",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "在状态栏或通知栏显示实时充电信息"
+                description = if (zh) "在状态栏或通知栏显示实时充电信息" else "Show live charging info in the status bar or notification shade"
                 setShowBadge(false)
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

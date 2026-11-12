@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -21,6 +22,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 fun BatteryInfoCard(info: ModuleDetector.BatteryInfo, throttleCount: Int) {
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val tempText = info.temperature.let {
         if (it.isNotEmpty()) try {
             "${"%.1f".format(it.toInt() / 10.0)}°C"
@@ -37,12 +39,12 @@ fun BatteryInfoCard(info: ModuleDetector.BatteryInfo, throttleCount: Int) {
     }
     val cap = info.capacity.let { if (it.isNotEmpty()) "${it}%" else "..." }
     val st = when {
-        info.capacity.isNotEmpty() && info.capacity.toInt() >= 100 -> "已充满"
-        info.status == "Charging" -> "充电中"
-        info.status == "Discharging" -> "放电中"
-        info.status == "Not charging" -> "未充电"
-        info.status == "Full" -> "已充满"
-        info.status == "Unknown" -> "未知"
+        info.capacity.isNotEmpty() && info.capacity.toInt() >= 100 -> if (isZh) "已充满" else "Full"
+        info.status == "Charging" -> if (isZh) "充电中" else "Charging"
+        info.status == "Discharging" -> if (isZh) "放电中" else "Discharging"
+        info.status == "Not charging" -> if (isZh) "未充电" else "Not charging"
+        info.status == "Full" -> if (isZh) "已充满" else "Full"
+        info.status == "Unknown" -> if (isZh) "未知" else "Unknown"
         else -> info.status.ifEmpty { "..." }
     }
     MiuixCard {
@@ -51,17 +53,17 @@ fun BatteryInfoCard(info: ModuleDetector.BatteryInfo, throttleCount: Int) {
         ) {
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
-                BatteryStatItem("温度", tempText, Modifier.weight(1f))
-                BatteryStatItem("电流", currentText, Modifier.weight(1f))
+                BatteryStatItem(if (isZh) "温度" else "Temp", tempText, Modifier.weight(1f))
+                BatteryStatItem(if (isZh) "电流" else "Current", currentText, Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
-                BatteryStatItem("电量", cap, Modifier.weight(1f))
-                BatteryStatItem("充电状态", st, Modifier.weight(1f))
+                BatteryStatItem(if (isZh) "电量" else "Battery", cap, Modifier.weight(1f))
+                BatteryStatItem(if (isZh) "充电状态" else "Charging status", st, Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "触发内核墙限流：$throttleCount",
+                text = if (isZh) "触发内核墙限流：$throttleCount" else "Kernel throttling triggered: $throttleCount",
                 fontSize = 12.sp,
                 color = MiuixTheme.colorScheme.onSurfaceSecondary,
                 modifier = Modifier.fillMaxWidth(),

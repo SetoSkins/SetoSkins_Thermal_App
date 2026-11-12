@@ -174,14 +174,7 @@ fun DonatePage(
                 Text(text = "SetoSkins", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 Text(text = if (isZh) "温度调控模块" else "Thermal Control Module", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 Spacer(Modifier.height(24.dp))
-                Card(modifier = donateCardModifier, cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = donateCardColor, contentColor = colors.onSurface)) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(text = if (isZh) "支持项目" else "Support the Project", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        Text(text = if (isZh) "如果你喜欢这个项目，欢迎通过以下方式支持我" else "If you like this project, feel free to support us:", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
+
                 Card(
                     modifier = donateCardModifier,
                     cornerRadius = 24.dp,

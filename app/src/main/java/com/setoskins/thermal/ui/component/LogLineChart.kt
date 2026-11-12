@@ -361,20 +361,20 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     Box(modifier = Modifier.weight(outerDurationWeight), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(durationValue, fontSize = 14.sp, color = primaryColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
-                            Text(if (isZh) "时长" else "Dur", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
+                            Text(if (isZh) "时长" else "Duration", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
                     Row(modifier = Modifier.weight(rightWeight), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.weight(wattWeight).graphicsLayer { alpha = wattAlpha; scaleX = wattScale; scaleY = wattScale }, contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(wattValue, fontSize = 14.sp, color = wattColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
-                            Text(if (isZh) "平均功耗" else "Avg Watt", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
+                            Text(if (isZh) "平均功耗" else "Avg power", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
                     Box(modifier = Modifier.weight(levelWeight).graphicsLayer { alpha = levelAlpha; scaleX = levelScale; scaleY = levelScale }, contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(levelValue, fontSize = 14.sp, color = levelColor, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
-                            Text(if (isZh) "电量" else "Bat", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
+                            Text(if (isZh) "电量" else "Battery", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, textAlign = TextAlign.Center, maxLines = 1)
                         }
                     }
                     Box(modifier = Modifier.weight(tempWeight).graphicsLayer { alpha = tempAlpha; scaleX = tempScale; scaleY = tempScale }, contentAlignment = Alignment.Center) {
@@ -673,8 +673,8 @@ fun SingleCurveSegmentControl(
     isZh: Boolean
 ) {
     val options = listOf(
-        Triple("watt", if (isZh) "功耗" else "Watt", ColorWatt),
-        Triple("level", if (isZh) "电量" else "Bat", ColorLevel),
+        Triple("watt", if (isZh) "功耗" else "Power", ColorWatt),
+        Triple("level", if (isZh) "电量" else "Battery", ColorLevel),
         Triple("temp", if (isZh) "温度" else "Temp", ColorTemp)
     )
     val selectedIndex = options.indexOfFirst { it.first == singleCurveMode }

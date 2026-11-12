@@ -83,6 +83,12 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
     val config = LocalConfiguration.current
     val isZh = remember { config.locales.get(0).language == "zh" }
     val isCenterText = remember(logContent) { logContent == "日志文件为空" || logContent == "无法读取日志文件" || logContent == "正在加载日志..." }
+    val displayLogContent = if (isZh) logContent else when (logContent) {
+        "正在加载日志..." -> "Loading log..."
+        "日志文件为空" -> "Log file is empty"
+        "无法读取日志文件" -> "Unable to read log file"
+        else -> logContent
+    }
 
     // 使用广播监听充电状态变化，替代轮询中 readBatteryInfo 调用
     DisposableEffect(Unit) {
@@ -154,10 +160,10 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().customOverScroll().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 76.dp)
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 106.dp)
             ) {
                 item(key = "battery_card") { BatteryInfoCard(info = batteryInfo, throttleCount = throttleCount) }
-                item(key = "log_title") { SectionTitle { SmallTitle(text = "日志", modifier = Modifier.offset(y = (4).dp)) } }
+                item(key = "log_title") { SectionTitle { SmallTitle(text = if (isZh) "日志" else "Log", modifier = Modifier.offset(y = (4).dp)) } }
                 item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
                         WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
                     } }
@@ -166,10 +172,10 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                             val secondaryColor = MiuixTheme.colorScheme.onSurfaceSecondary
                             val onSurfaceColor = MiuixTheme.colorScheme.onSurface
                             Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = if (isCenterText) Alignment.Center else Alignment.TopStart) {
-                                Text(text = logContent, fontSize = 13.sp, color = if (isCenterText && logContent != "正在加载日志...") secondaryColor else onSurfaceColor, textAlign = if (isCenterText) TextAlign.Center else TextAlign.Start, modifier = if (isCenterText) Modifier.fillMaxWidth() else Modifier)
+                                Text(text = displayLogContent, fontSize = 13.sp, color = if (isCenterText && logContent != "正在加载日志...") secondaryColor else onSurfaceColor, textAlign = if (isCenterText) TextAlign.Center else TextAlign.Start, modifier = if (isCenterText) Modifier.fillMaxWidth() else Modifier)
                             }
                         } else {
-                            if (logPoints.isEmpty() || logPoints.size < 2) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No Data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
+                            if (logPoints.isEmpty() || logPoints.size < 2) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
                             else {
                                 LogLineChart(points = logPoints, isZh = isZh, showWatt = if (singleCurveMode == "watt") true else showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging, singleCurveMode = singleCurveMode, onSingleCurveModeChange = { singleCurveMode = it })
                             }

@@ -230,7 +230,7 @@ fun SpeedControlSection(
         Column {
             // ── 修改最大电流数 ──
             BasicComponent(
-                title = "修改最大电流数",
+                title = if (isZh) "修改最大电流数" else "Max current",
                 enabled = switch4 || isExclusiveEnabled(),
                 endActions = { ThemedSwitch(checked = switch4, onCheckedChange = null, enabled = switch4 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
@@ -246,7 +246,7 @@ fun SpeedControlSection(
                         ThemedTextField(
                             value = currentValue,
                             onValueChange = { updateText("currentValue", "最大电流数", it) { currentValue = it } },
-                                label = "22A＝22000mA＝22000000",
+                                label = if (isZh) "22A＝22000mA＝22000000μA" else "22A = 22000mA = 22000000μA",
                             useMonet = useMonet,
                             modifier = Modifier.fillMaxWidth(),
                             inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
@@ -257,7 +257,7 @@ fun SpeedControlSection(
 
             // ── 充电调速 ──
             BasicComponent(
-                title = "充电调速",
+                title = if (isZh) "充电调速" else "Speed control while charging",
                 enabled = switch11 || isExclusiveEnabled(),
                 endActions = { ThemedSwitch(checked = switch11, onCheckedChange = null, enabled = switch11 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
@@ -271,18 +271,18 @@ fun SpeedControlSection(
                 key("charge_speed") {
                     Column {
                         SliderRow(
-                            title = "一限温度阈值",
+                            title = if (isZh) "一限温度阈值" else "Temp threshold 1",
                             value = limit1Temp.toFloatOrNull() ?: 40f,
                             onValueChange = { limit1Temp = it.toInt().toString() },
                             valueRange = 20f..50f, steps = 30, suffix = "°C",
                             onClickLabel = {
-                                dialogState = DialogState("调整一限温度阈值", "输入温度 (20°C-50°C)", limit1Temp, 20..50) { v ->
+                                dialogState = DialogState(if (isZh) "调整一限温度阈值" else "Adjust temp threshold 1", if (isZh) "输入温度 (20°C-50°C)" else "Enter temperature (20°C-50°C)", limit1Temp, 20..50) { v ->
                                     updateText("limit1Temp", "一限温度阈值", v.toString()) { limit1Temp = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
-                        ThemedTextField(value = limit1Current, onValueChange = { updateText("limit1Current", "一限限制电流", it) { limit1Current = it } }, label = "一限限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = limit1Current, onValueChange = { updateText("limit1Current", "一限限制电流", it) { limit1Current = it } }, label = if (isZh) "一限限制电流" else "Current limit 1", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                     }
                 }
             }
@@ -290,18 +290,18 @@ fun SpeedControlSection(
                 key("charge_speed_2") {
                     Column {
                         SliderRow(
-                            title = "二限温度阈值",
+                            title = if (isZh) "二限温度阈值" else "Temp threshold 2",
                             value = limit2Temp.toFloatOrNull() ?: 43f,
                             onValueChange = { limit2Temp = it.toInt().toString() },
                             valueRange = 20f..50f, steps = 30, suffix = "°C",
                             onClickLabel = {
-                                dialogState = DialogState("调整二限温度阈值", "输入温度 (20°C-50°C)", limit2Temp, 20..50) { v ->
+                                dialogState = DialogState(if (isZh) "调整二限温度阈值" else "Adjust temp threshold 2", if (isZh) "输入温度 (20°C-50°C)" else "Enter temperature (20°C-50°C)", limit2Temp, 20..50) { v ->
                                     updateText("limit2Temp", "二限温度阈值", v.toString()) { limit2Temp = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
-                        ThemedTextField(value = limit2Current, onValueChange = { updateText("limit2Current", "二限限制电流", it) { limit2Current = it } }, label = "二限限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = limit2Current, onValueChange = { updateText("limit2Current", "二限限制电流", it) { limit2Current = it } }, label = if (isZh) "二限限制电流" else "Current limit 2", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                     }
                 }
             }
@@ -309,28 +309,28 @@ fun SpeedControlSection(
                 key("charge_speed_3") {
                     Column {
                         SliderRow(
-                            title = "三限温度阈值",
+                            title = if (isZh) "三限温度阈值" else "Temp threshold 3",
                             value = limit3Temp.toFloatOrNull() ?: 46f,
                             onValueChange = { limit3Temp = it.toInt().toString() },
                             valueRange = 20f..50f, steps = 30, suffix = "°C",
                             onClickLabel = {
-                                dialogState = DialogState("调整三限温度阈值", "输入温度 (20°C-50°C)", limit3Temp, 20..50) { v ->
+                                dialogState = DialogState(if (isZh) "调整三限温度阈值" else "Adjust temp threshold 3", if (isZh) "输入温度 (20°C-50°C)" else "Enter temperature (20°C-50°C)", limit3Temp, 20..50) { v ->
                                     updateText("limit3Temp", "三限温度阈值", v.toString()) { limit3Temp = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
-                        ThemedTextField(value = limit3Current, onValueChange = { updateText("limit3Current", "三限限制电流", it) { limit3Current = it } }, label = "三限限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = limit3Current, onValueChange = { updateText("limit3Current", "三限限制电流", it) { limit3Current = it } }, label = if (isZh) "三限限制电流" else "Current limit 3", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                         SliderRow(
-                            title = "延迟温度阈值",
-                            summary = "为了防止电流卡在限制电流，需要设置延迟温度阈值。",
+                            title = if (isZh) "延迟温度阈值" else "Delayed temp threshold",
+                            summary = if (isZh) "为了防止电流卡在限制电流，需要设置延迟温度阈值。" else "Set a delayed temp threshold to prevent the current from getting stuck at the limit.",
                             value = delayTempThreshold.toFloatOrNull() ?: 10f,
                             onValueChange = { delayTempThreshold = it.toInt().toString() },
                             valueRange = 5f..30f, steps = 25, suffix = " S",
                             onClickLabel = {
                                 dialogState = DialogState(
-                                    "调整延迟温度阈值",
-                                    "输入延迟时间 (5S-30S)",
+                                    if (isZh) "调整延迟温度阈值" else "Adjust delayed temp threshold",
+                                    if (isZh) "输入延迟时间 (5S-30S)" else "Enter delay time (5S-30S)",
                                     delayTempThreshold,
                                     5..30
                                 ) { v -> delayTempThreshold = v.toString() }
@@ -343,7 +343,7 @@ fun SpeedControlSection(
 
             // ── 自定义阶梯模式 ──
             BasicComponent(
-                title = "自定义阶梯模式",
+                title = if (isZh) "自定义阶梯模式" else "Custom step mode",
                 enabled = switch13 || isExclusiveEnabled(),
                 endActions = { ThemedSwitch(checked = switch13, onCheckedChange = null, enabled = switch13 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
@@ -357,18 +357,18 @@ fun SpeedControlSection(
                 key("step_mode_1") {
                     Column {
                         SliderRow(
-                            title = "一限电量阈值",
+                            title = if (isZh) "一限电量阈值" else "Battery threshold 1",
                             value = step1Level.toFloatOrNull() ?: 20f,
                             onValueChange = { step1Level = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整一限电量阈值", "输入电量 (0%-100%)", step1Level, 0..100) { v ->
+                                dialogState = DialogState(if (isZh) "调整一限电量阈值" else "Adjust battery threshold 1", if (isZh) "输入电量 (0%-100%)" else "Enter battery level (0%-100%)", step1Level, 0..100) { v ->
                                     updateText("step1Level", "一限电量阈值", v.toString()) { step1Level = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
-                        ThemedTextField(value = step1Current, onValueChange = { updateText("step1Current", "一限电量限制电流", it) { step1Current = it } }, label = "一限电量限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = step1Current, onValueChange = { updateText("step1Current", "一限电量限制电流", it) { step1Current = it } }, label = if (isZh) "一限电量限制电流" else "Battery current limit 1", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                     }
                 }
             }
@@ -376,18 +376,18 @@ fun SpeedControlSection(
                 key("step_mode_2") {
                     Column {
                         SliderRow(
-                            title = "二限电量阈值",
+                            title = if (isZh) "二限电量阈值" else "Battery threshold 2",
                             value = step2Level.toFloatOrNull() ?: 50f,
                             onValueChange = { step2Level = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整二限电量阈值", "输入电量 (0%-100%)", step2Level, 0..100) { v ->
+                                dialogState = DialogState(if (isZh) "调整二限电量阈值" else "Adjust battery threshold 2", if (isZh) "输入电量 (0%-100%)" else "Enter battery level (0%-100%)", step2Level, 0..100) { v ->
                                     updateText("step2Level", "二限电量阈值", v.toString()) { step2Level = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
-                        ThemedTextField(value = step2Current, onValueChange = { updateText("step2Current", "二限电量限制电流", it) { step2Current = it } }, label = "二限电量限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = step2Current, onValueChange = { updateText("step2Current", "二限电量限制电流", it) { step2Current = it } }, label = if (isZh) "二限电量限制电流" else "Battery current limit 2", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                     }
                 }
             }
@@ -395,25 +395,25 @@ fun SpeedControlSection(
                 key("step_mode_3") {
                     Column {
                         SliderRow(
-                            title = "三限电量阈值",
+                            title = if (isZh) "三限电量阈值" else "Battery threshold 3",
                             value = step3Level.toFloatOrNull() ?: 80f,
                             onValueChange = { step3Level = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整三限电量阈值", "输入电量 (0%-100%)", step3Level, 0..100) { v ->
+                                dialogState = DialogState(if (isZh) "调整三限电量阈值" else "Adjust battery threshold 3", if (isZh) "输入电量 (0%-100%)" else "Enter battery level (0%-100%)", step3Level, 0..100) { v ->
                                     updateText("step3Level", "三限电量阈值", v.toString()) { step3Level = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
-                        ThemedTextField(value = step3Current, onValueChange = { updateText("step3Current", "三限电量限制电流", it) { step3Current = it } }, label = "三限电量限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = step3Current, onValueChange = { updateText("step3Current", "三限电量限制电流", it) { step3Current = it } }, label = if (isZh) "三限电量限制电流" else "Battery current limit 3", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                     }
                 }
             }
 
             // ── 亮息屏调速 ──
             BasicComponent(
-                title = "亮息屏调速",
+                title = if (isZh) "亮息屏调速" else "Speed control on screen off/on",
                 enabled = switch10 || isExclusiveEnabled(),
                 endActions = { ThemedSwitch(checked = switch10, onCheckedChange = null, enabled = switch10 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
@@ -426,8 +426,8 @@ fun SpeedControlSection(
             AnimatedVisibility(visible = switch10, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 key("screen_control") {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ThemedTextField(value = screenOnValue, onValueChange = { updateText("screenOnValue", "亮屏限制电流", it) { screenOnValue = it } }, label = "亮屏限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth(), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
-                        ThemedTextField(value = screenOffValue, onValueChange = { updateText("screenOffValue", "锁屏限制电流", it) { screenOffValue = it } }, label = "锁屏限制电流", useMonet = useMonet, modifier = Modifier.fillMaxWidth(), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = screenOnValue, onValueChange = { updateText("screenOnValue", "亮屏限制电流", it) { screenOnValue = it } }, label = if (isZh) "亮屏限制电流" else "Screen-on current limit", useMonet = useMonet, modifier = Modifier.fillMaxWidth(), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = screenOffValue, onValueChange = { updateText("screenOffValue", "锁屏限制电流", it) { screenOffValue = it } }, label = if (isZh) "锁屏限制电流" else "Screen-off current limit", useMonet = useMonet, modifier = Modifier.fillMaxWidth(), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
@@ -435,7 +435,7 @@ fun SpeedControlSection(
 
             // ── 停充控制 ──
             BasicComponent(
-                title = "当电流低于阈值执行停充",
+                title = if (isZh) "当电流低于阈值执行停充" else "Stop charging when current drops below threshold",
                 enabled = switch12 || isExclusiveEnabled(),
                 endActions = { ThemedSwitch(checked = switch12, onCheckedChange = null, enabled = switch12 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
@@ -449,37 +449,37 @@ fun SpeedControlSection(
                 key("stop_charge") {
                     Column {
                         SliderRow(
-                            title = "电量检测阈值",
+                            title = if (isZh) "电量检测阈值" else "Battery detection threshold",
                             value = stopChargeLevel.toFloatOrNull() ?: 80f,
                             onValueChange = { stopChargeLevel = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整电量检测阈值", "输入电量检测阈值范围 (0%-100%)", stopChargeLevel, 0..100) { v ->
+                                dialogState = DialogState(if (isZh) "调整电量检测阈值" else "Adjust battery detection threshold", if (isZh) "输入电量检测阈值范围 (0%-100%)" else "Enter battery detection threshold range (0%-100%)", stopChargeLevel, 0..100) { v ->
                                     updateText("stopChargeLevel", "电量检测阈值", v.toString()) { stopChargeLevel = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
                         SliderRow(
-                            title = "恢复充电电量",
+                            title = if (isZh) "恢复充电电量" else "Resume charging level",
                             value = resumeChargeLevel.toFloatOrNull() ?: 75f,
                             onValueChange = { resumeChargeLevel = it.toInt().toString() },
                             valueRange = 0f..100f, steps = 100, suffix = " %",
                             onClickLabel = {
-                                dialogState = DialogState("调整恢复充电电量", "输入恢复充电电量范围 (0%-100%)", resumeChargeLevel, 0..100) { v ->
+                                dialogState = DialogState(if (isZh) "调整恢复充电电量" else "Adjust resume charging level", if (isZh) "输入恢复充电电量范围 (0%-100%)" else "Enter resume charging level range (0%-100%)", resumeChargeLevel, 0..100) { v ->
                                     updateText("resumeChargeLevel", "恢复充电电量", v.toString()) { resumeChargeLevel = it }
                                 }
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
                         )
-                        ThemedTextField(value = stopChargeCurrent, onValueChange = { updateText("stopChargeCurrent", "停充电流阈值", it) { stopChargeCurrent = it } }, label = "停充电流阈值", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
+                        ThemedTextField(value = stopChargeCurrent, onValueChange = { updateText("stopChargeCurrent", "停充电流阈值", it) { stopChargeCurrent = it } }, label = if (isZh) "停充电流阈值" else "Stop charging current threshold", useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp), inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } })
                     }
                 }
             }
 
             // ── 分应用调速 ──
             BasicComponent(
-                title = "分应用调速",
+                title = if (isZh) "分应用调速" else "Per-app speed control",
                 enabled = switch8 || isExclusiveEnabled(),
                 endActions = { ThemedSwitch(checked = switch8, onCheckedChange = null, enabled = switch8 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
@@ -492,7 +492,7 @@ fun SpeedControlSection(
             AnimatedVisibility(visible = switch8, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 key("per_app_blacklist") {
                     BasicComponent(
-                        title = "分应用调速名单",
+                        title = if (isZh) "分应用调速名单" else "Per-app speed control list",
                         summary = if (isZh) "选择参与分应用调速的应用" else "Select apps to participate in per-app speed control.",
                         endActions = {
                             Icon(
@@ -516,7 +516,7 @@ fun SpeedControlSection(
 
             // ── 无温控应用 ──
             BasicComponent(
-                title = "无温控应用",
+                title = if (isZh) "无温控应用" else "No-thermal apps",
                 enabled = switch9 || isExclusiveEnabled(),
                 endActions = { ThemedSwitch(checked = switch9, onCheckedChange = null, enabled = switch9 || isExclusiveEnabled(), useMonet = useMonet) },
                 onClick = {
@@ -529,7 +529,7 @@ fun SpeedControlSection(
             AnimatedVisibility(visible = switch9, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 key("per_app_whitelist") {
                     BasicComponent(
-                        title = "无温控应用名单",
+                        title = if (isZh) "无温控应用名单" else "No-thermal app list",
                         endActions = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

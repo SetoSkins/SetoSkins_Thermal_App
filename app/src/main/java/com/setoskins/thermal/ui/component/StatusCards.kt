@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -118,12 +119,13 @@ fun RedNotInstalledCard(useMonet: Boolean) {
 
 @Composable
 fun UpdateWarningCard(useMonet: Boolean) {
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     if (useMonet) {
         YellowUpdateCard()
     } else {
         val uriHandler = LocalUriHandler.current
         WarningCard(
-            message = "模块检测到更新，点击下载新版本",
+            message = if (isZh) "模块检测到更新，点击下载新版本" else "Module update available, tap to download the new version",
             modifier = Modifier.fillMaxWidth(),
             level = WarningLevel.Notice,
             onClick = { uriHandler.openUri("https://github.com/SetoSkins/SetoSkins_Thermal/releases") },
@@ -133,6 +135,7 @@ fun UpdateWarningCard(useMonet: Boolean) {
 
 @Composable
 private fun GreenActivatedCardMaterial(version: String) {
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val miuixColors = MiuixTheme.colorScheme
     val containerBg = miuixColors.secondaryContainer
     val onContainer = miuixColors.onSecondaryContainer
@@ -141,9 +144,9 @@ private fun GreenActivatedCardMaterial(version: String) {
     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(containerBg).padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "已激活", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = onContainer)
+                Text(text = if (isZh) "模块已激活" else "Module activated", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = onContainer)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = version.ifEmpty { "" }, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = onContainerSub)
+                Text(text = version.ifEmpty { "" }, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = onContainerSub)
             }
             val cc = miuixColors.primary
             Canvas(modifier = Modifier.size(32.dp)) {
@@ -159,6 +162,7 @@ private fun GreenActivatedCardMaterial(version: String) {
 @Composable
 private fun RedNotInstalledCardMaterial() {
     val uriHandler = LocalUriHandler.current; val isDark = isSystemInDarkTheme()
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val cardBg = if (isDark) ColorRedBgDark else ColorRedBgLight
     val titleColor = if (isDark) ColorRedTitleDark else ColorRedTitleLight
     val subColor = if (isDark) ColorRedSubDark else ColorRedSubLight
@@ -166,9 +170,9 @@ private fun RedNotInstalledCardMaterial() {
     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(cardBg).clickable { uriHandler.openUri("https://github.com/SetoSkins/SetoSkins_Thermal/releases") }.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "未激活", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = titleColor)
+                Text(text = if (isZh) "未激活" else "Not activated", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = titleColor)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "模块未安装", fontSize = 14.sp, color = subColor)
+                Text(text = if (isZh) "模块未安装" else "Module not installed", fontSize = 14.sp, color = subColor)
             }
             Canvas(modifier = Modifier.size(32.dp)) {
                 val sw = 2.dp.toPx(); drawCircle(color = iconColor, radius = (size.minDimension - sw) / 2, style = Stroke(width = sw), center = center)
@@ -182,13 +186,14 @@ private fun RedNotInstalledCardMaterial() {
 @Composable
 private fun YellowUpdateCard() {
     val uriHandler = LocalUriHandler.current; val isDark = isSystemInDarkTheme()
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val cardBg = if (isDark) ColorYellowBgDark else ColorYellowBgLight
     val titleColor = if (isDark) ColorYellowTitleDark else ColorYellowTitleLight
     val subColor = if (isDark) ColorYellowSubDark else ColorYellowSubLight
     val iconColor = if (isDark) ColorYellowIconDark else ColorYellowIconLight
     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(cardBg).clickable { uriHandler.openUri("https://github.com/SetoSkins/SetoSkins_Thermal/releases") }.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) { Text(text = "检测到更新", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = titleColor); Spacer(modifier = Modifier.height(4.dp)); Text(text = "模块检测到更新，点击下载新版本", fontSize = 14.sp, color = subColor) }
+            Column(modifier = Modifier.weight(1f)) { Text(text = if (isZh) "检测到更新" else "Update available", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = titleColor); Spacer(modifier = Modifier.height(4.dp)); Text(text = if (isZh) "模块检测到更新，点击下载新版本" else "Module update available, tap to download the new version", fontSize = 14.sp, color = subColor) }
             Canvas(modifier = Modifier.size(32.dp)) {
                 val sw = 2.dp.toPx(); drawCircle(color = iconColor, radius = (size.minDimension - sw) / 2, style = Stroke(width = sw), center = center)
                 val arrowPath = Path().apply { moveTo(center.x, center.y - 6.dp.toPx()); lineTo(center.x, center.y + 6.dp.toPx()); moveTo(center.x - 4.dp.toPx(), center.y + 2.dp.toPx()); lineTo(center.x, center.y + 6.dp.toPx()); lineTo(center.x + 4.dp.toPx(), center.y + 2.dp.toPx()) }
@@ -201,6 +206,7 @@ private fun YellowUpdateCard() {
 @Composable
 private fun GreenActivatedCardMiuix(version: String) {
     val isDark = isSystemInDarkTheme(); val miuixColors = MiuixTheme.colorScheme
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val cardColor = if (isDark) Color(0xFF1A3825) else Color(0xFFDFFAE4)
     val iconTint = Color(0xFF36D167)
     val sub = version.ifEmpty { "" }
@@ -218,7 +224,10 @@ private fun GreenActivatedCardMiuix(version: String) {
                     Icon(modifier = Modifier.size(110.dp), imageVector = Icons.Rounded.CheckCircleOutline, tint = iconTint, contentDescription = null)
                 }
                 Box(modifier = Modifier.fillMaxSize().padding(16.dp, 14.dp), contentAlignment = Alignment.TopStart) {
-                    Column { Text(text = "已激活", fontSize = 22.sp, fontWeight = FontWeight.Bold); Spacer(modifier = Modifier.height(1.dp)); Text(text = sub, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+                    Column { Text(text = if (isZh) "模块已激活" else "Module activated", fontSize = 22.sp, fontWeight = FontWeight.Bold); Spacer(modifier = Modifier.height(1.dp)); Text(text = sub, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+                }
+                Box(modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 9.dp), contentAlignment = Alignment.BottomStart) {
+                    Text(text = "SetoThermal", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -229,6 +238,7 @@ private fun GreenActivatedCardMiuix(version: String) {
 private fun RedNotInstalledCardMiuix() {
     val uriHandler = LocalUriHandler.current
     val isDark = isSystemInDarkTheme()
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val miuixColors = MiuixTheme.colorScheme
     val cardColor = if (isDark) ColorRedBgDark else ColorRedBgLight
     val iconTint = if (isDark) ColorRedIconDark else ColorRedIconLight
@@ -246,7 +256,7 @@ private fun RedNotInstalledCardMiuix() {
                     Icon(modifier = Modifier.size(110.dp), imageVector = Icons.Rounded.ErrorOutline, tint = iconTint, contentDescription = null)
                 }
                 Box(modifier = Modifier.fillMaxSize().padding(16.dp, 14.dp), contentAlignment = Alignment.TopStart) {
-                    Column { Text(text = "未激活", fontSize = 22.sp, fontWeight = FontWeight.SemiBold); Spacer(modifier = Modifier.height(1.dp)); Text(text = "模块未安装", fontSize = 15.sp) }
+                    Column { Text(text = if (isZh) "未激活" else "Not activated", fontSize = 22.sp, fontWeight = FontWeight.SemiBold); Spacer(modifier = Modifier.height(1.dp)); Text(text = if (isZh) "模块未安装" else "Module not installed", fontSize = 15.sp) }
                 }
             }
         }

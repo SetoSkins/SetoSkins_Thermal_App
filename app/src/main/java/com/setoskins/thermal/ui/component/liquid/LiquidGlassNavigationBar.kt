@@ -72,8 +72,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.setoskins.thermal.ui.component.animation.DampedDragAnimation
 import com.setoskins.thermal.ui.component.animation.InteractiveHighlight
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BadgedBox
 import top.yukonga.miuix.kmp.basic.Icon
@@ -199,6 +197,10 @@ internal fun IosLiquidGlassNavigationBar(
     val animationScope = rememberCoroutineScope()
     val tabsCount = items.size
 
+    // 点击/拖拽切换页面时直接同步调用，避免走 snapshotFlow 异步链路导致 pager 启动慢、
+    // 指示器等 pagerState 变化才动的延迟（参考 HyperExtreme：按下即飞，不等页面开始滚）。
+    val onItemClickUpdated by rememberUpdatedState(onItemClick)
+
     var tabWidthPx by remember { mutableFloatStateOf(0f) }
     var totalWidthPx by remember { mutableFloatStateOf(0f) }
 
@@ -216,7 +218,6 @@ internal fun IosLiquidGlassNavigationBar(
     }
 
     var currentIndex by remember { mutableIntStateOf(selectedIndex) }
-    var isExternalUpdate by remember { mutableStateOf(false) }
     var isIndicatorDragging by remember { mutableStateOf(false) }
     var suppressFollow by remember { mutableStateOf(false) }
 
@@ -268,6 +269,8 @@ internal fun IosLiquidGlassNavigationBar(
                 suppressFollow = true
                 if (currentIndex != targetIndex) {
                     currentIndex = targetIndex
+                    // 直接同步触发翻页，不等 snapshotFlow 异步回调，消除指示器等待延迟。
+                    onItemClickUpdated(targetIndex)
                 }
                 // 释放后让指示器平滑滑到目标页，避免停在手指位置、
                 // 等页面稳定 suppressFollow 关闭后才跳变，造成“中间卡顿一下”。
@@ -300,14 +303,16 @@ internal fun IosLiquidGlassNavigationBar(
     }
 
     // 指示器当前的连续位置（0..tabsCount-1）。
-    // 关键：跟随分页时直接在绘制阶段同步读取分页位置，避免 snapshotFlow→协程→独立状态
-    // 的一次帧延迟与乱序，从而消除滑动时的卡顿。
-    val indicatorPosition: () -> Float = {
-        if (isIndicatorDragging || suppressFollow) {
-            dampedDrag.pagerPosition.floatValue
-        } else {
-            pagerState?.let { it.currentPage + it.currentPageOffsetFraction }
-                ?: dampedDrag.pagerPosition.floatValue
+    // 用 derivedStateOf 包装，确保 graphicsLayer 绘制阶段能正确观察到 pagerState /
+    // dampedDrag.pagerPosition 的变化并即时重绘，避免指示器停在旧页。
+    val indicatorPosition by remember(pagerState, isIndicatorDragging, suppressFollow) {
+        derivedStateOf {
+            if (isIndicatorDragging || suppressFollow) {
+                dampedDrag.pagerPosition.floatValue
+            } else {
+                pagerState?.let { it.currentPage + it.currentPageOffsetFraction }
+                    ?: dampedDrag.pagerPosition.floatValue
+            }
         }
     }
 
@@ -320,22 +325,11 @@ internal fun IosLiquidGlassNavigationBar(
                 if (suppressFollow) suppressFollow = false
                 if (!isIndicatorDragging) {
                     if (currentIndex != settledIndex) {
-                        isExternalUpdate = true
                         currentIndex = settledIndex
                     }
                     // 页面稳定后对齐基准，保证胶囊拖拽起点正确
                     dampedDrag.syncToPage(settledIndex.toFloat())
                 }
-            }
-        }
-    }
-    val onItemClickUpdated by rememberUpdatedState(onItemClick)
-    LaunchedEffect(dampedDrag) {
-        snapshotFlow { currentIndex }.drop(1).collectLatest { index ->
-            if (isExternalUpdate) {
-                isExternalUpdate = false
-            } else {
-                onItemClickUpdated(index)
             }
         }
     }
@@ -346,9 +340,9 @@ internal fun IosLiquidGlassNavigationBar(
             position = { layerSize, _ ->
                 Offset(
                     x = if (isLtr) {
-                        (indicatorPosition() + 0.5f) * tabWidthPx + panelOffset
+                        (indicatorPosition + 0.5f) * tabWidthPx + panelOffset
                     } else {
-                        layerSize.width - (indicatorPosition() + 0.5f) * tabWidthPx + panelOffset
+                        layerSize.width - (indicatorPosition + 0.5f) * tabWidthPx + panelOffset
                     },
                     y = layerSize.height / 2f,
                 )
@@ -379,7 +373,14 @@ internal fun IosLiquidGlassNavigationBar(
                         interactionSource = null,
                         indication = null,
                         role = Role.Tab,
-                        onClick = { currentIndex = index },
+                        onClick = {
+                            if (currentIndex != index) {
+                                currentIndex = index
+                                // 直接同步触发翻页，不等 snapshotFlow 异步链路，
+                                // 让 pager 立即开始滚动、指示器立即跟随。
+                                onItemClickUpdated(index)
+                            }
+                        },
                     )
                     .semantics { selected = index == currentIndex }
                     .weight(1f)
@@ -520,7 +521,7 @@ internal fun IosLiquidGlassNavigationBar(
                             .padding(horizontal = 4.dp)
                             .graphicsLayer {
                                 val singleTabWidth = tabWidthPx
-                                val progressOffset = indicatorPosition() * singleTabWidth
+                                val progressOffset = indicatorPosition * singleTabWidth
                                 translationX = if (isLtr) progressOffset + panelOffset else -progressOffset + panelOffset
                             }
                             .then(interactiveHighlight.gestureModifier)
@@ -570,7 +571,7 @@ internal fun IosLiquidGlassNavigationBar(
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
                             .graphicsLayer {
-                                val progressOffset = indicatorPosition() * tabWidthPx
+                                val progressOffset = indicatorPosition * tabWidthPx
                                 translationX = if (isLtr) progressOffset + panelOffset else -progressOffset + panelOffset
                             }
                             .then(dampedDrag.modifier)
@@ -588,7 +589,7 @@ internal fun IosLiquidGlassNavigationBar(
                                     .requiredWidth(with(density) { (totalWidthPx - 8.dp.toPx()).toDp() })
                                     .height(52.dp)
                                     .graphicsLayer {
-                                        val progressOffset = indicatorPosition() * tabWidthPx
+                                        val progressOffset = indicatorPosition * tabWidthPx
                                         translationX = if (isLtr) -progressOffset else progressOffset
                                     },
                                 verticalAlignment = Alignment.CenterVertically,

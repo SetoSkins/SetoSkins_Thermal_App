@@ -13,6 +13,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -94,6 +95,7 @@ import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.screen.HomeScreen
 import com.setoskins.thermal.ui.screen.FavoritesScreen
 import com.setoskins.thermal.ui.screen.ProfileScreen
+import com.setoskins.thermal.ui.screen.CreditsPage
 import com.setoskins.thermal.ui.screen.DonatePage
 import com.setoskins.thermal.ui.screen.BlacklistPage
 import com.setoskins.thermal.ui.screen.BypassListPage
@@ -107,10 +109,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import com.setoskins.thermal.R
 
-enum class AppDestinations(val label: String, val icon: ImageVector, val filledIcon: ImageVector) {
-    HOME("主页", Icons.Outlined.Home, Icons.Filled.Home),
-    FAVORITES("日志", Icons.Outlined.Description, Icons.Filled.Description),
-    PROFILE("关于", Icons.Outlined.Info, Icons.Filled.Info),
+enum class AppDestinations(val label: String, val labelEn: String, val icon: ImageVector, val filledIcon: ImageVector) {
+    HOME("主页", "Home", Icons.Outlined.Home, Icons.Filled.Home),
+    FAVORITES("日志", "Log", Icons.Outlined.Description, Icons.Filled.Description),
+    PROFILE("关于", "About", Icons.Outlined.Info, Icons.Filled.Info),
 }
 
 @Composable
@@ -135,6 +137,9 @@ fun MyApplicationApp(
     var showDonatePage by remember { mutableStateOf(false) }
     var showDonateLayer by remember { mutableStateOf(false) }
     val transitionProgress = remember { Animatable(0f) }
+    var showCreditsPage by remember { mutableStateOf(false) }
+    var showCreditsLayer by remember { mutableStateOf(false) }
+    val creditsTransitionProgress = remember { Animatable(0f) }
     var showBlacklistPage by remember { mutableStateOf(false) }
     var showBlacklistLayer by remember { mutableStateOf(false) }
     val blacklistTransitionProgress = remember { Animatable(0f) }
@@ -281,9 +286,32 @@ fun MyApplicationApp(
         }
     }
 
+    LaunchedEffect(showCreditsPage) {
+        if (showCreditsPage) {
+            showCreditsLayer = true
+            creditsTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+        } else {
+            creditsTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            showCreditsLayer = false
+        }
+    }
+
+    PredictiveBackHandler(enabled = showCreditsPage) { progress ->
+        try {
+            progress.collect { backEvent ->
+                creditsTransitionProgress.snapTo(1f - backEvent.progress)
+            }
+            showCreditsPage = false
+        } catch (e: Exception) {
+            scope.launch {
+                creditsTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
+            }
+        }
+    }
+
     val backdrop = rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
-    val reduceExpensiveEffects = showDonatePage || showDonateLayer || showBlacklistPage || showBlacklistLayer || showWhitelistPage || showWhitelistLayer
+    val reduceExpensiveEffects = showDonatePage || showDonateLayer || showCreditsPage || showCreditsLayer || showBlacklistPage || showBlacklistLayer || showWhitelistPage || showWhitelistLayer
     val showBlur = useMonet && shaderSupported && backdrop != null && !reduceExpensiveEffects
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
@@ -370,7 +398,7 @@ fun MyApplicationApp(
                                 AppDestinations.HOME -> {
                                     // 页面自带顶栏（miuix example 结构）：大标题属于页面本身，翻页时随页面一起滑动
                                     PageTopBarScaffold(
-                                        title = "Seto温控",
+                                        title = if (isZh) "Seto温控" else "Seto Thermal",
                                         scrollBehavior = homeScrollBehavior,
                                         useMonet = useMonet,
                                         actions = {
@@ -379,7 +407,9 @@ fun MyApplicationApp(
                                                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     showRestartDialog = true
                                                     barVisible = false
-                                                }
+                                                },
+                                                // 抵消顶栏整体的 -6dp 上移，图标保持原位
+                                                modifier = Modifier.offset(y = 6.dp)
                                             ) {
                                                 Icon(
                                                     painter = painterResource(R.drawable.restart),
@@ -394,7 +424,8 @@ fun MyApplicationApp(
                                             useMonet = useMonet,
                                             reloadTrigger = reloadTrigger,
                                             scrollBehavior = homeScrollBehavior,
-                                            contentPaddingTop = contentPaddingTop,
+                                            // 页面内容整体上移 6dp（顶栏与右上角图标不动）
+                                            contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
                                             floatingNavBar = floatingNavBar,
                                             onNavigateToBlacklist = { showBlacklistPage = true },
                                             onNavigateToWhitelist = { showWhitelistPage = true },
@@ -406,7 +437,7 @@ fun MyApplicationApp(
                                 }
                                 AppDestinations.FAVORITES -> {
                                     PageTopBarScaffold(
-                                        title = "日志",
+                                        title = if (isZh) "日志" else "Log",
                                         scrollBehavior = favoritesScrollBehavior,
                                         useMonet = useMonet,
                                         actions = {
@@ -415,7 +446,9 @@ fun MyApplicationApp(
                                                 onClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
-                                                }
+                                                },
+                                                // 抵消顶栏整体的 -6dp 上移，图标保持原位
+                                                modifier = Modifier.offset(y = 6.dp)
                                             ) {
                                                 Icon(
                                                     imageVector = MiuixIcons.Delete,
@@ -429,7 +462,8 @@ fun MyApplicationApp(
                                             useMonet = useMonet,
                                             reloadTrigger = logReloadTrigger,
                                             scrollBehavior = favoritesScrollBehavior,
-                                            contentPaddingTop = contentPaddingTop,
+                                            // 页面内容整体上移 6dp（顶栏与右上角图标不动）
+                                            contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
                                             isPageActive = logPageActive,
                                             modifier = Modifier.padding(bottom = bottomContentPadding)
                                         )
@@ -443,6 +477,7 @@ fun MyApplicationApp(
                                         onFloatingNavBarChange = onFloatingNavBarChange,
                                         onConfigImported = { reloadTrigger++ },
                                         onNavigateToDonate = { showDonatePage = true },
+                                        onNavigateToCredits = { showCreditsPage = true },
                                         reduceEffects = reduceExpensiveEffects,
                                         onDialogVisibilityChange = onDialogVisibilityChange,
                                         modifier = Modifier.padding(bottom = bottomContentPadding)
@@ -545,6 +580,25 @@ fun MyApplicationApp(
             )
         }
 
+        if (showCreditsLayer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = 0.22f * creditsTransitionProgress.value
+                    }
+                    .background(Color.Black)
+            )
+        }
+
+        if (showCreditsLayer) {
+            CreditsPage(
+                useMonet = useMonet,
+                onDismiss = { showCreditsPage = false },
+                progressProvider = { creditsTransitionProgress.value }
+            )
+        }
+
         if (showBlacklistLayer) {
             Box(
                 modifier = Modifier
@@ -623,10 +677,13 @@ fun ThemedNavigationBar(
     floatingNavBar: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     if (floatingNavBar) {
         if (useMonet) {
-            val items = remember {
-                AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.filledIcon) }
+            val items = remember(isZh) {
+                AppDestinations.entries.map {
+                    NavigationItem(label = if (isZh) it.label else it.labelEn, icon = it.filledIcon)
+                }
             }
             val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
             MaterialFloatingNavigationBar(
@@ -642,20 +699,30 @@ fun ThemedNavigationBar(
             val selectedIndex = remember {
                 mutableIntStateOf(pagerState?.currentPage ?: AppDestinations.entries.indexOf(currentDestination))
             }
+            // 悬浮底栏翻页：先定住 selectedIndex，导航期间屏蔽 pager 的中间状态
+            // （避免跨页拖动时 currentPage 经过中间页 → 选中块被拽来拽去）。
+            // 只有手指翻页（非导航中）才从 currentPage 同步回来。
+            // —— 与 HyperExtreme MaskSwapScreen.kt 保持一致。
+            var navigating by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
             LaunchedEffect(pagerState) {
                 val ps = pagerState ?: return@LaunchedEffect
-                // 只在翻页**停下来**时同步选中项。
-                // 0→2 的动画途中 currentPage 会依次经过 1，若直接跟随它，选中块会被
-                // 「飞向终点 → 拽回中间页 → 再飞向终点」来回拉扯，看起来就是不丝滑。
-                snapshotFlow { ps.currentPage to ps.isScrollInProgress }
-                    .collect { (page, scrolling) ->
-                        if (!scrolling) selectedIndex.intValue = page
+                // 手指翻页路径：currentPage 在滚动过程中会逐页变化，这里实时同步
+                // selectedIndex，让底栏能紧跟"当前翻到哪一页"。
+                // （indicatorPosition 在底栏内部已直接读 pagerState 做**连续**跟手，
+                //  selectedIndex 主要用来让 dragAnimation 对齐 + 播回弹——此处同步时机
+                // 决定了回弹不会在滚动中途触发。）
+                snapshotFlow { ps.currentPage }
+                    .collect { page ->
+                        if (!navigating && selectedIndex.intValue != page) {
+                            selectedIndex.intValue = page
+                        }
                     }
             }
-            val tabs = remember {
+            val tabs = remember(isZh) {
                 AppDestinations.entries.map { dest ->
                     NavTab(
-                        label = dest.label,
+                        label = if (isZh) dest.label else dest.labelEn,
                         // 仅 miuix 悬浮底栏的「主页」使用 HyperExtreme 同款圆角房子图标；
                         // 其它图标与 Material 底栏保持原样。
                         icon = if (dest == AppDestinations.HOME) MiuixIcons.Home else dest.filledIcon,
@@ -674,8 +741,24 @@ fun ThemedNavigationBar(
                 advancedMaterial = true,
                 isDarkTheme = isDark,
                 onTabSelected = { index ->
+                    // 底栏发起导航：先定住 selectedIndex，屏蔽 pager 中间状态
+                    // （避免跨页拖动时 currentPage 经过中间页 → 选中块被拽来拽去）。
+                    // —— 与 HyperExtreme MaskSwapScreen.kt 保持一致。
+                    if (selectedIndex.intValue == index) return@Os4FloatingNavigationBar
                     selectedIndex.intValue = index
-                    onDestinationSelected(AppDestinations.entries[index])
+                    navigating = true
+                    scope.launch {
+                        try {
+                            pagerState?.animateScrollToPage(
+                                index,
+                                animationSpec = tween(420, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
+                            )
+                        } finally {
+                            navigating = false
+                            // 如果翻页被手势打断，对齐到实际页面
+                            pagerState?.let { selectedIndex.intValue = it.currentPage }
+                        }
+                    }
                 },
                 modifier = modifier,
             )
@@ -731,8 +814,11 @@ private fun iOSLikeFloatingNavigationBar(
     useMonet: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val items = remember {
-        AppDestinations.entries.map { NavigationItem(label = it.label, icon = it.filledIcon) }
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
+    val items = remember(isZh) {
+        AppDestinations.entries.map {
+            NavigationItem(label = if (isZh) it.label else it.labelEn, icon = it.filledIcon)
+        }
     }
     val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
     IosLiquidGlassNavigationBar(
@@ -767,18 +853,21 @@ private fun PageTopBarScaffold(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                TopAppBar(
-                    title = title,
-                    largeTitle = title,
-                    largeTitleColor = Color.Transparent,
-                    color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
-                    scrollBehavior = scrollBehavior,
-                    bottomContent = {
-                        val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
-                        Spacer(modifier = Modifier.height(height))
-                    },
-                    actions = actions
-                )
+                // 顶栏整体上移 6dp（与页面内容保持一致）；右上角图标在 actions 内反向偏移抵消
+                Box(modifier = Modifier.offset(y = (-6).dp)) {
+                    TopAppBar(
+                        title = title,
+                        largeTitle = title,
+                        largeTitleColor = Color.Transparent,
+                        color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
+                        scrollBehavior = scrollBehavior,
+                        bottomContent = {
+                            val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
+                            Spacer(modifier = Modifier.height(height))
+                        },
+                        actions = actions
+                    )
+                }
             }
         ) { innerPadding ->
             content(innerPadding.calculateTopPadding())
@@ -790,7 +879,7 @@ private fun PageTopBarScaffold(
             color = MiuixTheme.colorScheme.onBackground,
             modifier = Modifier
                 .statusBarsPadding()
-                .padding(top = 64.dp, start = 28.dp)
+                .padding(top = 58.dp, start = 28.dp)
                 .graphicsLayer {
                     val fraction = collapsedFraction.coerceIn(0f, 1f)
                     // 采用 miuix 官方 largeTitleAlpha = 1 - fraction*3，与小标题出现阈值 (fraction*3 >= 1) 对齐，避免双标题重叠

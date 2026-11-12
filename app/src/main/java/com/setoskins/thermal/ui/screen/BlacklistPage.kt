@@ -103,7 +103,7 @@ fun BlacklistPage(
     var isWhitelistMode by remember { mutableStateOf(false) }
     val effectiveWhitelist = isWhitelist && isWhitelistMode
     val prefsKey = if (effectiveWhitelist) "whitelist_apps" else "blacklist_apps"
-    val title = if (isWhitelist) "无温控应用名单" else "分应用调速名单"
+    val title = if (isWhitelist) (if (isZh) "无温控应用名单" else "No-thermal app list") else (if (isZh) "分应用调速名单" else "Per-app speed control list")
     val scrollBehavior = MiuixScrollBehavior()
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
     val configPath = "/data/adb/modules/SetoSkins/黑名单.prop"

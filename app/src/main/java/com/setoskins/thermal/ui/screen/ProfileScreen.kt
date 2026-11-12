@@ -102,7 +102,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, reduceEffects: Boolean = false, onDialogVisibilityChange: (Boolean) -> Unit = {}, modifier: Modifier = Modifier) {
+fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, onNavigateToCredits: () -> Unit = {}, reduceEffects: Boolean = false, onDialogVisibilityChange: (Boolean) -> Unit = {}, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val uriHandler = LocalUriHandler.current
@@ -144,7 +144,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
     )
 
     val exportLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.CreateDocument("text/plain"), onResult = { uri -> uri?.let { scope.launch { val content = ModuleDetector.readConfigRaw(); if (content.isNotEmpty()) { context.contentResolver.openOutputStream(it)?.use { s -> s.write(content.toByteArray()) }; Toast.makeText(context, if (isZh) "导出成功" else "Export Success", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "导出失败：内容为空" else "Export Failed: Empty content", Toast.LENGTH_SHORT).show() } } } })
-    val importLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument(), onResult = { uri -> uri?.let { scope.launch { try { val tempFile = java.io.File(context.cacheDir, "temp_config_import.prop"); context.contentResolver.openInputStream(it)?.use { input -> tempFile.outputStream().use { output -> input.copyTo(output) } }; val success = ModuleDetector.importConfigFile(tempFile.absolutePath); tempFile.delete(); if (success) { onConfigImported(); Toast.makeText(context, if (isZh) "导入成功，配置已重载" else "Import Success, Config reloaded", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "导入失败" else "Import Failed", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { Toast.makeText(context, "错误: ${e.message}", Toast.LENGTH_SHORT).show() } } } })
+    val importLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument(), onResult = { uri -> uri?.let { scope.launch { try { val tempFile = java.io.File(context.cacheDir, "temp_config_import.prop"); context.contentResolver.openInputStream(it)?.use { input -> tempFile.outputStream().use { output -> input.copyTo(output) } }; val success = ModuleDetector.importConfigFile(tempFile.absolutePath); tempFile.delete(); if (success) { onConfigImported(); Toast.makeText(context, if (isZh) "导入成功，配置已重载" else "Import Success, Config reloaded", Toast.LENGTH_SHORT).show() } else { Toast.makeText(context, if (isZh) "导入失败" else "Import Failed", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { Toast.makeText(context, if (isZh) "错误: ${e.message}" else "Error: ${e.message}", Toast.LENGTH_SHORT).show() } } } })
     val listState = rememberLazyListState(); val density = LocalDensity.current; var logoHeightDp by remember { mutableStateOf(300.dp) }; val fadeDistancePx = remember(density) { with(density) { 360.dp.toPx() } }
     val progress by remember { derivedStateOf { val idx = listState.firstVisibleItemIndex; val offset = listState.firstVisibleItemScrollOffset.toFloat(); val scrollPx = if (idx <= 0) offset else fadeDistancePx; (scrollPx / fadeDistancePx).coerceIn(0f, 1f) } }
     val spacerHeightPx = remember(density) { with(density) { 170.dp.toPx() } }; val aboutProgress by remember { derivedStateOf { val idx = listState.firstVisibleItemIndex; val offset = listState.firstVisibleItemScrollOffset.toFloat(); if (idx <= 0) (offset / spacerHeightPx).coerceIn(0f, 1f) else 1f } }
@@ -191,7 +191,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
         Box(modifier = modifier.fillMaxSize()) {
             @OptIn(ExperimentalFoundationApi::class)
             CompositionLocalProvider(LocalOverscrollFactory provides null) {
-                LazyColumn(modifier = Modifier.fillMaxSize().customOverScroll(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 16.dp)) {
+                LazyColumn(modifier = Modifier.fillMaxSize().customOverScroll(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp)) {
                 
                     item(key = "logoSpacer") {
                         Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
@@ -216,16 +216,16 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
                             }
                         }
                     }
-                    item(key = "setoskins_link") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) } }
-                    item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }); BasicComponent(title = if (isZh) "启用悬浮底栏" else "Floating Nav Bar", summary = if (isZh) "在屏幕底部使用悬浮样式的导航栏" else "Use floating-style navigation bar at the bottom of the screen", endActions = { ThemedSwitch(checked = floatingNavBar, onCheckedChange = null, useMonet = useMonet) }, onClick = { onFloatingNavBarChange(!floatingNavBar); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } }
-                    item(key = "config_io") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) {
+                    item(key = "setoskins_link") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) } }
+                    item(key = "ui_style") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) }); BasicComponent(title = if (isZh) "启用悬浮底栏" else "Floating Nav Bar", summary = if (isZh) "在屏幕底部使用悬浮样式的导航栏" else "Use floating-style navigation bar at the bottom of the screen", endActions = { ThemedSwitch(checked = floatingNavBar, onCheckedChange = null, useMonet = useMonet) }, onClick = { onFloatingNavBarChange(!floatingNavBar); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }) } }
+                    item(key = "config_io") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) {
                             ArrowPreference(title = if (isZh) "导出软件配置" else "Export App Config", onClick = { 
                                 scope.launch { 
                                     if (!ModuleDetector.requestRoot()) { 
                                         Toast.makeText(context, if (isZh) "需要 Root 权限" else "Root access required", Toast.LENGTH_SHORT).show()
                                         return@launch 
                                     }
-                                    exportLauncher.launch("SetoSkins_配置_备份.prop") 
+                                    exportLauncher.launch(if (isZh) "SetoSkins_配置_备份.prop" else "SetoSkins_Config_Backup.prop") 
                                 } 
                             })
                             ArrowPreference(title = if (isZh) "导入软件配置" else "Import App Config", onClick = { 
@@ -264,12 +264,15 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, floati
                                     resetDialogInternalShow = false 
                                 }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) { Text(if (isZh) "确定" else "Confirm", fontWeight = FontWeight.Bold) } } })
                         } }
-                    item(key = "donate") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 24.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) { ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate) } }
+                    item(key = "support") { Spacer(modifier = Modifier.height(16.dp)); Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), cornerRadius = 16.dp, colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)) {
+                        ArrowPreference(title = if (isZh) "致谢" else "Credits", onClick = onNavigateToCredits)
+                        ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate)
+                    } }
                     item(key = "check_update") { 
                         Spacer(modifier = Modifier.height(16.dp))
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), 
-                            cornerRadius = 24.dp, 
+                            cornerRadius = 16.dp, 
                             colors = CardDefaults.defaultColors(color = aboutCardColor, contentColor = MiuixTheme.colorScheme.onSurface)
                         ) { 
                             Box(modifier = Modifier.clickable { 

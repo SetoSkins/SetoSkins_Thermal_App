@@ -178,7 +178,7 @@ fun HomeScreen(
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)
-                    Toast.makeText(context, "请在设置中允许\"推荐通知\"以开启超级岛", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, if (isZh) "请在设置中允许\"推荐通知\"以开启超级岛" else "Please allow \"Promoted notifications\" in Settings to enable the charging island", Toast.LENGTH_LONG).show()
                 }
             }
 
@@ -348,7 +348,7 @@ fun HomeScreen(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().customOverScroll().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 46.dp),
                 verticalArrangement = Arrangement.spacedBy(11.dp)
             ) {
         item(key = "status_card") {
@@ -369,35 +369,35 @@ fun HomeScreen(
             }
         }
         item(key = "config_title") {
-            SmallTitle(text = "配置", modifier = Modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 10.dp.roundToPx()) { placeable.place(0, 0) } })
+            SmallTitle(text = if (isZh) "配置" else "Configuration", modifier = Modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 10.dp.roundToPx()) { placeable.place(0, 0) } })
         }
         item(key = "config_card") {
             MiuixCard {
                 Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                    BasicComponent(title = "模块简介显示充电信息", summary = "Magisk/KSU里显示电流、电量等充电信息,可能耗一丢丢电", endActions = { ThemedSwitch(checked = switch5, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch5", "模块简介显示充电信息", !switch5) { switch5 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
-                    BasicComponent(title = "充电时显示灵动岛", summary = "充电时在屏幕显示灵动岛风格充电信息（需后台运行）", endActions = { ThemedSwitch(checked = switch16, onCheckedChange = null, useMonet = useMonet) }, onClick = { switch16 = !switch16; prefs.edit().putBoolean("switch16", switch16).apply(); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                    BasicComponent(title = if (isZh) "模块简介显示充电信息" else "Show charging info in module description", summary = if (isZh) "Magisk/KSU里显示电流、电量等充电信息,可能耗一丢丢电" else "Show current, battery level and other charging info in Magisk/KSU, may use a little extra power", endActions = { ThemedSwitch(checked = switch5, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch5", "模块简介显示充电信息", !switch5) { switch5 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                    BasicComponent(title = if (isZh) "充电时显示灵动岛" else "Show charging island while charging", summary = if (isZh) "充电时在屏幕显示灵动岛风格充电信息（需后台运行）" else "Show island-style charging info on screen while charging (requires running in background)", endActions = { ThemedSwitch(checked = switch16, onCheckedChange = null, useMonet = useMonet) }, onClick = { switch16 = !switch16; prefs.edit().putBoolean("switch16", switch16).apply(); hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                 }
             }
         }
         item(key = "thermal_title") {
             Spacer(modifier = Modifier.height(12.dp))
-            SmallTitle(text = "温控", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } })
+            SmallTitle(text = if (isZh) "温控" else "Thermal control", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } })
         }
         item(key = "thermal_card") {
             MiuixCard {
-                BasicComponent(title = "快充模式", endActions = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = if (switch2) "True" else "False", fontSize = 17.sp, color = if (switch2) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceSecondary); Spacer(modifier = Modifier.width(8.dp)); ThemedSwitch(checked = switch2, onCheckedChange = null, useMonet = useMonet) } }, onClick = { updateSwitch("switch2", "快充模式", !switch2) { switch2 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                BasicComponent(title = if (isZh) "快充模式" else "Fast charging", endActions = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = if (switch2) "True" else "False", fontSize = 17.sp, color = if (switch2) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceSecondary); Spacer(modifier = Modifier.width(8.dp)); ThemedSwitch(checked = switch2, onCheckedChange = null, useMonet = useMonet) } }, onClick = { updateSwitch("switch2", "快充模式", !switch2) { switch2 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                 Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                    BasicComponent(title = "温控空挂载模式", summary = "非必要建议不开启此选项", endActions = { ThemedSwitch(checked = switch3, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch3", "温控空挂载模式", !switch3) { switch3 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
-                    BasicComponent(title = "还原均衡模式温控", enabled = switch15 || !switch6, endActions = { ThemedSwitch(checked = switch15, onCheckedChange = null, enabled = switch15 || !switch6, useMonet = useMonet) }, onClick = { if (switch15 || !switch6) { updateSwitch("switch15", "还原均衡模式温控", !switch15) { switch15 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
-                    BasicComponent(title = "还原性能模式温控", enabled = switch6 || !switch15, endActions = { ThemedSwitch(checked = switch6, onCheckedChange = null, enabled = switch6 || !switch15, useMonet = useMonet) }, onClick = { if (switch6 || !switch15) { updateSwitch("switch6", "还原性能模式温控", !switch6) { switch6 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
-                    BasicComponent(title = "游戏均衡式性能温控", summary = "把游戏中均衡模式的温控改成性能模式的原有温控,性能模式则无温控", endActions = { ThemedSwitch(checked = switch7, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch7", "游戏均衡式性能温控", !switch7) { switch7 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
-                    BasicComponent(title = "系统均衡式性能温控", summary = "把系统中均衡模式的温控改成性能模式的原有温控,性能模式则无温控", endActions = { ThemedSwitch(checked = switch14, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch14", "系统均衡式性能温控", !switch14) { switch14 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                    BasicComponent(title = if (isZh) "温控空挂载模式" else "Empty-mount thermal mode", summary = if (isZh) "非必要建议不开启此选项" else "Not recommended unless necessary", endActions = { ThemedSwitch(checked = switch3, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch3", "温控空挂载模式", !switch3) { switch3 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                    BasicComponent(title = if (isZh) "还原均衡模式温控" else "Restore Balanced mode thermal", enabled = switch15 || !switch6, endActions = { ThemedSwitch(checked = switch15, onCheckedChange = null, enabled = switch15 || !switch6, useMonet = useMonet) }, onClick = { if (switch15 || !switch6) { updateSwitch("switch15", "还原均衡模式温控", !switch15) { switch15 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
+                    BasicComponent(title = if (isZh) "还原性能模式温控" else "Restore Performance mode thermal", enabled = switch6 || !switch15, endActions = { ThemedSwitch(checked = switch6, onCheckedChange = null, enabled = switch6 || !switch15, useMonet = useMonet) }, onClick = { if (switch6 || !switch15) { updateSwitch("switch6", "还原性能模式温控", !switch6) { switch6 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
+                    BasicComponent(title = if (isZh) "游戏均衡式性能温控" else "Game: Balanced uses Performance thermal", summary = if (isZh) "把游戏中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in games; Performance mode then has no thermal control", endActions = { ThemedSwitch(checked = switch7, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch7", "游戏均衡式性能温控", !switch7) { switch7 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                    BasicComponent(title = if (isZh) "系统均衡式性能温控" else "System: Balanced uses Performance thermal", summary = if (isZh) "把系统中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in system; Performance mode then has no thermal control", endActions = { ThemedSwitch(checked = switch14, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch14", "系统均衡式性能温控", !switch14) { switch14 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                 }
             }
         }
         item(key = "speed_title") {
             Spacer(modifier = Modifier.height(12.dp))
-            SmallTitle(text = "调速 (22000mA＝22000000μA)(重启生效)", modifier = Modifier.compactSmallTitle())
+            SmallTitle(text = if (isZh) "调速 (填写单位为微安）（重启生效)" else "Speed control (unit: μA, restart required)", modifier = Modifier.compactSmallTitle())
         }
         item(key = "speed_tip") {
             Card(
@@ -411,7 +411,7 @@ fun HomeScreen(
                 )
             ) {
                 Text(
-                    text = if (isZh) "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。" else "Tip：Speed control may not work on some devices due to battery node differences. Please test yourself.",
+                    text = if (isZh) "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。" else "Tip: Speed control may not work on some devices due to battery node differences. Please test on your own.",
                     fontSize = 13.sp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
@@ -470,14 +470,14 @@ fun HomeScreen(
 
         item(key = "bypass_charge_title") {
             Spacer(modifier = Modifier.height(12.dp))
-            SmallTitle(text = "旁路充电", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } })
+            SmallTitle(text = if (isZh) "旁路充电" else "Bypass charging", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } })
         }
 
         item(key = "bypass_charge_card") {
             MiuixCard {
                 Column(modifier = Modifier.padding(vertical = 4.dp)) {
                     BasicComponent(
-                        title = "全局旁路",
+                        title = if (isZh) "全局旁路" else "Global bypass",
                         enabled = switch18 || !speedExclusiveActive,
                         endActions = { ThemedSwitch(checked = switch18, onCheckedChange = null, enabled = switch18 || !speedExclusiveActive, useMonet = useMonet) },
                         onClick = {
@@ -497,7 +497,7 @@ fun HomeScreen(
                         Column {
                             key("global_bypass_target_temp") {
                                 SliderRow(
-                                    title = "全局到达温度",
+                                    title = if (isZh) "全局到达温度" else "Global target temperature",
                                     value = globalBypassTargetTemp.toFloatOrNull() ?: 40f,
                                     onValueChange = {
                                         globalBypassTargetTemp = it.toInt().toString()
@@ -506,8 +506,8 @@ fun HomeScreen(
                                     valueRange = 20f..50f, steps = 30, suffix = "°C",
                                     onClickLabel = {
                                         dialogState = DialogState(
-                                            "调整全局到达温度",
-                                            "输入温度 (20°C-50°C)",
+                                            if (isZh) "调整全局到达温度" else "Adjust global target temperature",
+                                            if (isZh) "输入温度 (20°C-50°C)" else "Enter temperature (20°C-50°C)",
                                             globalBypassTargetTemp,
                                             20..50
                                         ) { v ->
@@ -519,7 +519,7 @@ fun HomeScreen(
                             }
                             key("global_bypass_recovery_temp") {
                                 SliderRow(
-                                    title = "全局恢复温度",
+                                    title = if (isZh) "全局恢复温度" else "Global recovery temperature",
                                     value = globalBypassRecoveryTemp.toFloatOrNull() ?: 35f,
                                     onValueChange = {
                                         globalBypassRecoveryTemp = it.toInt().toString()
@@ -527,7 +527,7 @@ fun HomeScreen(
                                     },
                                     valueRange = 20f..50f, steps = 30, suffix = "°C",
                                     onClickLabel = {
-                                        dialogState = DialogState("调整全局恢复温度", "输入温度 (20°C-50°C)", globalBypassRecoveryTemp, 20..50) { v ->
+                                        dialogState = DialogState(if (isZh) "调整全局恢复温度" else "Adjust global recovery temperature", if (isZh) "输入温度 (20°C-50°C)" else "Enter temperature (20°C-50°C)", globalBypassRecoveryTemp, 20..50) { v ->
                                             globalBypassRecoveryTemp = v.toString()
                                         }
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -541,7 +541,7 @@ fun HomeScreen(
                                         globalBypassMaxCurrent = it
                                         updateText("globalBypassMaxCurrent", "全局旁路最大电流数", it) {}
                                     },
-                                    label = "22A＝22000mA＝22000000",
+                                    label = "22A＝22000mA＝22000000μA",
                                     useMonet = useMonet,
                                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                                     inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
@@ -554,7 +554,7 @@ fun HomeScreen(
                                         globalBypassStopLevel = it
                                         updateText("globalBypassStopLevel", "全局旁路停充电量", it) {}
                                     },
-                                    label = "电量达到以下时关闭旁路充电",
+                                    label = if (isZh) "电量达到以下时关闭旁路充电" else "Turn off bypass charging when battery reaches this level",
                                     useMonet = useMonet,
                                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                                     inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
@@ -563,7 +563,7 @@ fun HomeScreen(
                         }
                     }
                     BasicComponent(
-                        title = "分应用旁路",
+                        title = if (isZh) "分应用旁路" else "Per-app bypass",
                         enabled = switch17 || !speedExclusiveActive,
                         endActions = { ThemedSwitch(checked = switch17, onCheckedChange = null, enabled = switch17 || !speedExclusiveActive, useMonet = useMonet) },
                         onClick = {
@@ -583,7 +583,7 @@ fun HomeScreen(
                         Column {
                             key("app_bypass_target_temp") {
                                 SliderRow(
-                                    title = "应用到达温度",
+                                    title = if (isZh) "应用到达温度" else "App target temperature",
                                     value = appBypassTargetTemp.toFloatOrNull() ?: 40f,
                                     onValueChange = {
                                         appBypassTargetTemp = it.toInt().toString()
@@ -591,7 +591,7 @@ fun HomeScreen(
                                     },
                                     valueRange = 20f..50f, steps = 30, suffix = "°C",
                                     onClickLabel = {
-                                        dialogState = DialogState("调整应用到达温度", "输入温度 (20°C-50°C)", appBypassTargetTemp, 20..50) { v ->
+                                        dialogState = DialogState(if (isZh) "调整应用到达温度" else "Adjust app target temperature", if (isZh) "输入温度 (20°C-50°C)" else "Enter temperature (20°C-50°C)", appBypassTargetTemp, 20..50) { v ->
                                             appBypassTargetTemp = v.toString()
                                         }
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -600,7 +600,7 @@ fun HomeScreen(
                             }
                             key("app_bypass_recovery_temp") {
                                 SliderRow(
-                                    title = "应用恢复温度",
+                                    title = if (isZh) "应用恢复温度" else "App recovery temperature",
                                     value = appBypassRecoveryTemp.toFloatOrNull() ?: 35f,
                                     onValueChange = {
                                         appBypassRecoveryTemp = it.toInt().toString()
@@ -608,7 +608,7 @@ fun HomeScreen(
                                     },
                                     valueRange = 20f..50f, steps = 30, suffix = "°C",
                                     onClickLabel = {
-                                        dialogState = DialogState("调整应用恢复温度", "输入温度 (20°C-50°C)", appBypassRecoveryTemp, 20..50) { v ->
+                                        dialogState = DialogState(if (isZh) "调整应用恢复温度" else "Adjust app recovery temperature", if (isZh) "输入温度 (20°C-50°C)" else "Enter temperature (20°C-50°C)", appBypassRecoveryTemp, 20..50) { v ->
                                             appBypassRecoveryTemp = v.toString()
                                         }
                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -622,7 +622,7 @@ fun HomeScreen(
                                         appBypassMaxCurrent = it
                                         updateText("appBypassMaxCurrent", "分应用旁路最大电流数", it) {}
                                     },
-                                    label = "22A＝22000mA＝22000000",
+                                    label = "22A＝22000mA＝22000000μA",
                                     useMonet = useMonet,
                                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                                     inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
@@ -635,7 +635,7 @@ fun HomeScreen(
                                         appBypassStopLevel = it
                                         updateText("appBypassStopLevel", "分应用旁路停充电量", it) {}
                                     },
-                                    label = "电量达到以下时关闭旁路充电",
+                                    label = if (isZh) "电量达到以下时关闭旁路充电" else "Turn off bypass charging when battery reaches this level",
                                     useMonet = useMonet,
                                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                                     inputFilter = { it.isEmpty() || it.all { c -> c.isDigit() } }
@@ -643,7 +643,7 @@ fun HomeScreen(
                             }
                             key("app_bypass_list") {
                                 BasicComponent(
-                                    title = "旁路充电名单",
+                                    title = if (isZh) "旁路充电名单" else "Bypass charging app list",
                                     endActions = {
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
