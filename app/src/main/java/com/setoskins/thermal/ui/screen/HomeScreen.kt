@@ -102,9 +102,10 @@ fun HomeScreen(
     val hapticFeedback = LocalHapticFeedback.current
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    // 每次启动随机显示一条 Tip
+    val tipIndex = remember { kotlin.random.Random.nextInt(2) }
 
     // ── 非调速区开关状态 ──
-    var switch2 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch2", false)) }
     var switch3 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch3", true)) }
     var switch5 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch5", false)) }
     var switch6 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch6", false)) }
@@ -242,7 +243,6 @@ fun HomeScreen(
             val fileVal = config[configKey]?.trim()?.lowercase() == "true"
             editor.putBoolean(prefKey, fileVal)
         }
-        syncSwitch("快充模式", switch2, { switch2 = it }, "switch2")
         syncSwitch("温控空挂载模式", switch3, { switch3 = it }, "switch3")
         syncSwitch("模块简介显示充电信息", switch5, { switch5 = it }, "switch5")
         syncSwitch("还原均衡模式温控", switch15, { switch15 = it }, "switch15")
@@ -357,10 +357,37 @@ fun HomeScreen(
                 hasUpdate -> 1
                 else -> 2
             }
-            Box(modifier = Modifier.fillMaxWidth()) {
+            // Tip 与状态卡合并在同一个 item 内：避免启动检测完成后在列表头部插入新 item 导致
+            // LazyColumn 按 key 锚定首个可见项、把 Tip 挤到可视区上方（需下拉才能看到）
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                if (moduleInstalled) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        cornerRadius = 16.dp,
+                        colors = CardDefaults.defaultColors(
+                            color = MiuixTheme.colorScheme.surfaceContainer,
+                            contentColor = MiuixTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Text(
+                            text = if (isZh) {
+                                if (tipIndex == 0) "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。"
+                                else "Tip：更新温控模块会让所有配置选项重置，注意！"
+                            } else {
+                                if (tipIndex == 0) "Tip: Speed control or bypass charging may not work on some devices due to battery node differences. Please test on your own."
+                                else "Tip: Updating the thermal module will reset all configuration options. Note!"
+                            },
+                            fontSize = 13.sp,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    }
+                }
                 when (cardMode) {
                     0 -> RedNotInstalledCard(useMonet = useMonet)
-                    1 -> Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                    1 -> {
                         UpdateWarningCard(useMonet = useMonet)
                         GreenActivatedCard(useMonet = useMonet, version = moduleVersion)
                     }
@@ -385,7 +412,6 @@ fun HomeScreen(
         }
         item(key = "thermal_card") {
             MiuixCard {
-                BasicComponent(title = if (isZh) "快充模式" else "Fast charging", endActions = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = if (switch2) "True" else "False", fontSize = 17.sp, color = if (switch2) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceSecondary); Spacer(modifier = Modifier.width(8.dp)); ThemedSwitch(checked = switch2, onCheckedChange = null, useMonet = useMonet) } }, onClick = { updateSwitch("switch2", "快充模式", !switch2) { switch2 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                 Column(modifier = Modifier.padding(vertical = 4.dp)) {
                     BasicComponent(title = if (isZh) "温控空挂载模式" else "Empty-mount thermal mode", summary = if (isZh) "非必要建议不开启此选项" else "Not recommended unless necessary", endActions = { ThemedSwitch(checked = switch3, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch3", "温控空挂载模式", !switch3) { switch3 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                     BasicComponent(title = if (isZh) "还原均衡模式温控" else "Restore Balanced mode thermal", enabled = switch15 || !switch6, endActions = { ThemedSwitch(checked = switch15, onCheckedChange = null, enabled = switch15 || !switch6, useMonet = useMonet) }, onClick = { if (switch15 || !switch6) { updateSwitch("switch15", "还原均衡模式温控", !switch15) { switch15 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
@@ -399,26 +425,6 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
             SmallTitle(text = if (isZh) "调速 (填写单位为微安）（重启生效)" else "Speed control (unit: μA, restart required)", modifier = Modifier.compactSmallTitle())
         }
-        item(key = "speed_tip") {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                cornerRadius = 16.dp,
-                colors = CardDefaults.defaultColors(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
-                    contentColor = MiuixTheme.colorScheme.onSurface
-                )
-            ) {
-                Text(
-                    text = if (isZh) "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。" else "Tip: Speed control may not work on some devices due to battery node differences. Please test on your own.",
-                    fontSize = 13.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
-            }
-        }
-
         item(key = "speed_control") {
             SpeedControlSection(
                 useMonet = useMonet,
