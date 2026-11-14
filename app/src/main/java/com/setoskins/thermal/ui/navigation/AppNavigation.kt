@@ -35,6 +35,8 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton as MaterialIconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
@@ -90,7 +92,8 @@ import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.ui.component.liquid.IosLiquidGlassNavigationBar
 import com.setoskins.thermal.ui.component.liquid.NavTab
 import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
-import com.setoskins.thermal.ui.component.MaterialFloatingNavigationBar
+import com.setoskins.thermal.ui.component.BlurredBar
+import com.setoskins.thermal.ui.component.MaterialPageTopBarScaffold
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.screen.HomeScreen
 import com.setoskins.thermal.ui.screen.FavoritesScreen
@@ -122,15 +125,20 @@ fun MyApplicationApp(
     miuixMonet: Boolean,
     onMiuixMonetChange: (Boolean) -> Unit,
     floatingNavBar: Boolean,
-    onFloatingNavBarChange: (Boolean) -> Unit
+    onFloatingNavBarChange: (Boolean) -> Unit,
+    initialPage: Int = 0,
+    onPageChange: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(
-        initialPage = 0,
+        initialPage = initialPage,
         pageCount = { AppDestinations.entries.size }
     )
+    LaunchedEffect(pagerState.currentPage) {
+        onPageChange(pagerState.currentPage)
+    }
     val currentDestination by remember(pagerState) {
         derivedStateOf { AppDestinations.entries[pagerState.currentPage] }
     }
@@ -314,7 +322,7 @@ fun MyApplicationApp(
     val backdrop = rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
     val reduceExpensiveEffects = showDonatePage || showDonateLayer || showCreditsPage || showCreditsLayer || showBlacklistPage || showBlacklistLayer || showWhitelistPage || showWhitelistLayer
-    val showBlur = useMonet && shaderSupported && backdrop != null && !reduceExpensiveEffects
+    val showBlur = shaderSupported && backdrop != null && !reduceExpensiveEffects
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
     val favoritesScrollBehavior = MiuixScrollBehavior()
@@ -334,13 +342,16 @@ fun MyApplicationApp(
     // 页面底色也要画在这一层里：Scaffold 的 containerColor 是透明的，若不在这里补底色，
     // 胶囊后面录到的是透明像素，模糊后就是"底栏发黑"。
     val pageSurface = if (useMonet) {
-        MiuixTheme.colorScheme.background
+        MaterialTheme.colorScheme.surfaceContainer
     } else if (isDark) {
         Color.Black
     } else {
         MiuixTheme.colorScheme.surface
     }
-    val contentRecorded = floatingNavBar && !useMonet && backdrop != null
+    // Material 模式不支持悬浮底栏，统一回退到普通底栏。
+    val effectiveFloatingNavBar = floatingNavBar && !useMonet
+    val contentRecorded = effectiveFloatingNavBar && backdrop != null
+    val normalMiuixBlur = !floatingNavBar && !useMonet && showBlur
 
     Box(
         modifier = Modifier
@@ -358,12 +369,12 @@ fun MyApplicationApp(
                 modifier = Modifier
                     .fillMaxSize()
                     // 页面内容 + 底色一起录进底栏玻璃的 backdrop（底栏在录制层外，见下方 AnimatedVisibility）
-                    .then(if (contentRecorded) Modifier.layerBackdrop(backdrop!!) else Modifier)
+                    .then(if (contentRecorded) Modifier.layerBackdrop(backdrop) else Modifier)
                     .background(pageSurface)
             ) {
                 Scaffold(
                     containerColor = Color.Transparent,
-                    bottomBar = if (floatingNavBar) ({}) else ({
+                    bottomBar = if (effectiveFloatingNavBar) ({}) else ({
                         ThemedNavigationBar(
                             currentDestination = currentDestination,
                             pagerState = pagerState,
@@ -382,15 +393,17 @@ fun MyApplicationApp(
                         )
                     })
                 ) { innerPadding ->
-                    // 悬浮底栏模式：底栏是浮在页面之上的自绘胶囊，系统导航条（小白条）区域必须让页面内容
-                    // 一直画到屏幕最底部。若仍应用 innerPadding.bottom（导航条 inset，约 22dp），
-                    // 内容视口会被整体抬高，露出的页面底色就变成小白条上方那条黑边。
-                    val bottomContentPadding = if (floatingNavBar) 0.dp else innerPadding.calculateBottomPadding()
+                    // 悬浮底栏及启用模糊的普通 Miuix 底栏都需要页面内容一直画到屏幕最底部，
+                    // 让底栏能采到真实页面背景；其余模式保留 Scaffold 的底部内容间距。
+                    val bottomContentPadding = if (effectiveFloatingNavBar || normalMiuixBlur) 0.dp else innerPadding.calculateBottomPadding()
                     Box(modifier = Modifier.fillMaxSize()) {
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 1,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                // 普通 Miuix 底栏位于 Scaffold 内，仅录制 pager，避免把底栏自身采进模糊背景。
+                                .then(if (normalMiuixBlur) Modifier.layerBackdrop(backdrop) else Modifier),
                             flingBehavior = PagerDefaults.flingBehavior(
                                 state = pagerState,
                                 snapAnimationSpec = tween(390, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
@@ -398,77 +411,143 @@ fun MyApplicationApp(
                         ) { page ->
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
-                                    // 页面自带顶栏（miuix example 结构）：大标题属于页面本身，翻页时随页面一起滑动
-                                    PageTopBarScaffold(
-                                        title = if (isZh) "Seto温控" else "Seto Thermal",
-                                        scrollBehavior = homeScrollBehavior,
-                                        useMonet = useMonet,
-                                        actions = {
-                                            IconButton(
-                                                onClick = {
-                                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    showRestartDialog = true
-                                                    barVisible = false
-                                                },
-                                                // 抵消顶栏整体的 -6dp 上移，图标保持原位
-                                                modifier = Modifier.offset(y = 6.dp)
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.restart),
-                                                    contentDescription = if (isZh) "重启" else "Restart",
-                                                    tint = MiuixTheme.colorScheme.onSurface,
-                                                    modifier = Modifier.size(32.dp)
-                                                )
+                                    if (useMonet) {
+                                        // Material：与 SukiSU 一致，LargeFlexibleTopAppBar 大标题 + 滚动收起
+                                        MaterialPageTopBarScaffold(
+                                            title = if (isZh) "Seto温控" else "Seto Thermal",
+                                            actions = {
+                                                MaterialIconButton(
+                                                    onClick = {
+                                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        showRestartDialog = true
+                                                        barVisible = false
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.restart),
+                                                        contentDescription = if (isZh) "重启" else "Restart",
+                                                        // 与 Miuix 分支的图标保持同样大小
+                                                        modifier = Modifier.size(32.dp)
+                                                    )
+                                                }
                                             }
+                                        ) { contentPaddingTop, scrollConnection ->
+                                            HomeScreen(
+                                                useMonet = true,
+                                                reloadTrigger = reloadTrigger,
+                                                scrollBehavior = null,
+                                                materialScrollConnection = scrollConnection,
+                                                contentPaddingTop = contentPaddingTop,
+                                                floatingNavBar = effectiveFloatingNavBar,
+                                                onNavigateToBlacklist = { showBlacklistPage = true },
+                                                onNavigateToWhitelist = { showWhitelistPage = true },
+                                                onNavigateToBypassList = { showBypassListPage = true },
+                                                onDialogVisibilityChange = onDialogVisibilityChange,
+                                                modifier = Modifier.padding(bottom = bottomContentPadding)
+                                            )
                                         }
-                                    ) { contentPaddingTop ->
-                                        HomeScreen(
-                                            useMonet = useMonet,
-                                            reloadTrigger = reloadTrigger,
+                                    } else {
+                                        // 页面自带顶栏（miuix example 结构）：大标题属于页面本身，翻页时随页面一起滑动
+                                        PageTopBarScaffold(
+                                            title = if (isZh) "Seto温控" else "Seto Thermal",
                                             scrollBehavior = homeScrollBehavior,
-                                            // 页面内容整体上移 6dp（顶栏与右上角图标不动）
-                                            contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
-                                            floatingNavBar = floatingNavBar,
-                                            onNavigateToBlacklist = { showBlacklistPage = true },
-                                            onNavigateToWhitelist = { showWhitelistPage = true },
-                                            onNavigateToBypassList = { showBypassListPage = true },
-                                            onDialogVisibilityChange = onDialogVisibilityChange,
-                                            modifier = Modifier.padding(bottom = bottomContentPadding)
-                                        )
+                                            actions = {
+                                                IconButton(
+                                                    onClick = {
+                                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        showRestartDialog = true
+                                                        barVisible = false
+                                                    },
+                                                    // 抵消顶栏整体的 -6dp 上移，图标保持原位
+                                                    modifier = Modifier.offset(y = 6.dp)
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.restart),
+                                                        contentDescription = if (isZh) "重启" else "Restart",
+                                                        tint = MiuixTheme.colorScheme.onSurface,
+                                                        modifier = Modifier.size(32.dp)
+                                                    )
+                                                }
+                                            }
+                                        ) { contentPaddingTop ->
+                                            HomeScreen(
+                                                useMonet = false,
+                                                reloadTrigger = reloadTrigger,
+                                                scrollBehavior = homeScrollBehavior,
+                                                // 页面内容整体上移 6dp（顶栏与右上角图标不动）
+                                                contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                floatingNavBar = effectiveFloatingNavBar,
+                                                onNavigateToBlacklist = { showBlacklistPage = true },
+                                                onNavigateToWhitelist = { showWhitelistPage = true },
+                                                onNavigateToBypassList = { showBypassListPage = true },
+                                                onDialogVisibilityChange = onDialogVisibilityChange,
+                                                modifier = Modifier.padding(bottom = bottomContentPadding)
+                                            )
+                                        }
                                     }
                                 }
                                 AppDestinations.FAVORITES -> {
-                                    PageTopBarScaffold(
-                                        title = if (isZh) "日志" else "Log",
-                                        scrollBehavior = favoritesScrollBehavior,
-                                        useMonet = useMonet,
-                                        actions = {
-                                            val haptic = LocalHapticFeedback.current
-                                            IconButton(
-                                                onClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
-                                                },
-                                                // 抵消顶栏整体的 -6dp 上移，图标保持原位
-                                                modifier = Modifier.offset(y = 6.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = MiuixIcons.Delete,
-                                                    contentDescription = "Clear Log",
-                                                    tint = MiuixTheme.colorScheme.onSurface
-                                                )
+                                    if (useMonet) {
+                                        // Material：与 SukiSU 一致，LargeFlexibleTopAppBar 大标题 + 滚动收起
+                                        MaterialPageTopBarScaffold(
+                                            title = if (isZh) "日志" else "Log",
+                                            actions = {
+                                                val haptic = LocalHapticFeedback.current
+                                                MaterialIconButton(
+                                                    onClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = MiuixIcons.Delete,
+                                                        contentDescription = "Clear Log"
+                                                    )
+                                                }
                                             }
+                                        ) { contentPaddingTop, scrollConnection ->
+                                            FavoritesScreen(
+                                                useMonet = true,
+                                                reloadTrigger = logReloadTrigger,
+                                                scrollBehavior = null,
+                                                materialScrollConnection = scrollConnection,
+                                                contentPaddingTop = contentPaddingTop,
+                                                isPageActive = logPageActive,
+                                                modifier = Modifier.padding(bottom = bottomContentPadding)
+                                            )
                                         }
-                                    ) { contentPaddingTop ->
-                                        FavoritesScreen(
-                                            useMonet = useMonet,
-                                            reloadTrigger = logReloadTrigger,
+                                    } else {
+                                        PageTopBarScaffold(
+                                            title = if (isZh) "日志" else "Log",
                                             scrollBehavior = favoritesScrollBehavior,
-                                            // 页面内容整体上移 6dp（顶栏与右上角图标不动）
-                                            contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
-                                            isPageActive = logPageActive,
-                                            modifier = Modifier.padding(bottom = bottomContentPadding)
-                                        )
+                                            actions = {
+                                                val haptic = LocalHapticFeedback.current
+                                                IconButton(
+                                                    onClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
+                                                    },
+                                                    // 抵消顶栏整体的 -6dp 上移，图标保持原位
+                                                    modifier = Modifier.offset(y = 6.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = MiuixIcons.Delete,
+                                                        contentDescription = "Clear Log",
+                                                        tint = MiuixTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        ) { contentPaddingTop ->
+                                            FavoritesScreen(
+                                                useMonet = false,
+                                                reloadTrigger = logReloadTrigger,
+                                                scrollBehavior = favoritesScrollBehavior,
+                                                // 页面内容整体上移 6dp（顶栏与右上角图标不动）
+                                                contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                isPageActive = logPageActive,
+                                                modifier = Modifier.padding(bottom = bottomContentPadding)
+                                            )
+                                        }
                                     }
                                 }
                                 AppDestinations.PROFILE -> {
@@ -483,6 +562,8 @@ fun MyApplicationApp(
                                         onNavigateToDonate = { showDonatePage = true },
                                         onNavigateToCredits = { showCreditsPage = true },
                                         reduceEffects = reduceExpensiveEffects,
+                                        // 仅关于页可见时播放背景着色器动画，避免相邻页预组合时持续重绘
+                                        isPageActive = pagerState.currentPage == 2,
                                         onDialogVisibilityChange = onDialogVisibilityChange,
                                         modifier = Modifier.padding(bottom = bottomContentPadding)
                                     )
@@ -541,7 +622,7 @@ fun MyApplicationApp(
             }
 
             AnimatedVisibility(
-                visible = floatingNavBar && barVisible && dialogCount == 0,
+                visible = effectiveFloatingNavBar && barVisible && dialogCount == 0,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -683,22 +764,8 @@ fun ThemedNavigationBar(
 ) {
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     if (floatingNavBar) {
-        if (useMonet) {
-            val items = remember(isZh) {
-                AppDestinations.entries.map {
-                    NavigationItem(label = if (isZh) it.label else it.labelEn, icon = it.filledIcon)
-                }
-            }
-            val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
-            MaterialFloatingNavigationBar(
-                items = items,
-                filledIcons = null,
-                selectedIndex = selectedIndex,
-                pagerState = pagerState,
-                onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
-                modifier = modifier,
-            )
-        } else {
+        // Material 悬浮底栏已停用：Material 模式统一回退到普通底栏。
+        if (!useMonet) {
             val isDark = isSystemInDarkTheme()
             val selectedIndex = remember {
                 mutableIntStateOf(pagerState?.currentPage ?: AppDestinations.entries.indexOf(currentDestination))
@@ -794,11 +861,16 @@ fun ThemedNavigationBar(
             }
         }
     } else {
-        MiuixNavigationBar(modifier = modifier.fillMaxWidth(), color = MiuixTheme.colorScheme.surface.copy(alpha = barAlpha)) {
-            AppDestinations.entries.forEach { destination ->
-                // miuix 风格统一使用悬浮底栏那套「主页」图标（与是否启用悬浮底栏无关）
-                val icon = if (destination == AppDestinations.HOME) MiuixIcons.Home else destination.icon
-                MiuixNavigationBarItem(icon = icon, label = destination.label, selected = destination == currentDestination, onClick = { if (destination != currentDestination) onDestinationSelected(destination) })
+        BlurredBar(backdrop = backdrop, blurEnabled = showBlur) {
+            MiuixNavigationBar(
+                modifier = modifier.fillMaxWidth(),
+                color = if (showBlur && backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface.copy(alpha = barAlpha),
+            ) {
+                AppDestinations.entries.forEach { destination ->
+                    // miuix 风格统一使用悬浮底栏那套「主页」图标（与是否启用悬浮底栏无关）
+                    val icon = if (destination == AppDestinations.HOME) MiuixIcons.Home else destination.icon
+                    MiuixNavigationBarItem(icon = icon, label = destination.label, selected = destination == currentDestination, onClick = { if (destination != currentDestination) onDestinationSelected(destination) })
+                }
             }
         }
     }
@@ -847,7 +919,6 @@ private fun iOSLikeFloatingNavigationBar(
 private fun PageTopBarScaffold(
     title: String,
     scrollBehavior: ScrollBehavior?,
-    useMonet: Boolean,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (Dp) -> Unit,
 ) {
@@ -863,7 +934,7 @@ private fun PageTopBarScaffold(
                         title = title,
                         largeTitle = title,
                         largeTitleColor = Color.Transparent,
-                        color = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
+                        color = if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
                         scrollBehavior = scrollBehavior,
                         bottomContent = {
                             val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
@@ -879,7 +950,7 @@ private fun PageTopBarScaffold(
         Text(
             text = title,
             fontSize = 36.sp,
-            fontWeight = if (useMonet) FontWeight.ExtraBold else FontWeight.Normal,
+            fontWeight = FontWeight.Normal,
             color = MiuixTheme.colorScheme.onBackground,
             modifier = Modifier
                 .statusBarsPadding()

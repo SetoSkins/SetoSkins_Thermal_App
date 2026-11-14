@@ -1,5 +1,6 @@
 package com.setoskins.thermal.ui.screen
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,7 +8,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,12 +20,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton as MaterialIconButton
-import androidx.compose.material3.Text as MaterialText
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold as MaterialScaffold
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.R
+import com.setoskins.thermal.ui.component.MaterialLargeTopBar
+import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import com.setoskins.thermal.ui.component.animation.customOverScroll
@@ -74,12 +76,14 @@ fun DonatePage(
     val colors = MiuixTheme.colorScheme
     val scrollState = rememberScrollState()
     val scrollBehavior = MiuixScrollBehavior()
+    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+    val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val title = if (isZh) "捐赠" else "Donate"
     
     val donateCardShape = remember { RoundedCornerShape(24.dp) }
     val donateCardColor = remember(isDark, useMonet) {
         if (isDark) colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
-        else colors.surface.copy(alpha = if (useMonet) 0.72f else 0.62f)
+        else colors.surfaceContainer.copy(alpha = if (useMonet) 0.72f else 0.62f)
     }
     val donateCardBorderColor = remember(isDark, useMonet) {
         if (isDark) colors.primary.copy(alpha = if (useMonet) 0.30f else 0.22f)
@@ -114,28 +118,38 @@ fun DonatePage(
                 scaleX = 1f
                 scaleY = 1f
             }
-            .background(if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
+            .background(if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                if (useMonet) {
-                    Row(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        MaterialIconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
+        if (useMonet) {
+            // Material：与 SukiSU 子页面完全一致的大标题顶栏 + 圆形返回按钮
+            MaterialScaffold(
+                containerColor = Color.Transparent,
+                topBar = {
+                    MaterialLargeTopBar(
+                        title = title,
+                        scrollBehavior = materialScrollBehavior,
+                        navigationIcon = {
+                            MaterialTopBarBackButton(
+                                onClick = onDismiss,
                                 contentDescription = "Back",
-                                tint = MiuixTheme.colorScheme.onBackground
                             )
-                        }
-                        MaterialText(
-                            text = title,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MiuixTheme.colorScheme.onBackground
-                        )
-                    }
-                } else {
+                        },
+                    )
+                }
+            ) { innerPadding ->
+                DonateBody(
+                    topPadding = innerPadding.calculateTopPadding(),
+                    scrollState = scrollState,
+                    scrollModifier = Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection),
+                    isZh = isZh,
+                    donateCardModifier = donateCardModifier,
+                    donateCardColor = donateCardColor
+                )
+            }
+        } else {
+            Scaffold(
+                containerColor = Color.Transparent,
+                topBar = {
                     TopAppBar(
                         title = title,
                         largeTitle = title,
@@ -155,64 +169,18 @@ fun DonatePage(
                             }
                         }
                     )
-                }
-            },
-            modifier = Modifier
-        ) { innerPadding ->
-            Box(modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding())) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .customOverScroll()
-                        .then(if (useMonet) Modifier else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 20.dp)
-                ) {
-                Spacer(Modifier.height(16.dp))
-                Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(80.dp).clip(CircleShape).align(Alignment.CenterHorizontally))
-                Spacer(Modifier.height(12.dp))
-                Text(text = "SetoSkins", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                Text(text = if (isZh) "温度调控模块" else "Thermal Control Module", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                Spacer(Modifier.height(24.dp))
-
-                Card(
-                    modifier = donateCardModifier,
-                    cornerRadius = 24.dp,
-                    colors = CardDefaults.defaultColors(
-                        color = donateCardColor,
-                        contentColor = colors.onSurface
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        DonateQrImage(
-                            title = if (isZh) "微信" else "WeChat",
-                            imageRes = R.drawable.weixin,
-                            contentDescription = "WeChat QR Code",
-                            height = 180.dp,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        DonateQrImage(
-                            title = if (isZh) "支付宝" else "Alipay",
-                            imageRes = R.drawable.zfb,
-                            contentDescription = "Alipay QR Code",
-                            height = 260.dp,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
+                },
+                modifier = Modifier
+            ) { innerPadding ->
+                DonateBody(
+                    topPadding = innerPadding.calculateTopPadding(),
+                    scrollState = scrollState,
+                    scrollModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    isZh = isZh,
+                    donateCardModifier = donateCardModifier,
+                    donateCardColor = donateCardColor
+                )
             }
-
-            VerticalScrollBar(
-                adapter = rememberScrollBarAdapter(scrollState),
-                modifier = Modifier.align(Alignment.CenterEnd)
-            )
-        }
         }
 
         if (!useMonet) {
@@ -232,6 +200,71 @@ fun DonatePage(
                     }
             )
         }
+    }
+}
+
+@Composable
+private fun DonateBody(
+    topPadding: Dp,
+    scrollState: ScrollState,
+    scrollModifier: Modifier,
+    isZh: Boolean,
+    donateCardModifier: Modifier,
+    donateCardColor: Color
+) {
+    Box(modifier = Modifier.fillMaxSize().padding(top = topPadding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .customOverScroll()
+                .then(scrollModifier)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp)
+        ) {
+            Spacer(Modifier.height(16.dp))
+            Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(80.dp).clip(CircleShape).align(Alignment.CenterHorizontally))
+            Spacer(Modifier.height(12.dp))
+            Text(text = "SetoSkins", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            Text(text = if (isZh) "温度调控模块" else "Thermal Control Module", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            Spacer(Modifier.height(24.dp))
+
+            Card(
+                modifier = donateCardModifier,
+                cornerRadius = 24.dp,
+                colors = CardDefaults.defaultColors(
+                    color = donateCardColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    DonateQrImage(
+                        title = if (isZh) "微信" else "WeChat",
+                        imageRes = R.drawable.weixin,
+                        contentDescription = "WeChat QR Code",
+                        height = 180.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    DonateQrImage(
+                        title = if (isZh) "支付宝" else "Alipay",
+                        imageRes = R.drawable.zfb,
+                        contentDescription = "Alipay QR Code",
+                        height = 260.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        VerticalScrollBar(
+            adapter = rememberScrollBarAdapter(scrollState),
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
     }
 }
 

@@ -26,6 +26,8 @@ fun BgEffectBackground(
     effectBackground: Boolean = true,
     isOs3Effect: Boolean = true,
     alpha: () -> Float = { 1f },
+    // 页面可见时才播放背景动画，避免相邻页面被 pager 预组合时仍以 60fps 重绘全屏着色器
+    playing: Boolean = dynamicBackground,
     content: @Composable (BoxScope.() -> Unit),
 ) {
     val shaderSupported = remember { isRuntimeShaderSupported() }
@@ -78,7 +80,7 @@ fun BgEffectBackground(
                     surface = surface,
                     effectBackground = effectBackground,
                     isFullSize = isFullSize,
-                    playing = dynamicBackground,
+                    playing = playing,
                     colorStage = { colorStage.value },
                     alpha = alpha,
                 ),

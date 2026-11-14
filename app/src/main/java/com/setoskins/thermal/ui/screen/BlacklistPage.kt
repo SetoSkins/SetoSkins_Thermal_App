@@ -12,7 +12,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,10 +31,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text as MaterialText
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -63,6 +63,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.data.ModuleDetector
+import com.setoskins.thermal.ui.component.MaterialLargeTopBar
+import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
+import com.setoskins.thermal.ui.component.ThemedOptionCard
+import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
+import com.setoskins.thermal.ui.component.MaterialSwitchItem
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
 import com.setoskins.thermal.ui.component.VerticalScrollBar
@@ -105,13 +110,15 @@ fun BlacklistPage(
     val prefsKey = if (effectiveWhitelist) "whitelist_apps" else "blacklist_apps"
     val title = if (isWhitelist) (if (isZh) "无温控应用名单" else "No-thermal app list") else (if (isZh) "分应用调速名单" else "Per-app speed control list")
     val scrollBehavior = MiuixScrollBehavior()
+    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+    val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
     val configPath = "/data/adb/modules/SetoSkins/黑名单.prop"
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
-    val bgColor = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
+    val bgColor = if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
     var isLoading by remember { mutableStateOf(true) }
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
@@ -192,33 +199,17 @@ fun BlacklistPage(
         Column(modifier = Modifier.fillMaxSize()) {
             // ── 顶部栏（固定） ──
             if (useMonet) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = if (isZh) "返回" else "Back",
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(50))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { onBack() }
-                            .padding(12.dp),
-                        tint = MiuixTheme.colorScheme.onSurface
-                    )
-                    MaterialText(
-                        text = title,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MiuixTheme.colorScheme.onSurface
-                    )
-                }
+                // 与 SukiSU 子页面一致：大标题顶栏 + 圆形返回按钮
+                MaterialLargeTopBar(
+                    title = title,
+                    scrollBehavior = materialScrollBehavior,
+                    navigationIcon = {
+                        MaterialTopBarBackButton(
+                            onClick = onBack,
+                            contentDescription = if (isZh) "返回" else "Back",
+                        )
+                    }
+                )
             } else {
                 TopAppBar(
                     title = title,
@@ -243,15 +234,13 @@ fun BlacklistPage(
             // ── 白名单模式切换（仅无温控应用名单页显示） ──
             if (isWhitelist) {
                 // ── 模式说明 Tips ──
-                Card(
+                ThemedOptionCard(
+                    useMonet = useMonet,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
-                    cornerRadius = 20.dp,
-                    colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.surfaceContainer,
-                        contentColor = MiuixTheme.colorScheme.onSurface
-                    )
+                    miuixCornerRadius = 20.dp,
+                    miuixColor = MiuixTheme.colorScheme.surfaceContainer,
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -260,25 +249,23 @@ fun BlacklistPage(
                         Text(
                             text = if (isZh) "黑名单模式：列表中的应用将不受温控限制" else "Blacklist mode: Apps in the list will not be throttled.",
                             fontSize = 13.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                            color = if (useMonet) MaterialTheme.colorScheme.onSurfaceVariant else MiuixTheme.colorScheme.onSurfaceVariantSummary
                         )
                         Text(
                             text = if (isZh) "白名单模式：列表之外的应用将不受温控限制" else "Whitelist mode: Apps not in the list will not be throttled.",
                             fontSize = 13.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                            color = if (useMonet) MaterialTheme.colorScheme.onSurfaceVariant else MiuixTheme.colorScheme.onSurfaceVariantSummary
                         )
                     }
                 }
 
-                Card(
+                ThemedOptionCard(
+                    useMonet = useMonet,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
-                    cornerRadius = 20.dp,
-                    colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.surfaceContainer,
-                        contentColor = MiuixTheme.colorScheme.onSurface
-                    )
+                    miuixCornerRadius = 20.dp,
+                    miuixColor = MiuixTheme.colorScheme.surfaceContainer,
                 ) {
                     BasicComponent(
                         title = if (isZh) (if (isWhitelistMode) "白名单模式" else "黑名单模式") else (if (isWhitelistMode) "Whitelist Mode" else "Blacklist Mode"),
@@ -329,17 +316,18 @@ fun BlacklistPage(
                         modifier = Modifier
                             .fillMaxSize()
                             .customOverScroll()
-                            .then(if (useMonet) Modifier else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
+                            .then(
+                                if (useMonet) Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection)
+                                else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                            )
                             .verticalScroll(scrollState)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
-                    Card(
+                    ThemedOptionCard(
+                        useMonet = useMonet,
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 20.dp,
-                        colors = CardDefaults.defaultColors(
-                            color = cardColor,
-                            contentColor = MiuixTheme.colorScheme.onSurface
-                        )
+                        miuixCornerRadius = 20.dp,
+                        miuixColor = cardColor,
                     ) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),

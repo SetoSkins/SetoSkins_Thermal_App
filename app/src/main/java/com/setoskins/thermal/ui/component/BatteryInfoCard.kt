@@ -21,7 +21,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun BatteryInfoCard(info: ModuleDetector.BatteryInfo, throttleCount: Int) {
+fun BatteryInfoCard(info: ModuleDetector.BatteryInfo, throttleCount: Int, useMonet: Boolean) {
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val tempText = info.temperature.let {
         if (it.isNotEmpty()) try {
@@ -47,7 +47,7 @@ fun BatteryInfoCard(info: ModuleDetector.BatteryInfo, throttleCount: Int) {
         info.status == "Unknown" -> if (isZh) "未知" else "Unknown"
         else -> info.status.ifEmpty { "..." }
     }
-    MiuixCard {
+    ThemedOptionCard(useMonet = useMonet) {
         Column(
             modifier = Modifier.padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 16.dp)
         ) {

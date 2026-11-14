@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
         val savedUseMonet = prefs.getBoolean("useMonet", false)
         val savedMiuixMonet = prefs.getBoolean("miuixMonet", false)
         val savedFloatingNavBar = prefs.getBoolean("floatingNavBar", false)
+        val savedCurrentPage = prefs.getInt("currentPage", 0)
 
         setContent {
             var useMonet by remember { mutableStateOf(savedUseMonet) }
@@ -50,6 +51,10 @@ class MainActivity : ComponentActivity() {
                     onFloatingNavBarChange = { value ->
                         floatingNavBar = value
                         prefs.edit().putBoolean("floatingNavBar", value).apply()
+                    },
+                    initialPage = savedCurrentPage,
+                    onPageChange = { page ->
+                        prefs.edit().putInt("currentPage", page).apply()
                     }
                 )
             }
@@ -89,6 +94,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GreetingPreview() {
     MyApplicationTheme(useMonet = false) {
-        MyApplicationApp(useMonet = false, onUseMonetChange = {}, miuixMonet = false, onMiuixMonetChange = {}, floatingNavBar = false, onFloatingNavBarChange = {})
+        MyApplicationApp(useMonet = false, onUseMonetChange = {}, miuixMonet = false, onMiuixMonetChange = {}, floatingNavBar = false, onFloatingNavBarChange = {}, initialPage = 0, onPageChange = {})
     }
 }

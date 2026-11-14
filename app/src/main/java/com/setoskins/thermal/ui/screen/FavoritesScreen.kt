@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -45,10 +46,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.MaterialTheme
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.BatteryInfoCard
 import com.setoskins.thermal.ui.component.LogLineChart
 import com.setoskins.thermal.ui.component.MiuixCard
+import com.setoskins.thermal.ui.component.ThemedOptionCard
+import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
+import com.setoskins.thermal.ui.component.MaterialDropdownItem
+import com.setoskins.thermal.ui.component.IconTile
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DisplaySettings
 import com.setoskins.thermal.ui.component.SectionTitle
 import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
@@ -65,7 +73,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, contentPaddingTop: Dp = 0.dp, isPageActive: Boolean = true, modifier: Modifier = Modifier) {
+fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, materialScrollConnection: NestedScrollConnection? = null, contentPaddingTop: Dp = 0.dp, isPageActive: Boolean = true, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     var selectedIndex by rememberSaveable { mutableIntStateOf(prefs.getInt("logViewStyle", 0)) }
@@ -159,23 +167,47 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         CompositionLocalProvider(LocalOverscrollFactory provides null) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().customOverScroll().then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
+                modifier = Modifier.fillMaxSize().customOverScroll()
+                    .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+                    // Material 顶栏：必须挂在列表自身（overscroll 之后），否则顶部下拉会被 overscroll 吃掉
+                    .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 106.dp)
             ) {
-                item(key = "battery_card") { BatteryInfoCard(info = batteryInfo, throttleCount = throttleCount) }
+                item(key = "battery_card") { BatteryInfoCard(info = batteryInfo, throttleCount = throttleCount, useMonet = useMonet) }
                 item(key = "log_title") { SectionTitle { SmallTitle(text = if (isZh) "日志" else "Log", modifier = Modifier.offset(y = (4).dp)) } }
-                item(key = "log_style") { MiuixCard(modifier = Modifier.padding(top = 11.dp)) {
-                        WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
-                    } }
-                item(key = "log_content") { MiuixCard(modifier = Modifier.padding(top = 16.dp)) {
+                item(key = "log_style") {
+                    if (useMonet) {
+                        MaterialSegmentedColumn(
+                            modifier = Modifier.padding(top = 11.dp),
+                            items = listOf({
+                                MaterialDropdownItem(
+                                    headline = if (isZh) "显示样式" else "View Mode",
+                                    items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"),
+                                    selectedIndex = selectedIndex,
+                                    onItemSelected = {
+                                        selectedIndex = it
+                                        prefs.edit().putInt("logViewStyle", it).apply()
+                                    },
+                                    leading = { IconTile(Icons.Filled.DisplaySettings, contentDescription = if (isZh) "显示样式" else "View Mode") }
+                                )
+                            })
+                        )
+                    } else {
+                        ThemedOptionCard(useMonet = useMonet, modifier = Modifier.padding(top = 11.dp)) {
+                            WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
+                        }
+                    }
+                }
+                item(key = "log_content") {
+                    ThemedOptionCard(useMonet = useMonet, modifier = Modifier.padding(top = 16.dp)) {
                         if (selectedIndex == 0) {
-                            val secondaryColor = MiuixTheme.colorScheme.onSurfaceSecondary
-                            val onSurfaceColor = MiuixTheme.colorScheme.onSurface
+                            val secondaryColor = if (useMonet) MaterialTheme.colorScheme.onSurfaceVariant else MiuixTheme.colorScheme.onSurfaceSecondary
+                            val onSurfaceColor = if (useMonet) MaterialTheme.colorScheme.onSurface else MiuixTheme.colorScheme.onSurface
                             Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = if (isCenterText) Alignment.Center else Alignment.TopStart) {
                                 Text(text = displayLogContent, fontSize = 13.sp, color = if (isCenterText && logContent != "正在加载日志...") secondaryColor else onSurfaceColor, textAlign = if (isCenterText) TextAlign.Center else TextAlign.Start, modifier = if (isCenterText) Modifier.fillMaxWidth() else Modifier)
                             }
                         } else {
-                            if (logPoints.isEmpty() || logPoints.size < 2) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No data", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
+                            if (logPoints.isEmpty() || logPoints.size < 2) { Box(modifier = Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { Text(if (isZh) "暂无曲线数据" else "No data", color = if (useMonet) MaterialTheme.colorScheme.onSurfaceVariant else MiuixTheme.colorScheme.onSurfaceSecondary) } }
                             else {
                                 LogLineChart(points = logPoints, isZh = isZh, showWatt = if (singleCurveMode == "watt") true else showWatt, showLevel = showLevel, showTemp = showTemp, isCharging = isCharging, singleCurveMode = singleCurveMode, onSingleCurveModeChange = { singleCurveMode = it })
                             }

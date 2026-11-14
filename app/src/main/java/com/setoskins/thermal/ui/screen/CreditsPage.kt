@@ -1,5 +1,6 @@
 package com.setoskins.thermal.ui.screen
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -18,12 +19,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton as MaterialIconButton
-import androidx.compose.material3.Text as MaterialText
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold as MaterialScaffold
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -36,12 +38,18 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.setoskins.thermal.ui.component.ThemedOptionCard
+import com.setoskins.thermal.ui.component.MaterialLargeTopBar
+import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
+import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
+import com.setoskins.thermal.ui.component.MaterialListItem
+import com.setoskins.thermal.ui.component.MaterialChevron
 import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import com.setoskins.thermal.ui.component.animation.customOverScroll
-import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -73,6 +81,8 @@ fun CreditsPage(
     val uriHandler = LocalUriHandler.current
     val scrollState = rememberScrollState()
     val scrollBehavior = MiuixScrollBehavior()
+    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+    val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val title = if (isZh) "致谢" else "Credits"
 
     val primaryEntries = remember(isZh) {
@@ -85,10 +95,12 @@ fun CreditsPage(
         if (isZh) listOf(
             CreditEntry("Miuix", "MIUI 风格 Compose 组件库 (yukonga)", "https://github.com/yukonga/Miuix"),
             CreditEntry("HyperExtreme / HyperChanger", "悬浮底栏与动效参考 (22Frederic)", "https://github.com/22Frederic/HyperExtreme"),
+            CreditEntry("HyperCeiler", "HyperOS 增强模块 (ReChronoRain)", "https://github.com/ReChronoRain/HyperCeiler"),
             CreditEntry("SukiSU Ultra", "状态卡片样式参考", "https://github.com/SukiSU-Ultra/SukiSU-Ultra")
         ) else listOf(
             CreditEntry("Miuix", "MIUI-style Compose UI library (yukonga)", "https://github.com/yukonga/Miuix"),
             CreditEntry("HyperExtreme / HyperChanger", "Floating nav bar & animations reference (22Frederic)", "https://github.com/22Frederic/HyperExtreme"),
+            CreditEntry("HyperCeiler", "HyperOS enhancement module (ReChronoRain)", "https://github.com/ReChronoRain/HyperCeiler"),
             CreditEntry("SukiSU Ultra", "Status card style reference", "https://github.com/SukiSU-Ultra/SukiSU-Ultra")
         )
     }
@@ -102,28 +114,40 @@ fun CreditsPage(
                 scaleX = 1f
                 scaleY = 1f
             }
-            .background(if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
+            .background(if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                if (useMonet) {
-                    Row(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        MaterialIconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
+        if (useMonet) {
+            // Material：与 SukiSU 子页面完全一致的大标题顶栏 + 圆形返回按钮
+            MaterialScaffold(
+                containerColor = Color.Transparent,
+                topBar = {
+                    MaterialLargeTopBar(
+                        title = title,
+                        scrollBehavior = materialScrollBehavior,
+                        navigationIcon = {
+                            MaterialTopBarBackButton(
+                                onClick = onDismiss,
                                 contentDescription = "Back",
-                                tint = MiuixTheme.colorScheme.onBackground
                             )
-                        }
-                        MaterialText(
-                            text = title,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MiuixTheme.colorScheme.onBackground
-                        )
-                    }
-                } else {
+                        },
+                    )
+                }
+            ) { innerPadding ->
+                CreditsBody(
+                    topPadding = innerPadding.calculateTopPadding(),
+                    scrollState = scrollState,
+                    scrollModifier = Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection),
+                    isZh = isZh,
+                    useMonet = true,
+                    primaryEntries = primaryEntries,
+                    entries = entries,
+                    onOpen = { uriHandler.openUri(it) }
+                )
+            }
+        } else {
+            Scaffold(
+                containerColor = Color.Transparent,
+                topBar = {
                     TopAppBar(
                         title = title,
                         largeTitle = title,
@@ -144,35 +168,16 @@ fun CreditsPage(
                         }
                     )
                 }
-            }
-        ) { innerPadding ->
-            Box(modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding())) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .customOverScroll()
-                        .then(if (useMonet) Modifier else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 20.dp)
-                ) {
-                    Spacer(Modifier.height(8.dp))
-                    SmallTitle(
-                        text = if (isZh) "温控模块" else "Thermal Module",
-                        modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp, start = 0.dp, bottom = 2.dp)
-                    )
-                    CreditCard(entries = primaryEntries, useMonet = useMonet, onOpen = { uriHandler.openUri(it) })
-                    Spacer(Modifier.height(4.dp))
-                    SmallTitle(
-                        text = if (isZh) "引用" else "References",
-                        modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp, start = 0.dp, bottom = 2.dp)
-                    )
-                    CreditCard(entries = entries, useMonet = useMonet, onOpen = { uriHandler.openUri(it) })
-                    Spacer(Modifier.height(24.dp))
-                }
-
-                VerticalScrollBar(
-                    adapter = rememberScrollBarAdapter(scrollState),
-                    modifier = Modifier.align(Alignment.CenterEnd)
+            ) { innerPadding ->
+                CreditsBody(
+                    topPadding = innerPadding.calculateTopPadding(),
+                    scrollState = scrollState,
+                    scrollModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    isZh = isZh,
+                    useMonet = false,
+                    primaryEntries = primaryEntries,
+                    entries = entries,
+                    onOpen = { uriHandler.openUri(it) }
                 )
             }
         }
@@ -198,19 +203,77 @@ fun CreditsPage(
 }
 
 @Composable
-private fun CreditCard(entries: List<CreditEntry>, useMonet: Boolean, onOpen: (String) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), cornerRadius = 16.dp) {
+private fun CreditsBody(
+    topPadding: Dp,
+    scrollState: ScrollState,
+    scrollModifier: Modifier,
+    isZh: Boolean,
+    useMonet: Boolean,
+    primaryEntries: List<CreditEntry>,
+    entries: List<CreditEntry>,
+    onOpen: (String) -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize().padding(top = topPadding)) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = if (useMonet) 16.dp else 0.dp, vertical = 4.dp)
+                .fillMaxSize()
+                .customOverScroll()
+                .then(scrollModifier)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp)
         ) {
-            entries.forEach { entry ->
-                CreditRow(
-                    entry = entry,
-                    useMonet = useMonet,
-                    onClick = { entry.url?.let(onOpen) }
-                )
+            Spacer(Modifier.height(8.dp))
+            SmallTitle(
+                text = if (isZh) "温控模块" else "Thermal Module",
+                modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp, start = 0.dp, bottom = 2.dp)
+            )
+            CreditCard(entries = primaryEntries, useMonet = useMonet, onOpen = onOpen)
+            Spacer(Modifier.height(4.dp))
+            SmallTitle(
+                text = if (isZh) "引用" else "References",
+                modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp, start = 0.dp, bottom = 2.dp)
+            )
+            CreditCard(entries = entries, useMonet = useMonet, onOpen = onOpen)
+            Spacer(Modifier.height(24.dp))
+        }
+
+        VerticalScrollBar(
+            adapter = rememberScrollBarAdapter(scrollState),
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
+    }
+}
+
+@Composable
+private fun CreditCard(entries: List<CreditEntry>, useMonet: Boolean, onOpen: (String) -> Unit) {
+    if (useMonet) {
+        MaterialSegmentedColumn(
+            modifier = Modifier.fillMaxWidth(),
+            items = entries.map { entry ->
+                {
+                    MaterialListItem(
+                        headline = entry.title,
+                        supporting = entry.summary,
+                        trailing = if (entry.url != null) { { MaterialChevron() } } else null,
+                        onClick = if (entry.url != null) { { onOpen(entry.url) } } else null
+                    )
+                }
+            }
+        )
+    } else {
+        ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 0.dp, vertical = 4.dp)
+            ) {
+                entries.forEach { entry ->
+                    CreditRow(
+                        entry = entry,
+                        useMonet = useMonet,
+                        onClick = { entry.url?.let(onOpen) }
+                    )
+                }
             }
         }
     }
@@ -248,7 +311,7 @@ private fun CreditRow(entry: CreditEntry, useMonet: Boolean, onClick: () -> Unit
             }
             if (entry.url != null) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
                     tint = MiuixTheme.colorScheme.onSurfaceSecondary,
                     modifier = Modifier.size(20.dp)

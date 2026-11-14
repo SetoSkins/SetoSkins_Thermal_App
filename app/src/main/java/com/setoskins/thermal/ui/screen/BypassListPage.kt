@@ -7,7 +7,6 @@ import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,10 +26,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text as MaterialText
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -58,6 +58,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.data.ModuleDetector
+import com.setoskins.thermal.ui.component.MaterialLargeTopBar
+import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
+import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
@@ -65,8 +68,6 @@ import com.setoskins.thermal.ui.component.animation.customOverScroll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -91,8 +92,10 @@ fun BypassListPage(
     val hapticFeedback = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
     val scrollBehavior = MiuixScrollBehavior()
+    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+    val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
-    val bgColor = if (useMonet) MiuixTheme.colorScheme.background else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
+    val bgColor = if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
     var isLoading by remember { mutableStateOf(true) }
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
@@ -137,33 +140,17 @@ fun BypassListPage(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (useMonet) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = if (isZh) "返回" else "Back",
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(50))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { onBack() }
-                            .padding(12.dp),
-                        tint = MiuixTheme.colorScheme.onSurface
-                    )
-                    MaterialText(
-                        text = title,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MiuixTheme.colorScheme.onSurface
-                    )
-                }
+                // 与 SukiSU 子页面一致：大标题顶栏 + 圆形返回按钮
+                MaterialLargeTopBar(
+                    title = title,
+                    scrollBehavior = materialScrollBehavior,
+                    navigationIcon = {
+                        MaterialTopBarBackButton(
+                            onClick = onBack,
+                            contentDescription = if (isZh) "返回" else "Back",
+                        )
+                    }
+                )
             } else {
                 TopAppBar(
                     title = title,
@@ -211,17 +198,18 @@ fun BypassListPage(
                         modifier = Modifier
                             .fillMaxSize()
                             .customOverScroll()
-                            .then(if (useMonet) Modifier else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection))
+                            .then(
+                                if (useMonet) Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection)
+                                else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                            )
                             .verticalScroll(scrollState)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
-                    Card(
+                    ThemedOptionCard(
+                        useMonet = useMonet,
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 20.dp,
-                        colors = CardDefaults.defaultColors(
-                            color = cardColor,
-                            contentColor = MiuixTheme.colorScheme.onSurface
-                        )
+                        miuixCornerRadius = 20.dp,
+                        miuixColor = cardColor,
                     ) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),

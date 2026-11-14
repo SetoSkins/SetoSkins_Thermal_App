@@ -1,10 +1,13 @@
 package com.setoskins.thermal.ui.component
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
@@ -28,17 +31,24 @@ fun BlurredBar(
     blurEnabled: Boolean,
     content: @Composable () -> Unit,
 ) {
+    val blendColors = if (isSystemInDarkTheme()) {
+        listOf(
+            BlendColorEntry(Color(0x75000000), BlurBlendMode.ColorBurn),
+            BlendColorEntry(Color(0x52000000), BlurBlendMode.SrcOver),
+        )
+    } else {
+        listOf(
+            BlendColorEntry(Color(0x340034F9), BlurBlendMode.Overlay),
+            BlendColorEntry(Color(0xB3FFFFFF), BlurBlendMode.HardLight),
+        )
+    }
     Box(
         modifier = if (blurEnabled && backdrop != null) {
             Modifier.textureBlur(
                 backdrop = backdrop,
                 shape = RectangleShape,
-                blurRadius = 25f,
-                colors = BlurDefaults.blurColors(
-                    blendColors = listOf(
-                        BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(alpha = 0.8f)),
-                    ),
-                ),
+                blurRadius = 40f,
+                colors = BlurDefaults.blurColors(blendColors = blendColors),
             )
         } else {
             Modifier

@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ConfigDialog
-import com.setoskins.thermal.ui.component.MiuixCard
+import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.SliderRow
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
@@ -226,7 +226,7 @@ fun SpeedControlSection(
     // ── 互斥开关辅助 ──
     fun isExclusiveEnabled() = !anyExclusiveActive(switch4, switch11, switch13, switch10, switch12, switch8, switch9) && !homeExclusiveActive
 
-    MiuixCard(modifier = modifier) {
+    ThemedOptionCard(useMonet = useMonet, modifier = modifier) {
         Column {
             // ── 修改最大电流数 ──
             BasicComponent(
