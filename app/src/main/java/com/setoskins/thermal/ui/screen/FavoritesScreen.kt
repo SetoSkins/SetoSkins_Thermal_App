@@ -127,9 +127,9 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
     LaunchedEffect(isPageActive) {
         if (!isPageActive) return@LaunchedEffect
         while (isActive) {
-            kotlinx.coroutines.delay(3000)
             batteryInfo = ModuleDetector.readBatteryInfo()
             throttleCount = ModuleDetector.readThermalThrottleCount()
+            kotlinx.coroutines.delay(2000)
         }
     }
 
