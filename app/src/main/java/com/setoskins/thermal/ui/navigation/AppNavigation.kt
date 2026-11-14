@@ -830,6 +830,18 @@ fun ThemedNavigationBar(
     val barAlpha = 0.25f
     if (useMonet) {
 
+        val destinations = AppDestinations.entries
+        var selectedIndex by remember {
+            mutableIntStateOf(pagerState?.currentPage ?: destinations.indexOf(currentDestination))
+        }
+        var navigating by remember { mutableStateOf(false) }
+        LaunchedEffect(pagerState) {
+            val ps = pagerState ?: return@LaunchedEffect
+            snapshotFlow { ps.currentPage to ps.isScrollInProgress }.collect { (page, scrolling) ->
+                if (!scrolling) navigating = false
+                if (!navigating && selectedIndex != page) selectedIndex = page
+            }
+        }
         val blurActive = showBlur && backdrop != null
         val blendColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f)
         val navModifier = modifier
@@ -860,11 +872,17 @@ fun ThemedNavigationBar(
             },
             arrangement = ShortNavigationBarArrangement.EqualWeight,
         ) {
-            AppDestinations.entries.forEach { destination ->
-                val isSelected = destination == currentDestination
+            destinations.forEachIndexed { index, destination ->
+                val isSelected = index == selectedIndex
                 ShortNavigationBarItem(
                     selected = isSelected,
-                    onClick = { if (destination != currentDestination) onDestinationSelected(destination) },
+                    onClick = {
+                        if (index != selectedIndex) {
+                            navigating = true
+                            selectedIndex = index
+                            onDestinationSelected(destination)
+                        }
+                    },
                     iconPosition = NavigationItemIconPosition.Top,
                     icon = {
                         Icon(
