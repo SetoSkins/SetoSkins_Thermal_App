@@ -29,7 +29,6 @@ class MainActivity : ComponentActivity() {
         val savedUseMonet = prefs.getBoolean("useMonet", false)
         val savedMiuixMonet = prefs.getBoolean("miuixMonet", false)
         val savedFloatingNavBar = prefs.getBoolean("floatingNavBar", false)
-        val savedCurrentPage = prefs.getInt("currentPage", 0)
 
         setContent {
             var useMonet by remember { mutableStateOf(savedUseMonet) }
@@ -52,10 +51,9 @@ class MainActivity : ComponentActivity() {
                         floatingNavBar = value
                         prefs.edit().putBoolean("floatingNavBar", value).apply()
                     },
-                    initialPage = savedCurrentPage,
-                    onPageChange = { page ->
-                        prefs.edit().putInt("currentPage", page).apply()
-                    }
+                    // 每次冷启动都从主页开始，不再恢复上次停留的页面
+                    initialPage = 0,
+                    onPageChange = {}
                 )
             }
         }
