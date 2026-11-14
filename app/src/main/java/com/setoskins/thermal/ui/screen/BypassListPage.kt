@@ -92,7 +92,7 @@ fun BypassListPage(
     val hapticFeedback = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
     val scrollBehavior = MiuixScrollBehavior()
-    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+
     val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
     val bgColor = if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
@@ -140,7 +140,7 @@ fun BypassListPage(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (useMonet) {
-                // 与 SukiSU 子页面一致：大标题顶栏 + 圆形返回按钮
+
                 MaterialLargeTopBar(
                     title = title,
                     scrollBehavior = materialScrollBehavior,
@@ -300,7 +300,6 @@ fun BypassListPage(
             }
         }
 
-        // ── 大标题（滚动折叠时淡出并上移，仅非 Monet 模式） ──
         if (!useMonet) {
             Text(
                 text = title,

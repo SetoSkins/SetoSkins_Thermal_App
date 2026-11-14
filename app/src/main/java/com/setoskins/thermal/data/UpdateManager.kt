@@ -21,24 +21,24 @@ object UpdateManager {
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val currentVersion = packageInfo.versionName ?: "0.0.0"
-            
+
             val connection = URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
             connection.setRequestProperty("User-Agent", "SetoSkins-Thermal-App")
-            
+
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(response)
-                
+
                 val tagName = json.optString("tag_name", "")
                 val body = json.optString("body", "")
                 val htmlUrl = json.optString("html_url", "")
-                
+
                 val hasUpdate = isVersionGreater(tagName, currentVersion)
-                
+
                 UpdateInfo(
                     hasUpdate = hasUpdate,
                     latestVersion = tagName,
@@ -56,10 +56,10 @@ object UpdateManager {
     private fun isVersionGreater(latest: String, current: String): Boolean {
         val latestClean = latest.removePrefix("v").substringBefore("-")
         val currentClean = current.removePrefix("v").substringBefore("-")
-        
+
         val latestParts = latestClean.split(".").mapNotNull { it.toIntOrNull() }
         val currentParts = currentClean.split(".").mapNotNull { it.toIntOrNull() }
-        
+
         val length = maxOf(latestParts.size, currentParts.size)
         for (i in 0 until length) {
             val l = latestParts.getOrNull(i) ?: 0

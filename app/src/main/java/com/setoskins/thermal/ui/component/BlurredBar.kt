@@ -2,6 +2,7 @@ package com.setoskins.thermal.ui.component
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,6 +20,16 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 fun rememberBlurBackdrop(): LayerBackdrop? {
     if (!isRuntimeShaderSupported()) return null
     val surfaceColor = MiuixTheme.colorScheme.surface
+    return rememberLayerBackdrop {
+        drawRect(surfaceColor)
+        drawContent()
+    }
+}
+
+@Composable
+fun rememberMaterialBlurBackdrop(): LayerBackdrop? {
+    if (!isRuntimeShaderSupported()) return null
+    val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
     return rememberLayerBackdrop {
         drawRect(surfaceColor)
         drawContent()

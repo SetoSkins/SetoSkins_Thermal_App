@@ -39,7 +39,7 @@ class SuperIslandService : Service() {
     private val updateRunnable = object : Runnable {
         override fun run() {
             val self = this
-            // 在后台线程读取 sysfs，避免主线程阻塞
+
             bgHandler.post {
                 val state = BatteryMonitor.getBatteryState(this@SuperIslandService)
                 updateHandler.post {
@@ -79,17 +79,17 @@ class SuperIslandService : Service() {
             val canvas = Canvas(output)
             val paint = Paint().apply { isAntiAlias = true }
             val rect = Rect(0, 0, size, size)
-            
+
             canvas.drawARGB(0, 0, 0, 0)
             canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
             paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            
+
             val srcRect = if (bitmap.width > bitmap.height) {
                 Rect((bitmap.width - size) / 2, 0, (bitmap.width + size) / 2, size)
             } else {
                 Rect(0, (bitmap.height - size) / 2, size, (bitmap.height + size) / 2)
             }
-            
+
             canvas.drawBitmap(bitmap, srcRect, rect, paint)
             bitmap.recycle()
             Icon.createWithBitmap(output)
@@ -135,8 +135,7 @@ class SuperIslandService : Service() {
         } else {
             "Power: %.1fW | Temp: %.1f°C | Battery: %d%%".format(state.wattage, state.temperature, state.level)
         }
-        
-        // For Android 15 Status Bar Chip: Only wattage as requested
+
         val shortText = "%.1fW".format(state.wattage)
 
         val intent = Intent(this, MainActivity::class.java)
@@ -150,7 +149,6 @@ class SuperIslandService : Service() {
                 .setContentIntent(pendingIntent)
                 .setCategory(Notification.CATEGORY_SERVICE)
 
-            // Use the circular app icon
             if (appIconCircular != null) {
                 builder.setSmallIcon(appIconCircular)
             } else {
@@ -159,7 +157,6 @@ class SuperIslandService : Service() {
 
             val notification = builder.build()
 
-            // Android 15 Live Update APIs
             if (Build.VERSION.SDK_INT >= 35) {
                 notification.extras.putBoolean("android.requestPromotedOngoing", true)
                 notification.extras.putCharSequence("android.shortCriticalText", shortText)

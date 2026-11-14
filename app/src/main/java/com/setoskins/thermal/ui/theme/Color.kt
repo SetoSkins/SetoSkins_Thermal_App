@@ -2,7 +2,6 @@ package com.setoskins.thermal.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// MIUIX Light Theme Colors
 val MiuixBlue = Color(0xFF3D8AFF)
 val MiuixBlueLight = Color(0xFFE8F1FF)
 val MiuixBlueDark = Color(0xFF2A6FDB)
@@ -18,7 +17,6 @@ val MiuixTextTertiary = Color(0xFF999999)
 val MiuixDivider = Color(0xFFE5E6EB)
 val MiuixRipple = Color(0x1F000000)
 
-// MIUIX Dark Theme Colors
 val MiuixBlueNight = Color(0xFF5B9CFF)
 val MiuixBlueLightNight = Color(0xFF1A2F4D)
 
@@ -32,7 +30,6 @@ val MiuixTextTertiaryNight = Color(0xFF777777)
 
 val MiuixDividerNight = Color(0xFF2A2A2A)
 
-// Functional Colors
 val MiuixSuccess = Color(0xFF34C759)
 val MiuixWarning = Color(0xFFFF9500)
 val MiuixError = Color(0xFFFF3B30)

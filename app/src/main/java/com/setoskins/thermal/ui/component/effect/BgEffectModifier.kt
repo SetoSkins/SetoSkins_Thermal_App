@@ -147,7 +147,7 @@ private class BgEffectNode(
                 val now = withFrameNanos { it }
                 if (now - lastEmit < minDeltaNanos) continue
                 lastEmit = now
-                // 背景已完全淡出（alpha = 0）时不再触发重绘，避免无效的 60fps 全屏着色器绘制
+
                 if (alpha() <= 0f) continue
                 animTime = startOffset + (now - origin) / 1_000_000_000f
                 invalidateDraw()
@@ -157,7 +157,7 @@ private class BgEffectNode(
 
     override fun ContentDrawScope.draw() {
         val alphaValue = if (effectBackground) alpha().coerceIn(0f, 1f) else 1f
-        // 底色与动态色块一起淡出，滚动结束后露出页面自身的主题底色
+
         if (alphaValue > 0f) {
             drawRect(surface, alpha = alphaValue)
         }

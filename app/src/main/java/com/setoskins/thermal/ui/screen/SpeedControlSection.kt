@@ -37,7 +37,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ConfigDialog
 import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.SliderRow
@@ -54,8 +53,6 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-// ── 对话框配置 ──
-
 data class DialogState(
     val title: String,
     val summary: String,
@@ -64,13 +61,8 @@ data class DialogState(
     val onConfirm: (Int) -> Unit
 )
 
-// ── 互斥开关组：任意一个打开时，同组其他开关的配置项禁用 ──
-
 private fun anyExclusiveActive(vararg switches: Boolean) = switches.any { it }
 
-/**
- * 调速控制区：独立 Composable，状态隔离，避免滑块拖动时触发全量重组
- */
 @OptIn(FlowPreview::class)
 @Composable
 fun SpeedControlSection(
@@ -104,7 +96,6 @@ fun SpeedControlSection(
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val context = LocalContext.current
 
-    // ── 权限请求 ──
     var pendingWhitelist by rememberSaveable { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -118,7 +109,6 @@ fun SpeedControlSection(
     var permPendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(showPermissionDialog) { if (showPermissionDialog) { permDialogInternalShow = true; permPendingAction = null } }
 
-    // ── 文本字段状态 ──
     var currentValue by rememberSaveable { mutableStateOf(prefs.getString("currentValue", "22000000") ?: "22000000") }
     var screenOnValue by rememberSaveable { mutableStateOf(prefs.getString("screenOnValue", "") ?: "") }
     var screenOffValue by rememberSaveable { mutableStateOf(prefs.getString("screenOffValue", "") ?: "") }
@@ -142,7 +132,6 @@ fun SpeedControlSection(
     var resumeChargeLevel by rememberSaveable { mutableStateOf(prefs.getString("resumeChargeLevel", "75") ?: "75") }
     var stopChargeCurrent by rememberSaveable { mutableStateOf(prefs.getString("stopChargeCurrent", "500") ?: "500") }
 
-    // ── 对话框状态（统一管理，替代 8 个独立 show*Dialog） ──
     var dialogState by remember { mutableStateOf<DialogState?>(null) }
     var dialogDismissStarted by remember { mutableStateOf(false) }
     LaunchedEffect(dialogState) {
@@ -163,9 +152,6 @@ fun SpeedControlSection(
         }
     }
 
-    // ── 配置同步：增量更新，仅处理变化的 key ──
-    // configSynced 用 rememberSaveable 避免 LazyColumn 回收/重建时丢失状态
-    // lastConfigFingerprint 追踪 externalConfig 内容变化，变化时重置 configSynced
     var configSynced by rememberSaveable { mutableStateOf(false) }
     var lastConfigFingerprint by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(externalConfig) {
@@ -203,7 +189,6 @@ fun SpeedControlSection(
         if (dirty) editor.apply()
     }
 
-    // ── 滑块持久化防抖：拖动时立即更新 UI，300ms 后写入 SharedPreferences ──
     @Composable
     fun debounceSlider(key: String, name: String, valueProvider: () -> String) {
         LaunchedEffect(key) {
@@ -223,12 +208,11 @@ fun SpeedControlSection(
     debounceSlider("stopChargeLevel", "电量检测阈值") { stopChargeLevel }
     debounceSlider("resumeChargeLevel", "恢复充电电量") { resumeChargeLevel }
 
-    // ── 互斥开关辅助 ──
     fun isExclusiveEnabled() = !anyExclusiveActive(switch4, switch11, switch13, switch10, switch12, switch8, switch9) && !homeExclusiveActive
 
     ThemedOptionCard(useMonet = useMonet, modifier = modifier) {
         Column {
-            // ── 修改最大电流数 ──
+
             BasicComponent(
                 title = if (isZh) "修改最大电流数" else "Max current",
                 enabled = switch4 || isExclusiveEnabled(),
@@ -255,7 +239,6 @@ fun SpeedControlSection(
                 }
             }
 
-            // ── 充电调速 ──
             BasicComponent(
                 title = if (isZh) "充电调速" else "Speed control while charging",
                 enabled = switch11 || isExclusiveEnabled(),
@@ -341,7 +324,6 @@ fun SpeedControlSection(
                 }
             }
 
-            // ── 自定义阶梯模式 ──
             BasicComponent(
                 title = if (isZh) "自定义阶梯模式" else "Custom step mode",
                 enabled = switch13 || isExclusiveEnabled(),
@@ -411,7 +393,6 @@ fun SpeedControlSection(
                 }
             }
 
-            // ── 亮息屏调速 ──
             BasicComponent(
                 title = if (isZh) "亮息屏调速" else "Speed control on screen off/on",
                 enabled = switch10 || isExclusiveEnabled(),
@@ -433,7 +414,6 @@ fun SpeedControlSection(
                 }
             }
 
-            // ── 停充控制 ──
             BasicComponent(
                 title = if (isZh) "当电流低于阈值执行停充" else "Stop charging when current drops below threshold",
                 enabled = switch12 || isExclusiveEnabled(),
@@ -477,7 +457,6 @@ fun SpeedControlSection(
                 }
             }
 
-            // ── 分应用调速 ──
             BasicComponent(
                 title = if (isZh) "分应用调速" else "Per-app speed control",
                 enabled = switch8 || isExclusiveEnabled(),
@@ -514,7 +493,6 @@ fun SpeedControlSection(
                 }
             }
 
-            // ── 无温控应用 ──
             BasicComponent(
                 title = if (isZh) "无温控应用" else "No-thermal apps",
                 enabled = switch9 || isExclusiveEnabled(),
@@ -550,7 +528,6 @@ fun SpeedControlSection(
                 }
             }
 
-            // ── 统一对话框：替代 8 个独立 OverlayDialog ──
             dialogState?.let { state ->
                 ConfigDialog(
                     show = true,
@@ -565,7 +542,6 @@ fun SpeedControlSection(
                 )
             }
 
-            // ── 权限请求对话框 ──
             OverlayDialog(
                 show = showPermissionDialog,
                 title = if (isZh) "需要权限" else "Permission Required",

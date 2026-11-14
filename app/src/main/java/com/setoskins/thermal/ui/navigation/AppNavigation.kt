@@ -1,6 +1,5 @@
 package com.setoskins.thermal.ui.navigation
 
-
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -33,12 +32,21 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton as MaterialIconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationItemIconPosition
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarArrangement
+import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.Text as MaterialText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -53,6 +61,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -74,12 +83,14 @@ import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.BlendColorEntry
+import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Info
 
@@ -95,6 +106,7 @@ import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
 import com.setoskins.thermal.ui.component.BlurredBar
 import com.setoskins.thermal.ui.component.MaterialPageTopBarScaffold
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
+import com.setoskins.thermal.ui.component.rememberMaterialBlurBackdrop
 import com.setoskins.thermal.ui.screen.HomeScreen
 import com.setoskins.thermal.ui.screen.FavoritesScreen
 import com.setoskins.thermal.ui.screen.ProfileScreen
@@ -105,9 +117,7 @@ import com.setoskins.thermal.ui.screen.BypassListPage
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.util.Log
-import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import com.setoskins.thermal.R
@@ -161,16 +171,13 @@ fun MyApplicationApp(
     val bypassListTransitionProgress = remember { Animatable(0f) }
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
 
-    // ── Root 检测 ──
     var showRootDialog by rememberSaveable { mutableStateOf(false) }
 
-    // ── 重启对话框 ──
     var showRestartDialog by remember { mutableStateOf(false) }
-    
-    // ── 更新对话框 ──
+
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
-    
+
     var barVisible by remember { mutableStateOf(true) }
     var dialogCount by remember { mutableIntStateOf(0) }
     val onDialogVisibilityChange: (Boolean) -> Unit = remember {
@@ -183,7 +190,7 @@ fun MyApplicationApp(
             showRootDialog = true
             barVisible = false
         }
-        // App 启动时执行一次静默更新检查
+
         scope.launch {
             val info = UpdateManager.checkAppUpdate(context)
             if (info.hasUpdate) {
@@ -250,9 +257,6 @@ fun MyApplicationApp(
         }
     }
 
-    // 启动后空闲时预热「日志」页的数据（日志文本 / 电池信息 / 限流次数）。
-    // 日志页是在切页动画进行中才首次组合的，如果那时才起 su 进程，几百毫秒的开销会压在动画帧上，
-    // 表现为「第一次切到日志卡一下」。推迟 700ms 让首页首帧先画完。
     LaunchedEffect(Unit) {
         delay(700)
         ModuleDetector.prewarm()
@@ -284,7 +288,7 @@ fun MyApplicationApp(
     PredictiveBackHandler(enabled = showDonatePage) { progress ->
         try {
             progress.collect { backEvent ->
-                // Map gesture 0..1 to transition 1..0
+
                 transitionProgress.snapTo(1f - backEvent.progress)
             }
             showDonatePage = false
@@ -319,28 +323,22 @@ fun MyApplicationApp(
         }
     }
 
-    val backdrop = rememberBlurBackdrop()
+    val backdrop = if (useMonet) rememberMaterialBlurBackdrop() else rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
     val reduceExpensiveEffects = showDonatePage || showDonateLayer || showCreditsPage || showCreditsLayer || showBlacklistPage || showBlacklistLayer || showWhitelistPage || showWhitelistLayer
     val showBlur = shaderSupported && backdrop != null && !reduceExpensiveEffects
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
     val favoritesScrollBehavior = MiuixScrollBehavior()
-    // 日志页(1)是否处于停留状态：用于挂起日志页轮询，避免翻页动画期间产生 su 子进程开销
+
     val logPageActive by remember(pagerState) {
         derivedStateOf { pagerState.currentPage == 1 && pagerState.currentPageOffsetFraction == 0f }
     }
-    // 翻页动画是否进行中：页面数据落地（模块检测/日志读取等）在此期间挂起，动画结束后再应用，
-    // 避免中途重组与首次绘制叠加造成切页顿挫
+
     val pagerBusy by remember(pagerState) { derivedStateOf { pagerState.isScrollInProgress } }
     val isDark = isSystemInDarkTheme()
     val view = LocalView.current
 
-    // ── 悬浮底栏玻璃的「背景录制」 ──
-    // 与 HyperExtreme 一致：给页面内容挂 `layerBackdrop(backdrop)`，底栏本身必须留在录制层**外面**
-    // （否则玻璃会把自己录进去，采到的是自己 → 鬼影）。
-    // 页面底色也要画在这一层里：Scaffold 的 containerColor 是透明的，若不在这里补底色，
-    // 胶囊后面录到的是透明像素，模糊后就是"底栏发黑"。
     val pageSurface = if (useMonet) {
         MaterialTheme.colorScheme.surfaceContainer
     } else if (isDark) {
@@ -348,10 +346,12 @@ fun MyApplicationApp(
     } else {
         MiuixTheme.colorScheme.surface
     }
-    // Material 模式不支持悬浮底栏，统一回退到普通底栏。
+
     val effectiveFloatingNavBar = floatingNavBar && !useMonet
     val contentRecorded = effectiveFloatingNavBar && backdrop != null
     val normalMiuixBlur = !floatingNavBar && !useMonet && showBlur
+
+    val normalMaterialBlur = !floatingNavBar && useMonet && showBlur
 
     Box(
         modifier = Modifier
@@ -368,7 +368,7 @@ fun MyApplicationApp(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // 页面内容 + 底色一起录进底栏玻璃的 backdrop（底栏在录制层外，见下方 AnimatedVisibility）
+
                     .then(if (contentRecorded) Modifier.layerBackdrop(backdrop) else Modifier)
                     .background(pageSurface)
             ) {
@@ -393,17 +393,18 @@ fun MyApplicationApp(
                         )
                     })
                 ) { innerPadding ->
-                    // 悬浮底栏及启用模糊的普通 Miuix 底栏都需要页面内容一直画到屏幕最底部，
-                    // 让底栏能采到真实页面背景；其余模式保留 Scaffold 的底部内容间距。
-                    val bottomContentPadding = if (effectiveFloatingNavBar || normalMiuixBlur) 0.dp else innerPadding.calculateBottomPadding()
+
+                    val bottomContentPadding = if (effectiveFloatingNavBar || normalMiuixBlur || normalMaterialBlur) 0.dp else innerPadding.calculateBottomPadding()
+
+                    val bottomContentInset = if (normalMaterialBlur || normalMiuixBlur) innerPadding.calculateBottomPadding() else 0.dp
                     Box(modifier = Modifier.fillMaxSize()) {
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 1,
                             modifier = Modifier
                                 .fillMaxSize()
-                                // 普通 Miuix 底栏位于 Scaffold 内，仅录制 pager，避免把底栏自身采进模糊背景。
-                                .then(if (normalMiuixBlur) Modifier.layerBackdrop(backdrop) else Modifier),
+
+                                .then(if (normalMiuixBlur || normalMaterialBlur) Modifier.layerBackdrop(backdrop) else Modifier),
                             flingBehavior = PagerDefaults.flingBehavior(
                                 state = pagerState,
                                 snapAnimationSpec = tween(390, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
@@ -412,7 +413,7 @@ fun MyApplicationApp(
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
                                     if (useMonet) {
-                                        // Material：与 SukiSU 一致，LargeFlexibleTopAppBar 大标题 + 滚动收起
+
                                         MaterialPageTopBarScaffold(
                                             title = if (isZh) "Seto温控" else "Seto Thermal",
                                             actions = {
@@ -426,7 +427,7 @@ fun MyApplicationApp(
                                                     Icon(
                                                         painter = painterResource(R.drawable.restart),
                                                         contentDescription = if (isZh) "重启" else "Restart",
-                                                        // 与 Miuix 分支的图标保持同样大小
+
                                                         modifier = Modifier.size(32.dp)
                                                     )
                                                 }
@@ -438,6 +439,7 @@ fun MyApplicationApp(
                                                 scrollBehavior = null,
                                                 materialScrollConnection = scrollConnection,
                                                 contentPaddingTop = contentPaddingTop,
+                                                bottomContentInset = bottomContentInset,
                                                 floatingNavBar = effectiveFloatingNavBar,
                                                 onNavigateToBlacklist = { showBlacklistPage = true },
                                                 onNavigateToWhitelist = { showWhitelistPage = true },
@@ -447,7 +449,7 @@ fun MyApplicationApp(
                                             )
                                         }
                                     } else {
-                                        // 页面自带顶栏（miuix example 结构）：大标题属于页面本身，翻页时随页面一起滑动
+
                                         PageTopBarScaffold(
                                             title = if (isZh) "Seto温控" else "Seto Thermal",
                                             scrollBehavior = homeScrollBehavior,
@@ -458,7 +460,7 @@ fun MyApplicationApp(
                                                         showRestartDialog = true
                                                         barVisible = false
                                                     },
-                                                    // 抵消顶栏整体的 -6dp 上移，图标保持原位
+
                                                     modifier = Modifier.offset(y = 6.dp)
                                                 ) {
                                                     Icon(
@@ -474,8 +476,9 @@ fun MyApplicationApp(
                                                 useMonet = false,
                                                 reloadTrigger = reloadTrigger,
                                                 scrollBehavior = homeScrollBehavior,
-                                                // 页面内容整体上移 6dp（顶栏与右上角图标不动）
+
                                                 contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                bottomContentInset = bottomContentInset,
                                                 floatingNavBar = effectiveFloatingNavBar,
                                                 onNavigateToBlacklist = { showBlacklistPage = true },
                                                 onNavigateToWhitelist = { showWhitelistPage = true },
@@ -488,7 +491,7 @@ fun MyApplicationApp(
                                 }
                                 AppDestinations.FAVORITES -> {
                                     if (useMonet) {
-                                        // Material：与 SukiSU 一致，LargeFlexibleTopAppBar 大标题 + 滚动收起
+
                                         MaterialPageTopBarScaffold(
                                             title = if (isZh) "日志" else "Log",
                                             actions = {
@@ -512,6 +515,7 @@ fun MyApplicationApp(
                                                 scrollBehavior = null,
                                                 materialScrollConnection = scrollConnection,
                                                 contentPaddingTop = contentPaddingTop,
+                                                bottomContentInset = bottomContentInset,
                                                 isPageActive = logPageActive,
                                                 modifier = Modifier.padding(bottom = bottomContentPadding)
                                             )
@@ -527,7 +531,7 @@ fun MyApplicationApp(
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
                                                     },
-                                                    // 抵消顶栏整体的 -6dp 上移，图标保持原位
+
                                                     modifier = Modifier.offset(y = 6.dp)
                                                 ) {
                                                     Icon(
@@ -542,8 +546,9 @@ fun MyApplicationApp(
                                                 useMonet = false,
                                                 reloadTrigger = logReloadTrigger,
                                                 scrollBehavior = favoritesScrollBehavior,
-                                                // 页面内容整体上移 6dp（顶栏与右上角图标不动）
+
                                                 contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                bottomContentInset = bottomContentInset,
                                                 isPageActive = logPageActive,
                                                 modifier = Modifier.padding(bottom = bottomContentPadding)
                                             )
@@ -562,16 +567,16 @@ fun MyApplicationApp(
                                         onNavigateToDonate = { showDonatePage = true },
                                         onNavigateToCredits = { showCreditsPage = true },
                                         reduceEffects = reduceExpensiveEffects,
-                                        // 仅关于页可见时播放背景着色器动画，避免相邻页预组合时持续重绘
+
                                         isPageActive = pagerState.currentPage == 2,
                                         onDialogVisibilityChange = onDialogVisibilityChange,
+                                        bottomContentInset = bottomContentInset,
                                         modifier = Modifier.padding(bottom = bottomContentPadding)
                                     )
                                 }
                             }
                         }
 
-                        // ── Root 检测对话框 (模仿工作正常的 ConfigDialog 模式) ──
                         if (showRootDialog) {
                             RootCheckDialog(
                                 show = true,
@@ -582,7 +587,6 @@ fun MyApplicationApp(
                             )
                         }
 
-                        // ── 重启对话框 ──
                         if (showRestartDialog) {
                             RestartDialog(
                                 show = true,
@@ -596,7 +600,6 @@ fun MyApplicationApp(
                             )
                         }
 
-                        // ── 更新对话框 ──
                         if (showUpdateDialog) {
                             UpdateDialog(
                                 show = true,
@@ -750,7 +753,7 @@ fun MyApplicationApp(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ThemedNavigationBar(
     currentDestination: AppDestinations,
@@ -764,25 +767,17 @@ fun ThemedNavigationBar(
 ) {
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     if (floatingNavBar) {
-        // Material 悬浮底栏已停用：Material 模式统一回退到普通底栏。
         if (!useMonet) {
             val isDark = isSystemInDarkTheme()
             val selectedIndex = remember {
                 mutableIntStateOf(pagerState?.currentPage ?: AppDestinations.entries.indexOf(currentDestination))
             }
-            // 悬浮底栏翻页：先定住 selectedIndex，导航期间屏蔽 pager 的中间状态
-            // （避免跨页拖动时 currentPage 经过中间页 → 选中块被拽来拽去）。
-            // 只有手指翻页（非导航中）才从 currentPage 同步回来。
-            // —— 与 HyperExtreme MaskSwapScreen.kt 保持一致。
+
             var navigating by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
             LaunchedEffect(pagerState) {
                 val ps = pagerState ?: return@LaunchedEffect
-                // 手指翻页路径：currentPage 在滚动过程中会逐页变化，这里实时同步
-                // selectedIndex，让底栏能紧跟"当前翻到哪一页"。
-                // （indicatorPosition 在底栏内部已直接读 pagerState 做**连续**跟手，
-                //  selectedIndex 主要用来让 dragAnimation 对齐 + 播回弹——此处同步时机
-                // 决定了回弹不会在滚动中途触发。）
+
                 snapshotFlow { ps.currentPage }
                     .collect { page ->
                         if (!navigating && selectedIndex.intValue != page) {
@@ -794,8 +789,7 @@ fun ThemedNavigationBar(
                 AppDestinations.entries.map { dest ->
                     NavTab(
                         label = if (isZh) dest.label else dest.labelEn,
-                        // 仅 miuix 悬浮底栏的「主页」使用 HyperExtreme 同款圆角房子图标；
-                        // 其它图标与 Material 底栏保持原样。
+
                         icon = if (dest == AppDestinations.HOME) MiuixIcons.Home else dest.filledIcon,
                         onClick = {},
                     )
@@ -807,14 +801,11 @@ fun ThemedNavigationBar(
                 backdrop = backdrop,
                 showIcons = true,
                 showLabels = true,
-                // 页面内容已通过下方的 `layerBackdrop(backdrop)` 录进背景副本（底栏本身在录制层外），
-                // 所以这里恢复真正的玻璃模糊，参数与 HyperExtreme 一致。
+
                 advancedMaterial = true,
                 isDarkTheme = isDark,
                 onTabSelected = { index ->
-                    // 底栏发起导航：先定住 selectedIndex，屏蔽 pager 中间状态
-                    // （避免跨页拖动时 currentPage 经过中间页 → 选中块被拽来拽去）。
-                    // —— 与 HyperExtreme MaskSwapScreen.kt 保持一致。
+
                     if (selectedIndex.intValue == index) return@Os4FloatingNavigationBar
                     selectedIndex.intValue = index
                     navigating = true
@@ -826,7 +817,7 @@ fun ThemedNavigationBar(
                             )
                         } finally {
                             navigating = false
-                            // 如果翻页被手势打断，对齐到实际页面
+
                             pagerState?.let { selectedIndex.intValue = it.currentPage }
                         }
                     }
@@ -838,25 +829,50 @@ fun ThemedNavigationBar(
     }
     val barAlpha = 0.25f
     if (useMonet) {
-        val miuixColors = MiuixTheme.colorScheme
-        val isDark = isSystemInDarkTheme()
-        val navModifier = if (showBlur) modifier.fillMaxWidth().then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) else modifier.fillMaxWidth()
-        val barColor = if (isDark) miuixColors.surface.copy(alpha = barAlpha) else Color.White.copy(alpha = barAlpha)
-        NavigationBar(modifier = navModifier, containerColor = barColor, contentColor = miuixColors.onSurface) {
+
+        val blurActive = showBlur && backdrop != null
+        val blendColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f)
+        val navModifier = modifier
+            .fillMaxWidth()
+            .wrapContentSize()
+            .then(
+                backdrop?.takeIf { blurActive }?.let { bd ->
+                    Modifier.textureBlur(
+                        backdrop = bd,
+                        shape = RectangleShape,
+                        blurRadius = 25f,
+                        colors = BlurColors(
+                            blendColors = listOf(BlendColorEntry(color = blendColor)),
+                        ),
+                    )
+                } ?: Modifier
+            )
+        ShortNavigationBar(
+
+            modifier = navModifier,
+            windowInsets = WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+            ),
+            containerColor = if (blurActive) {
+                Color.Transparent
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            },
+            arrangement = ShortNavigationBarArrangement.EqualWeight,
+        ) {
             AppDestinations.entries.forEach { destination ->
                 val isSelected = destination == currentDestination
-                NavigationBarItem(
-                    icon = { Icon(imageVector = if (isSelected) destination.filledIcon else destination.icon, contentDescription = destination.label) },
-                    label = { androidx.compose.material3.Text(text = destination.label) },
+                ShortNavigationBarItem(
                     selected = isSelected,
                     onClick = { if (destination != currentDestination) onDestinationSelected(destination) },
-                    colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-                        selectedIconColor = miuixColors.primary,
-                        selectedTextColor = miuixColors.primary,
-                        unselectedIconColor = miuixColors.onSurfaceSecondary,
-                        unselectedTextColor = miuixColors.onSurfaceSecondary,
-                        indicatorColor = miuixColors.primary.copy(alpha = 0.12f)
-                    )
+                    iconPosition = NavigationItemIconPosition.Top,
+                    icon = {
+                        Icon(
+                            imageVector = if (isSelected) destination.filledIcon else destination.icon,
+                            contentDescription = destination.label,
+                        )
+                    },
+                    label = { MaterialText(text = destination.label) },
                 )
             }
         }
@@ -867,7 +883,7 @@ fun ThemedNavigationBar(
                 color = if (showBlur && backdrop != null) Color.Transparent else MiuixTheme.colorScheme.surface.copy(alpha = barAlpha),
             ) {
                 AppDestinations.entries.forEach { destination ->
-                    // miuix 风格统一使用悬浮底栏那套「主页」图标（与是否启用悬浮底栏无关）
+
                     val icon = if (destination == AppDestinations.HOME) MiuixIcons.Home else destination.icon
                     MiuixNavigationBarItem(icon = icon, label = destination.label, selected = destination == currentDestination, onClick = { if (destination != currentDestination) onDestinationSelected(destination) })
                 }
@@ -876,10 +892,6 @@ fun ThemedNavigationBar(
     }
 }
 
-/**
- * iOS 风格悬浮底栏：移植 miuix example 的 [com.setoskins.thermal.ui.component.liquid.IosLiquidGlassNavigationBar]，
- * 实现真正的 iOS 液态玻璃（Liquid Glass）切换指示器，带折射、色散、内阴影与高光。
- */
 @Composable
 private fun iOSLikeFloatingNavigationBar(
     currentDestination: AppDestinations,
@@ -910,11 +922,6 @@ private fun iOSLikeFloatingNavigationBar(
     )
 }
 
-/**
- * 页面级顶栏容器（参考 miuix example 的结构）：每个 pager 页面自带 Scaffold + TopAppBar + 大标题，
- * 大标题属于页面本身 —— 左右翻页时标题随各自页面一起滑动，不再做独立的平移/淡出动画。
- * content 回调收到的 Dp 为顶栏高度，用作列表 contentPadding 的 top。
- */
 @Composable
 private fun PageTopBarScaffold(
     title: String,
@@ -928,7 +935,7 @@ private fun PageTopBarScaffold(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                // 顶栏整体上移 6dp（与页面内容保持一致）；右上角图标在 actions 内反向偏移抵消
+
                 Box(modifier = Modifier.offset(y = (-6).dp)) {
                     TopAppBar(
                         title = title,
@@ -957,7 +964,7 @@ private fun PageTopBarScaffold(
                 .padding(top = 58.dp, start = 28.dp)
                 .graphicsLayer {
                     val fraction = collapsedFraction.coerceIn(0f, 1f)
-                    // 采用 miuix 官方 largeTitleAlpha = 1 - fraction*3，与小标题出现阈值 (fraction*3 >= 1) 对齐，避免双标题重叠
+
                     alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
                     translationY = -fraction * 45.dp.toPx()
                 }

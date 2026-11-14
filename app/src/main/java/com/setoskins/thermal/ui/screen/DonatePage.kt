@@ -76,10 +76,10 @@ fun DonatePage(
     val colors = MiuixTheme.colorScheme
     val scrollState = rememberScrollState()
     val scrollBehavior = MiuixScrollBehavior()
-    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+
     val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val title = if (isZh) "捐赠" else "Donate"
-    
+
     val donateCardShape = remember { RoundedCornerShape(24.dp) }
     val donateCardColor = remember(isDark, useMonet) {
         if (isDark) colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
@@ -111,17 +111,16 @@ fun DonatePage(
             .fillMaxSize()
             .graphicsLayer {
                 val transitionProgress = progressProvider()
-                // Donation page slides out to the right (0 to screenWidth)
+
                 translationX = (1f - transitionProgress) * size.width
-                
-                // No scaling or rounding for a clean push transition
+
                 scaleX = 1f
                 scaleY = 1f
             }
             .background(if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
         if (useMonet) {
-            // Material：与 SukiSU 子页面完全一致的大标题顶栏 + 圆形返回按钮
+
             MaterialScaffold(
                 containerColor = Color.Transparent,
                 topBar = {

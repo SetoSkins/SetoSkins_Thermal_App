@@ -50,7 +50,6 @@ import androidx.compose.material3.MaterialTheme
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.BatteryInfoCard
 import com.setoskins.thermal.ui.component.LogLineChart
-import com.setoskins.thermal.ui.component.MiuixCard
 import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
 import com.setoskins.thermal.ui.component.MaterialDropdownItem
@@ -73,7 +72,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, materialScrollConnection: NestedScrollConnection? = null, contentPaddingTop: Dp = 0.dp, isPageActive: Boolean = true, modifier: Modifier = Modifier) {
+fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: ScrollBehavior? = null, materialScrollConnection: NestedScrollConnection? = null, contentPaddingTop: Dp = 0.dp, bottomContentInset: Dp = 0.dp, isPageActive: Boolean = true, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     var selectedIndex by rememberSaveable { mutableIntStateOf(prefs.getInt("logViewStyle", 0)) }
@@ -86,7 +85,7 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
     var batteryInfo by remember { mutableStateOf(ModuleDetector.BatteryInfo()) }
     var throttleCount by remember { mutableIntStateOf(0) }
     var powerConnected by remember { mutableStateOf(false) }
-    // 充电状态优先取电池信息里的 status，广播作为兜底（不必为这一项单独再起一次 su）
+
     val isCharging = batteryInfo.status == "Charging" || (batteryInfo.status.isEmpty() && powerConnected)
     val config = LocalConfiguration.current
     val isZh = remember { config.locales.get(0).language == "zh" }
@@ -98,7 +97,6 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         else -> logContent
     }
 
-    // 使用广播监听充电状态变化，替代轮询中 readBatteryInfo 调用
     DisposableEffect(Unit) {
         var isRegistered = false
         val receiver = object : BroadcastReceiver() {
@@ -121,13 +119,11 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         }
     }
 
-    // 首次进页优先取 App 启动时的预热结果，避免在切页动画里起 su 进程
     LaunchedEffect(Unit) {
         batteryInfo = ModuleDetector.takePrewarmedBattery() ?: ModuleDetector.readBatteryInfo()
         throttleCount = ModuleDetector.takePrewarmedThrottle() ?: ModuleDetector.readThermalThrottleCount()
     }
 
-    // 电池信息轮询：只在停留在日志页时进行（原先在 BatteryInfoCard 内部，上移以便全页共享同一份数据）
     LaunchedEffect(isPageActive) {
         if (!isPageActive) return@LaunchedEffect
         while (isActive) {
@@ -137,8 +133,6 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         }
     }
 
-    // 数据预加载：启动/刷新/样式切换时先读一次，保证进入页面即有数据
-    // 不再把 isCharging 作为 key：它只影响曲线配色，作为 key 会在首次进页时再触发一次 su 读日志
     LaunchedEffect(reloadTrigger, selectedIndex) {
         if (selectedIndex == 0) {
             logContent = ModuleDetector.takePrewarmedLog() ?: ModuleDetector.readLog()
@@ -147,7 +141,6 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
         }
     }
 
-    // 周期刷新仅在停留在日志页且充电时进行：进入页面时不立即重复读取，先延迟避免切页动画与 su 调用叠加
     LaunchedEffect(isPageActive, isCharging) {
         if (!isPageActive || !isCharging) return@LaunchedEffect
         while (isActive) {
@@ -169,9 +162,9 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                 state = listState,
                 modifier = Modifier.fillMaxSize().customOverScroll()
                     .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
-                    // Material 顶栏：必须挂在列表自身（overscroll 之后），否则顶部下拉会被 overscroll 吃掉
+
                     .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 106.dp)
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 106.dp + bottomContentInset)
             ) {
                 item(key = "battery_card") { BatteryInfoCard(info = batteryInfo, throttleCount = throttleCount, useMonet = useMonet) }
                 item(key = "log_title") { SectionTitle { SmallTitle(text = if (isZh) "日志" else "Log", modifier = Modifier.offset(y = (4).dp)) } }

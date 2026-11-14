@@ -3,12 +3,8 @@ package com.setoskins.thermal.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.concurrent.TimeUnit
 import android.util.Log
 
-/**
- * 根权限及模块探测工具。
- */
 object ModuleDetector {
 
     private const val TAG = "SetoSkins_ModuleDetector"
@@ -27,28 +23,23 @@ object ModuleDetector {
     private const val UPDATE_URL = "https://raw.githubusercontent.com/SetoSkins/SetoSkins_Thermal/refs/heads/master/SetoSkins.json"
     private const val TIMEOUT_MS = 5000L
 
-    // 预编译正则表达式，避免每次调用时重复编译
     private val VERSION_CODE_REGEX = Regex("\"versionCode\"\\s*:\\s*(\\d+)")
     private val TIME_REGEX = Regex("(\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})")
     private val LEVEL_REGEX = Regex("电量\\s+(\\d+)%?")
     private val TEMP_REGEX = Regex("温度\\s+(\\d+)")
     private val CURRENT_REGEX = Regex("电流\\s+(-?\\d+)")
 
-    /**
-     * 检测设备是否有 root 权限。
-     * 极简且最稳定的检测方式：尝试执行 su 并检查退出码。
-     */
     suspend fun requestRoot(): Boolean = withContext(Dispatchers.IO) {
         Log.d("SetoRootCheck", "Starting simplified root check...")
         var process: Process? = null
         try {
             process = Runtime.getRuntime().exec("su")
-            // 尝试写入 exit 并关闭流，触发进程结束
-            process.outputStream.use { 
+
+            process.outputStream.use {
                 it.write("exit\n".toByteArray())
                 it.flush()
             }
-            val result = withTimeoutOrNull(2000L) { // 缩短至 2 秒，避免用户等待
+            val result = withTimeoutOrNull(2000L) {
                 val exitCode = process.waitFor()
                 Log.d("SetoRootCheck", "su process exited with: $exitCode")
                 exitCode == 0
@@ -64,9 +55,6 @@ object ModuleDetector {
         }
     }
 
-    /**
-     * 检测模块是否已安装。
-     */
     suspend fun isModuleInstalled(): Boolean = withContext(Dispatchers.IO) {
         val process = try {
             Runtime.getRuntime().exec(
@@ -96,10 +84,6 @@ object ModuleDetector {
         }
     }
 
-    /**
-     * 执行温控脚本，在每次开关变更时触发。
-     * 超时保护：最多等待 TIMEOUT_MS，防止脚本卡死阻塞线程。
-     */
     suspend fun executeThermalScript(): Unit = withContext(Dispatchers.IO) {
         runCatching {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "sh '$THERMAL_SCRIPT_PATH'"))
@@ -314,9 +298,6 @@ object ModuleDetector {
         }.getOrDefault(0)
     }
 
-    // ── 启动预热 ──
-    // 日志页首次组合时（切页动画进行中）才去起 su 读日志/电池/限流次数，会把这几百毫秒压在动画帧上。
-    // App 启动后先在后台跑一遍，日志页进入时直接 take 缓存，只在结果被取走前有效。
     @Volatile private var prewarmedLog: String? = null
     @Volatile private var prewarmedBattery: BatteryInfo? = null
     @Volatile private var prewarmedThrottle: Int? = null
@@ -360,32 +341,28 @@ object ModuleDetector {
             val lines = Runtime.getRuntime().exec(arrayOf("su", "-c", "sed -n '5,\$p' '$LOG_PATH'")).inputStream.bufferedReader().readLines()
             val rawPoints = lines.mapNotNull { line ->
                 try {
-                    // 精准匹配格式: 07-07 18:06:20 电量 73% 温度 43℃ 电流 995mA
-                    
-                    // 1. 匹配时间 (格式: MM-DD HH:mm:ss)
+
                     val timeMatch = TIME_REGEX.find(line)
                     val time = timeMatch?.groupValues?.get(1) ?: ""
 
-                    // 2. 匹配电量 (取数字)
                     val levelMatch = LEVEL_REGEX.find(line)
-                    // 3. 匹配温度 (支持 ℃ 符号)
+
                     val tempMatch = TEMP_REGEX.find(line)
-                    // 4. 匹配电流 (支持 mA 符号)
+
                     val maMatch = CURRENT_REGEX.find(line)
 
-                    // 如果缺少电量或电流数据，跳过这条记录，防止曲线归零
                     if (time.isNotEmpty() && levelMatch != null && maMatch != null && tempMatch != null) {
                         val level = levelMatch.groupValues[1].toFloat()
                         val temp = tempMatch.groupValues[1].toFloat()
                         val ma = maMatch.groupValues[1].toFloat()
-                        // 计算瓦数 (W = mA * 4.0 / 1000)
+
                         val watt = Math.abs(ma * 4.0f / 1000f)
                         val timeSec = fastParseTimeSeconds(time)
                         LogDataPoint(time, level, temp, watt, timeSec)
                     } else null
                 } catch (e: Exception) { null }
             }
-            // 按分钟去重：80%电量前保留第一条，80%及之后保留最后一条
+
             rawPoints.groupBy { it.time.substringBeforeLast(":") }.values.map { group ->
                 val first80Index = group.indexOfFirst { it.level >= 80f }
                 if (first80Index >= 0) group.last() else group.first()

@@ -26,7 +26,7 @@ fun BgEffectBackground(
     effectBackground: Boolean = true,
     isOs3Effect: Boolean = true,
     alpha: () -> Float = { 1f },
-    // 页面可见时才播放背景动画，避免相邻页面被 pager 预组合时仍以 60fps 重绘全屏着色器
+
     playing: Boolean = dynamicBackground,
     content: @Composable (BoxScope.() -> Unit),
 ) {
@@ -54,7 +54,7 @@ fun BgEffectBackground(
             if (!animatesColors) return@LaunchedEffect
             var targetStage = floor(colorStage.value) + 1f
             while (isActive) {
-                // 当 alpha 为 0 时跳过动画计算，避免后台无效 CPU 消耗
+
                 if (alpha() > 0f) {
                     delay((preset.colorInterpPeriod * 500).toLong())
                     colorStage.animateTo(
@@ -63,7 +63,7 @@ fun BgEffectBackground(
                     )
                     targetStage += 1f
                 } else {
-                    delay(500) // alpha 为 0 时仅低频检查，等待恢复可见
+                    delay(500)
                 }
             }
         }

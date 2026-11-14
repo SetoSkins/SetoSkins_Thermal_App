@@ -12,15 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
-import top.yukonga.miuix.kmp.basic.ScrollBarColors
 import top.yukonga.miuix.kmp.basic.ScrollBarDefaults
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar as MiuixVerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter as rememberMiuixScrollBarAdapter
 import top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi
 
-/**
- * A wrapper for the official Miuix VerticalScrollBar to maintain compatibility with existing code.
- */
 @OptIn(ExperimentalScrollBarApi::class)
 @Composable
 fun VerticalScrollBar(
@@ -49,9 +45,6 @@ fun VerticalScrollBar(
     }
 }
 
-/**
- * Adapter creation wrappers to maintain compatibility.
- */
 @OptIn(ExperimentalScrollBarApi::class)
 @Composable
 fun rememberScrollBarAdapter(scrollState: ScrollState) = rememberMiuixScrollBarAdapter(scrollState)

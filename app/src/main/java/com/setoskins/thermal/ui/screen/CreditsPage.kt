@@ -4,7 +4,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -81,7 +80,7 @@ fun CreditsPage(
     val uriHandler = LocalUriHandler.current
     val scrollState = rememberScrollState()
     val scrollBehavior = MiuixScrollBehavior()
-    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+
     val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val title = if (isZh) "致谢" else "Credits"
 
@@ -117,7 +116,7 @@ fun CreditsPage(
             .background(if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
         if (useMonet) {
-            // Material：与 SukiSU 子页面完全一致的大标题顶栏 + 圆形返回按钮
+
             MaterialScaffold(
                 containerColor = Color.Transparent,
                 topBar = {

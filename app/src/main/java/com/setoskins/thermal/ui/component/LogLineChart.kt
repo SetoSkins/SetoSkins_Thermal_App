@@ -4,15 +4,11 @@ import android.graphics.Paint
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -25,11 +21,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
@@ -61,7 +52,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,7 +60,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import com.setoskins.thermal.data.ModuleDetector
 import kotlinx.coroutines.launch
@@ -79,10 +68,8 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-// 解析时间字符串 "MM-DD HH:mm:ss" 为秒数
 internal fun parseTimeSeconds(time: String): Long = ModuleDetector.fastParseTimeSeconds(time)
 
-// 绘制一条平滑曲线的 Path
 fun DrawScope.drawLogPathZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color) {
     val path = Path()
     values.forEachIndexed { i, v ->
@@ -93,7 +80,6 @@ fun DrawScope.drawLogPathZone(values: List<Float>, sp: Float, zoneH: Float, base
     drawPath(path = path, color = color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
-// 绘制曲线下方的填充区域
 fun DrawScope.drawLogFillZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color) {
     val path = Path()
     values.forEachIndexed { i, v ->
@@ -107,8 +93,6 @@ fun DrawScope.drawLogFillZone(values: List<Float>, sp: Float, zoneH: Float, base
     path.close()
     drawPath(path = path, color = color)
 }
-
-// ── 预计算数据结构（一次性计算，避免 Canvas 内重复） ──
 
 private data class ChartData(
     val timeSeconds: List<Long>,
@@ -141,9 +125,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     val primaryColor = MiuixTheme.colorScheme.primary
     val gridLineColor = MiuixTheme.colorScheme.onSurfaceSecondary.copy(alpha = 0.15f)
     val yAxisTextColor = MiuixTheme.colorScheme.onSurfaceSecondary
-    val yAxisWidth = 32.dp           // Y 轴标尺宽度
-    val yAxisLeftPadding = 8.dp      // Y 轴左侧间距，与时间标尺同步
-    
+    val yAxisWidth = 32.dp
+    val yAxisLeftPadding = 8.dp
+
     val maxWattPoint = remember(points) { points.maxOfOrNull { it.watt } ?: 0f }
     val maxWatt = remember(singleCurveMode, maxWattPoint) { if (singleCurveMode != null) 100f else maxOf(60f, kotlin.math.ceil(maxWattPoint / 20f).toInt() * 20f) }
     val maxTempPoint = remember(points) { points.maxOfOrNull { it.temp } ?: 0f }
@@ -155,9 +139,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         } else 100f
     }
 
-    // ── 预计算所有数据，避免 Canvas 内重复计算 ──
     val chartData = rememberChartData(points, maxWatt, maxTemp, minTemp)
-    
+
     var touchIndex by remember { mutableStateOf(-1) }
     val animatedTouchIndex = remember { Animatable(-1f) }
     val animatedAlpha = remember { Animatable(0f) }
@@ -191,7 +174,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     val maxLevel = remember(points) { points.maxOfOrNull { it.level.toInt() } ?: 0 }
     val isTouching = touchIndex in points.indices
 
-    // ── markerData：使用预计算的 timeSeconds，不再重复调用 parseTimeSeconds ──
     val markerData = remember(points, chartData.timeSeconds, baseTimeSeconds, isCharging, markerStepMinutes) {
         val data = mutableListOf<Pair<Int, String>>()
         if (points.isEmpty()) return@remember data
@@ -209,12 +191,11 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     if (index == lastIdx) lastIdxAdded = true
                 }
             }
-            // 最后一个点如果还没被加入（距离上一个标记不足一个步长），按间隙处理
+
             if (!lastIdxAdded) {
                 val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
                 val lastMark = data.lastOrNull()
-                // 间隙 < 5 分钟：替换上一个标记（如 13m 替换 10m、23m 替换 20m）
-                // 间隙 >= 5 分钟：保留两者（如 26m 和 20m 并存）
+
                 if (lastMark != null && m - lastM < 5) {
                     data[data.lastIndex] = lastIdx to formatDuration(m)
                 } else {
@@ -223,7 +204,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }
         } else {
             var lastM = -1L
-            // 80%之前正常按步长标记，80%后停止
+
             points.indices.forEach { index ->
                 if (index < charge80Index) {
                     val m = (timeSeconds[index] - baseTimeSeconds) / 60
@@ -233,7 +214,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     }
                 }
             }
-            // 到达80%时标记：距离上一个标记 < 5 分钟则替换，>= 5 分钟则追加
+
             val m80 = (timeSeconds[charge80Index] - baseTimeSeconds) / 60
             if (data.isNotEmpty()) {
                 val lastMarkM = (timeSeconds[data.last().first] - baseTimeSeconds) / 60
@@ -248,12 +229,12 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             val lastIdx = points.lastIndex
             val fullIdx = points.indexOfLast { it.level >= 100f }
             val hasFull = fullIdx > charge80Index
-            // 到达100%时标记一次
+
             if (hasFull) {
                 val m = (timeSeconds[fullIdx] - baseTimeSeconds) / 60
                 data.add(fullIdx to formatDuration(m))
             }
-            // 末尾点：100% 标记不可替换，其余间隙 < 5 分钟则替换上一个
+
             if (data.none { it.first == lastIdx }) {
                 val m = (timeSeconds[lastIdx] - baseTimeSeconds) / 60
                 val lastMark = data.lastOrNull()
@@ -277,10 +258,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         data
     }
 
-
-
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-        // ── 摘要卡片 ──
+
         run {
             val animatedIndexValue = animatedTouchIndex.value
             val isAnimatingTouch = animatedIndexValue >= 0f
@@ -389,7 +368,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }
         }
 
-        // ── 每曲线独立的展开/alpha 动画 ──
         val wattExpansion by animateFloatAsState(
             targetValue = if (singleCurveMode == "watt") 1f else 0f,
             animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)),
@@ -426,9 +404,8 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             label = "yaxis_alpha"
         )
 
-        // ── 图表区域（统一布局） ──
         Row(modifier = Modifier.fillMaxWidth().height(220.dp).padding(start = yAxisLeftPadding, end = 28.dp)) {
-            // ── 左侧 Y 轴标尺（根据模式切换） ──
+
             val yAxisPaint = remember { Paint().apply { textSize = 24f; textAlign = Paint.Align.RIGHT } }
             Canvas(modifier = Modifier.width(yAxisWidth).fillMaxSize()) {
                 val h = size.height
@@ -445,7 +422,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     drawContext.canvas.nativeCanvas.drawText("${value}$labelSuffix", rightEdge, y + 4.dp.toPx(), yAxisPaint)
                 }
             }
-            // ── 右侧图表 ──
+
             Box(modifier = Modifier.weight(1f).fillMaxSize().pointerInput(points) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = { offset ->
@@ -469,7 +446,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     if (points.size < 2) return@Canvas
                     val sp = w / (points.size - 1)
 
-                    // ── 绘制网格线 ──
                     for (i in 0..4) { drawLine(gridLineColor, Offset(0f, h - (i.toFloat() / 4 * h)), Offset(w, h - (i.toFloat() / 4 * h)), strokeWidth = 0.5.dp.toPx()) }
 
                     val zoneH = h * 0.25f
@@ -478,20 +454,18 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     val wattBaseNormal = zoneH + gap
                     val tempBase = 2f * (zoneH + gap)
 
-                    // 功耗曲线过渡
                     val wattT = wattExpansion
                     val wattBaseY = wattBaseNormal + (0f - wattBaseNormal) * wattT
                     val wattZoneH = zoneH + (h - zoneH) * wattT
-                    // 电量曲线过渡
+
                     val levelT = levelExpansion
                     val levelBaseY = levelBase + (0f - levelBase) * levelT
                     val levelZoneH = zoneH + (h - zoneH) * levelT
-                    // 温度曲线过渡
+
                     val tempT = tempExpansion
                     val tempBaseY = tempBase + (0f - tempBase) * tempT
                     val tempZoneH = zoneH + (h - zoneH) * tempT
 
-                    // ── 曲线下方填充（淡入） ──
                     if (wattExpansion > 0.001f) {
                         drawLogFillZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = 0.08f * wattExpansion))
                     }
@@ -502,7 +476,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         drawLogFillZone(chartData.tempNorm, sp, tempZoneH, tempBaseY, tempColor.copy(alpha = 0.08f * tempExpansion))
                     }
 
-                    // ── 绘制曲线 ──
                     if (showWatt) drawLogPathZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = wattCurveAlpha))
                     if (showLevel && levelCurveAlpha > 0.001f) {
                         drawLogPathZone(chartData.levelNorm, sp, levelZoneH, levelBaseY, levelColor.copy(alpha = levelCurveAlpha))
@@ -513,7 +486,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
 
                     val animatedIndex = animatedTouchIndex.value
 
-                    // ── 绘制 marker 竖线（单曲线模式下隐藏） ──
                     if (singleCurveMode == null) {
                         val firstMarkerIndex = markerData.firstOrNull()?.first ?: -1
                         markerData.forEach { (index, _) ->
@@ -522,10 +494,9 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
 
                             val p = points[index]
                             val isFirstMarker = (index == firstMarkerIndex)
-                            // 30分钟内第一个点文字往下，其他往上；30分钟后记录时所有都往下
+
                             val isLabelBelow = totalDurationMinutes > 30L || isFirstMarker
 
-                            // 功耗 marker
                             if (showWatt) {
                                 val y = wattBaseY + (1f - chartData.wattNorm[index]) * wattZoneH
                                 val markerAlpha = wattCurveAlpha
@@ -536,7 +507,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                                     drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, markLabelY, markerPaint)
                                 }
                             }
-                            // 温度 marker
+
                             if (showTemp) {
                                 val y = tempBaseY + (1f - chartData.tempNorm[index]) * tempZoneH
                                 val markerAlpha = tempCurveAlpha
@@ -547,7 +518,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                                     drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, markLabelY, markerPaint)
                                 }
                             }
-                            // 电量 marker
+
                             if (showLevel) {
                                 val y = levelBaseY + (1f - chartData.levelNorm[index]) * levelZoneH
                                 val markerAlpha = levelCurveAlpha
@@ -561,7 +532,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         }
                     }
 
-                    // ── 触摸指示器 ──
                     val alpha = animatedAlpha.value
                     if (animatedIndex >= 0f && animatedIndex <= points.lastIndex) {
                         val x = animatedIndex * sp
@@ -580,7 +550,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val touchIsFirst = (idx == (markerData.firstOrNull()?.first ?: 0))
                         val touchLabelBelow = totalDurationMinutes > 30L || touchIsFirst
 
-                        // 功耗触摸
                         if (showWatt && wattCurveAlpha > 0.001f) {
                             val value = "%.1fW".format(p.watt)
                             val y = wattBaseY + (1f - chartData.wattNorm[idx]) * wattZoneH
@@ -593,7 +562,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val touchLabelY = if (touchLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
                             drawContext.canvas.nativeCanvas.drawText(value, tx, touchLabelY, touchPaint)
                         }
-                        // 温度触摸（过渡时淡出）
+
                         if (showTemp && tempCurveAlpha > 0.001f) {
                             val value = "${p.temp.toInt()}°"
                             val y = tempBaseY + (1f - chartData.tempNorm[idx]) * tempZoneH
@@ -606,7 +575,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val touchLabelY = if (touchLabelBelow) y + 22.dp.toPx() else y - 12.dp.toPx()
                             drawContext.canvas.nativeCanvas.drawText(value, tx, touchLabelY, touchPaint)
                         }
-                        // 电量触摸（过渡时淡出）
+
                         if (showLevel && levelCurveAlpha > 0.001f) {
                             val value = "${p.level.toInt()}%"
                             val y = levelBaseY + (1f - chartData.levelNorm[idx]) * levelZoneH
@@ -624,7 +593,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             }
         }
 
-        // ── 底部时间轴（Canvas，与图表同宽，刻度标签与 0m/total 并排） ──
         val timeLabelPaint = remember { Paint().apply { textSize = 26f } }
         val timeTextColor = MiuixTheme.colorScheme.onSurfaceSecondary
         Canvas(
@@ -638,16 +606,13 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
             val sp = w / (points.size - 1)
             val textY = size.height - 4.dp.toPx()
 
-            // 0m — 左对齐
             timeLabelPaint.textAlign = Paint.Align.LEFT
             timeLabelPaint.color = timeTextColor.toArgb()
             drawContext.canvas.nativeCanvas.drawText("0m", -6.dp.toPx(), textY, timeLabelPaint)
 
-            // 总时长 — 右对齐
             timeLabelPaint.textAlign = Paint.Align.RIGHT
             drawContext.canvas.nativeCanvas.drawText(formatDuration(totalDurationMinutes), w, textY, timeLabelPaint)
 
-            // 刻度标签 — 居中，防重叠过滤（防与左右两端及前一个标签重叠）
             timeLabelPaint.textAlign = Paint.Align.CENTER
             timeLabelPaint.color = timeTextColor.toArgb()
             val leftThreshold = 24.dp.toPx()

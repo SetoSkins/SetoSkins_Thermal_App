@@ -63,8 +63,6 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-// ── DeviceInfoItem ──
-
 @Composable
 fun DeviceInfoItem(value: String, label: String) {
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
@@ -73,14 +71,10 @@ fun DeviceInfoItem(value: String, label: String) {
     }
 }
 
-// ── MiuixCard ──
-
 @Composable
 fun MiuixCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Card(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
 }
-
-// ── TonalCard：1:1 复刻 SukiSU-Ultra 的 Material 卡片组件 ──
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -226,8 +220,6 @@ fun ThemedSegmentedOptionCard(
     }
 }
 
-// ── MiuixListItem ──
-
 @Composable
 fun MiuixListItem(title: String, subtitle: String?, modifier: Modifier = Modifier) {
     Row(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -238,18 +230,12 @@ fun MiuixListItem(title: String, subtitle: String?, modifier: Modifier = Modifie
     }
 }
 
-// ── compactSmallTitle Modifier 扩展 ──
-
 fun Modifier.compactSmallTitle(): Modifier = this.padding(start = 4.dp).offset(x = (-13).dp, y = 11.dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } }
-
-// ── SectionTitle ──
 
 @Composable
 fun SectionTitle(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(modifier = modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 8.dp.roundToPx()) { placeable.place(0, 0) } }) { content() }
 }
-
-// ── ThemedTextField：增强版，支持输入过滤和验证 ──
 
 @Composable
 fun ThemedTextField(
@@ -286,8 +272,6 @@ fun ThemedTextField(
         TextField(value = value, onValueChange = filteredChange, modifier = modifier, label = label, singleLine = true)
     }
 }
-
-// ── ConfigDialog：统一对话框 ──
 
 @Composable
 fun ConfigDialog(
@@ -346,8 +330,6 @@ fun ConfigDialog(
     )
 }
 
-// ── RootCheckDialog ──
-
 @Composable
 fun RootCheckDialog(
     show: Boolean,
@@ -363,9 +345,9 @@ fun RootCheckDialog(
     OverlayDialog(
         show = internalShow,
         title = if (isZh) "缺少 Root 权限" else "Root Access Missing",
-        summary = if (isZh) "未授权 Root 权限，部分功能将无法使用。请确保已授权 Root 管理器。" 
+        summary = if (isZh) "未授权 Root 权限，部分功能将无法使用。请确保已授权 Root 管理器。"
                   else "Root access not detected. Some features will not work. Please authorize a Root manager.",
-        onDismissRequest = { /* 不允许通过外部消失 */ },
+        onDismissRequest = {  },
         onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
         content = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -388,8 +370,6 @@ fun RootCheckDialog(
         }
     )
 }
-
-// ── RestartDialog ──
 
 @Composable
 fun RestartDialog(
@@ -430,8 +410,6 @@ fun RestartDialog(
         }
     )
 }
-
-// ── UpdateDialog ──
 
 @Composable
 fun UpdateDialog(
@@ -497,8 +475,6 @@ fun UpdateDialogPreview() {
     }
 }
 
-// ── SliderRow：Slider + 可点击数值标签（精确输入入口） ──
-
 @Composable
 fun SliderRow(
     title: String,
@@ -541,4 +517,3 @@ fun SliderRow(
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
     )
 }
-

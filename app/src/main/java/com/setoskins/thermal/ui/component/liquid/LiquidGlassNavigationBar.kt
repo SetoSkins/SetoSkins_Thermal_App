@@ -121,12 +121,10 @@ private val iosIndicatorSpecular: Highlight = Highlight(
     ),
 )
 
-// Mirrors HighlightStyle.kt's LIGHT_REF — keep in sync.
 private const val LIGHT_REF_X = 0.5f
 private const val LIGHT_REF_Y = 0.7f
-private const val GRAVITY_DIR_THRESHOLD_SQ = 0.01f // |g_xy| > 0.1, ≈ 6° tilt
+private const val GRAVITY_DIR_THRESHOLD_SQ = 0.01f
 
-/** Tracks gravity for a `dualPeak` highlight's primary light, with an extra UV-clockwise offset on top. */
 @Composable
 private fun rememberGravityRotatedHighlight(
     base: Highlight,
@@ -182,7 +180,7 @@ internal fun IosLiquidGlassNavigationBar(
     val onPrimaryColor = MiuixTheme.colorScheme.onPrimary
     val tabContentColor = MiuixTheme.colorScheme.onSurface
     val surfaceContainer = MiuixTheme.colorScheme.surfaceContainer
-    // 底色：useMonet 开启且浅色模式时为白色，否则模糊态用莫奈 surfaceContainer、非模糊态用 surfaceContainer。
+
     val containerColor = if (useMonet && !isDark) {
         Color.White.copy(alpha = if (isBlurActive) 0.6f else 1f)
     } else if (isBlurActive) {
@@ -197,8 +195,6 @@ internal fun IosLiquidGlassNavigationBar(
     val animationScope = rememberCoroutineScope()
     val tabsCount = items.size
 
-    // 点击/拖拽切换页面时直接同步调用，避免走 snapshotFlow 异步链路导致 pager 启动慢、
-    // 指示器等 pagerState 变化才动的延迟（参考 HyperExtreme：按下即飞，不等页面开始滚）。
     val onItemClickUpdated by rememberUpdatedState(onItemClick)
 
     var tabWidthPx by remember { mutableFloatStateOf(0f) }
@@ -255,7 +251,7 @@ internal fun IosLiquidGlassNavigationBar(
             },
             onDragStarted = {
                 isIndicatorDragging = true
-                // 拖拽开始时把基准播种到当前分页位置，保证增量计算正确
+
                 val seed = pagerState?.let { it.currentPage + it.currentPageOffsetFraction }
                     ?: selectedIndex.toFloat()
                 holder.instance?.syncToPage(seed)
@@ -263,21 +259,16 @@ internal fun IosLiquidGlassNavigationBar(
             onDragStopped = {
                 isIndicatorDragging = false
                 val targetIndex = targetValue.roundToInt().coerceIn(0, tabsCount - 1)
-                // 无论是否换页都压制 pager 跟随：归位动画期间 indicatorPosition 持续读
-                // pagerPosition（弹簧驱动）。否则不换页松手时数据源瞬间切到 pagerState
-                // （整数页），指示器直接跳回原位，settleToPage 的弹簧动画不可见，造成闪烁。
+
                 suppressFollow = true
                 if (currentIndex != targetIndex) {
                     currentIndex = targetIndex
-                    // 直接同步触发翻页，不等 snapshotFlow 异步回调，消除指示器等待延迟。
+
                     onItemClickUpdated(targetIndex)
                 }
-                // 释放后让指示器平滑滑到目标页，避免停在手指位置、
-                // 等页面稳定 suppressFollow 关闭后才跳变，造成“中间卡顿一下”。
+
                 settleToPage(targetIndex.toFloat()) {
-                    // 归位弹簧完成后，仅当 pager 已稳定在目标页（含未换页、pager 未动）
-                    // 时恢复跟随；换页且 pager 仍在动画中时保持压制，
-                    // 由 LaunchedEffect 的 settled 回调清除，避免中途切换数据源跳变。
+
                     val pagerPos = pagerState?.let { it.currentPage + it.currentPageOffsetFraction }
                         ?: targetIndex.toFloat()
                     if (abs(pagerPos - targetIndex) < 0.002f) {
@@ -302,9 +293,6 @@ internal fun IosLiquidGlassNavigationBar(
         ).also { holder.instance = it }
     }
 
-    // 指示器当前的连续位置（0..tabsCount-1）。
-    // 用 derivedStateOf 包装，确保 graphicsLayer 绘制阶段能正确观察到 pagerState /
-    // dampedDrag.pagerPosition 的变化并即时重绘，避免指示器停在旧页。
     val indicatorPosition by remember(pagerState, isIndicatorDragging, suppressFollow) {
         derivedStateOf {
             if (isIndicatorDragging || suppressFollow) {
@@ -327,7 +315,7 @@ internal fun IosLiquidGlassNavigationBar(
                     if (currentIndex != settledIndex) {
                         currentIndex = settledIndex
                     }
-                    // 页面稳定后对齐基准，保证胶囊拖拽起点正确
+
                     dampedDrag.syncToPage(settledIndex.toFloat())
                 }
             }
@@ -376,8 +364,7 @@ internal fun IosLiquidGlassNavigationBar(
                         onClick = {
                             if (currentIndex != index) {
                                 currentIndex = index
-                                // 直接同步触发翻页，不等 snapshotFlow 异步链路，
-                                // 让 pager 立即开始滚动、指示器立即跟随。
+
                                 onItemClickUpdated(index)
                             }
                         },
@@ -397,7 +384,7 @@ internal fun IosLiquidGlassNavigationBar(
                     Icon(
                         modifier = Modifier.size(22.dp),
                         imageVector = if (index == currentIndex && filledIcons != null) filledIcons[index] else item.icon,
-                        // Decorative: the adjacent label names the item; avoids TalkBack double-read.
+
                         contentDescription = null,
                     )
                 }
@@ -548,7 +535,7 @@ internal fun IosLiquidGlassNavigationBar(
                                 },
                                 onDrawSurface = {
                                     val progress = dampedDrag.pressProgress
-                                    // 选中胶囊底色 = 主题色
+
                                     drawRect(
                                         color = accentColor,
                                         alpha = 1f - progress * 0.4f,

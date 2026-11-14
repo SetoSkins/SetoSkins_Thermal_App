@@ -63,12 +63,6 @@ import androidx.compose.ui.unit.round
 private val SegmentedOuterRadius = 24.dp
 private val SegmentedInnerRadius = 6.dp
 
-/**
- * SukiSU-Ultra 风格的分段设置卡片容器。
- *
- * 外层首项/末项使用 24dp 圆角，中间项使用 6dp 圆角，项与项之间保留 2dp 背景间隙，
- * 每项底色为 surfaceBright，与 SukiSU 的 Material 设置页一致。
- */
 @Composable
 fun MaterialSegmentedColumn(
     modifier: Modifier = Modifier,
@@ -97,9 +91,6 @@ fun MaterialSegmentedColumn(
     }
 }
 
-/**
- * SukiSU-Ultra 风格的分段列表项，带按压缩放与触感反馈。
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MaterialListItem(
@@ -183,9 +174,6 @@ fun MaterialListItem(
     }
 }
 
-/**
- * 带尾部开关的分段设置项（开关不可单独点击，点击整行切换）。
- */
 @Composable
 fun MaterialSwitchItem(
     headline: String,
@@ -258,9 +246,6 @@ private fun Modifier.trackPressPosition(onPress: (Offset) -> Unit): Modifier = p
     }
 }
 
-/**
- * 尾部展示当前值并可下拉选择的分段设置项。
- */
 @Composable
 fun MaterialDropdownItem(
     headline: String,
@@ -290,7 +275,7 @@ fun MaterialDropdownItem(
             trailing = {
                 Text(
                     text = if (safeIndex >= 0) items[safeIndex] else "",
-                    // 与 SukiSU 的列表尾部值一致：bodyMedium，选中值用主色
+
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (enabled) {
                         MaterialTheme.colorScheme.primary
@@ -307,7 +292,7 @@ fun MaterialDropdownItem(
             anchorOffset = anchorOffset,
         ) {
             items.forEachIndexed { index, text ->
-                // 与 SukiSU 完全一致：SelectableDropdownMenuItem（ListItem 行高 + bodyLarge 字号）
+
                 SelectableDropdownMenuItem(
                     text = { Text(text) },
                     selected = index == safeIndex,
@@ -330,9 +315,6 @@ fun MaterialDropdownItem(
     }
 }
 
-/**
- * SukiSU-Ultra 设置页的图标瓷片：36dp 圆角方块，secondaryContainer 底色。
- */
 @Composable
 fun IconTile(icon: ImageVector, contentDescription: String? = null) {
     Box(
@@ -351,9 +333,6 @@ fun IconTile(icon: ImageVector, contentDescription: String? = null) {
     }
 }
 
-/**
- * 分段列表项尾部的向右箭头，颜色与 SukiSU 一致（onSurfaceVariant）。
- */
 @Composable
 fun MaterialChevron() {
     Icon(

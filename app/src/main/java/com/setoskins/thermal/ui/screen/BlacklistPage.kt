@@ -66,8 +66,6 @@ import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.MaterialLargeTopBar
 import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 import com.setoskins.thermal.ui.component.ThemedOptionCard
-import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
-import com.setoskins.thermal.ui.component.MaterialSwitchItem
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
 import com.setoskins.thermal.ui.component.VerticalScrollBar
@@ -77,8 +75,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -110,7 +106,7 @@ fun BlacklistPage(
     val prefsKey = if (effectiveWhitelist) "whitelist_apps" else "blacklist_apps"
     val title = if (isWhitelist) (if (isZh) "无温控应用名单" else "No-thermal app list") else (if (isZh) "分应用调速名单" else "Per-app speed control list")
     val scrollBehavior = MiuixScrollBehavior()
-    // Material 子页面顶栏：与 SukiSU 一样使用可收起的大标题
+
     val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
     val configPath = "/data/adb/modules/SetoSkins/黑名单.prop"
@@ -197,9 +193,9 @@ fun BlacklistPage(
             .background(bgColor)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // ── 顶部栏（固定） ──
+
             if (useMonet) {
-                // 与 SukiSU 子页面一致：大标题顶栏 + 圆形返回按钮
+
                 MaterialLargeTopBar(
                     title = title,
                     scrollBehavior = materialScrollBehavior,
@@ -231,9 +227,9 @@ fun BlacklistPage(
                     }
                 )
             }
-            // ── 白名单模式切换（仅无温控应用名单页显示） ──
+
             if (isWhitelist) {
-                // ── 模式说明 Tips ──
+
                 ThemedOptionCard(
                     useMonet = useMonet,
                     modifier = Modifier
@@ -288,7 +284,6 @@ fun BlacklistPage(
                 }
             }
 
-            // ── 搜索栏（固定） ──
             SearchBar(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
@@ -299,7 +294,6 @@ fun BlacklistPage(
 
             val cardColor = MiuixTheme.colorScheme.surfaceContainer
 
-            // ── 应用列表 / 加载中 ──
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -356,7 +350,6 @@ fun BlacklistPage(
             }
         }
 
-        // ── 大标题（滚动折叠时淡出并上移，仅非 Monet 模式） ──
         if (!useMonet) {
             Text(
                 text = title,
@@ -446,7 +439,7 @@ private fun AppListItem(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ── 应用图标 ──
+
             val iconBitmap = remember(app.packageName) {
                 app.icon?.let { drawable ->
                     val bitmap = android.graphics.Bitmap.createBitmap(
@@ -488,7 +481,6 @@ private fun AppListItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // ── 应用名 + 包名 ──
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = app.appName,
@@ -510,7 +502,6 @@ private fun AppListItem(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // ── 开关 ──
             ThemedSwitch(
                 checked = isBlacklisted,
                 onCheckedChange = null,
@@ -518,7 +509,6 @@ private fun AppListItem(
             )
         }
 
-        // ── 修改最大电流数（仅分应用调速名单页面显示） ──
         if (showCurrentField) {
             AnimatedVisibility(
                 visible = isBlacklisted,
@@ -542,7 +532,6 @@ private fun AppListItem(
         }
     }
 }
-
 
 private fun loadThirdPartyApps(context: Context): List<AppInfo> {
     val pm = context.packageManager

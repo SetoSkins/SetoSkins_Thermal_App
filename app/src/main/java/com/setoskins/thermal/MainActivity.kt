@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
                         floatingNavBar = value
                         prefs.edit().putBoolean("floatingNavBar", value).apply()
                     },
-                    // 每次冷启动都从主页开始，不再恢复上次停留的页面
+
                     initialPage = 0,
                     onPageChange = {}
                 )
@@ -59,15 +59,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * 系统栏沉浸（参考 HyperExtreme 的 applyAppSystemBars）：
-     *
-     * 1. 状态栏 / 导航条（小白条）两个 scrim 都用**全透明**。`SystemBarStyle.auto` 的默认
-     *    scrim 是半透明遮罩，会盖在状态栏/导航条后面，看起来就不沉浸。
-     * 2. 关掉导航条的「对比度强制」：系统默认会在透明导航条后面再糊一层 scrim 保证图标可见，
-     *    即使 bar 本身透明也能看出色差（HyperOS 上就是一条灰条）。
-     * 3. 图标明暗用本 App 的深浅色判定（这里跟随系统，与 MyApplicationTheme 一致）。
-     */
     @Suppress("DEPRECATION")
     private fun applySystemBars() {
         val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==

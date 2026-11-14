@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,7 +44,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -89,8 +87,6 @@ import com.setoskins.thermal.ui.component.compactSmallTitle
 import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
@@ -108,6 +104,7 @@ fun HomeScreen(
     scrollBehavior: ScrollBehavior? = null,
     materialScrollConnection: NestedScrollConnection? = null,
     contentPaddingTop: Dp = 0.dp,
+    bottomContentInset: Dp = 0.dp,
     floatingNavBar: Boolean = false,
     onNavigateToBlacklist: () -> Unit = {},
     onNavigateToWhitelist: () -> Unit = {},
@@ -120,10 +117,9 @@ fun HomeScreen(
     val hapticFeedback = LocalHapticFeedback.current
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    // 每次启动随机显示一条 Tip
+
     val tipIndex = remember { kotlin.random.Random.nextInt(2) }
 
-    // ── 非调速区开关状态 ──
     var switch3 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch3", true)) }
     var switch5 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch5", false)) }
     var switch6 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch6", false)) }
@@ -160,7 +156,6 @@ fun HomeScreen(
     }
     val isChargingState = rememberSaveable { mutableStateOf(false) }
 
-    // ── 模块状态 ──
     var moduleInstalled by rememberSaveable { mutableStateOf(false) }
     var hasUpdate by rememberSaveable { mutableStateOf(false) }
     var moduleVersion by rememberSaveable { mutableStateOf("") }
@@ -184,7 +179,7 @@ fun HomeScreen(
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
-            
+
             if (Build.VERSION.SDK_INT >= 35) {
                 val canPost = try {
                     val method = notificationManager.javaClass.getMethod("canPostPromotedNotifications")
@@ -210,7 +205,6 @@ fun HomeScreen(
         }
     }
 
-    // 使用广播监听充电状态变化，替代轮询
     DisposableEffect(switch16) {
         var isRegistered = false
         val receiver = object : BroadcastReceiver() {
@@ -242,10 +236,9 @@ fun HomeScreen(
         }
     }
 
-    // ── 配置同步：顺序执行避免并行 su 调用，config 传给 SpeedControlSection 避免重复读取 ──
     var externalConfig by rememberSaveable { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(reloadTrigger) {
-        // 顺序执行避免并行 su 调用
+
         moduleInstalled = ModuleDetector.isModuleInstalled()
         moduleVersion = ModuleDetector.getModuleVersion()
         hasUpdate = ModuleDetector.checkUpdate()
@@ -276,7 +269,7 @@ fun HomeScreen(
         syncSwitch("亮息屏调速", switch10, { switch10 = it }, "switch10")
         syncSwitch("当电流低于阈值执行停充", switch12, { switch12 = it }, "switch12")
         syncSwitch("自定义阶梯模式", switch13, { switch13 = it }, "switch13")
-        // 分应用旁路温度滑块
+
         config["分应用旁路到达温度"]?.trim()?.let { v ->
             if (appBypassTargetTemp != v) { appBypassTargetTemp = v; editor.putString("appBypassTargetTemp", v) }
         }
@@ -289,7 +282,7 @@ fun HomeScreen(
         config["分应用旁路停充电量"]?.trim()?.let { v ->
             if (appBypassStopLevel != v) { appBypassStopLevel = v; editor.putString("appBypassStopLevel", v) }
         }
-        // 全局旁路温度滑块
+
         config["全局旁路到达温度"]?.trim()?.let { v ->
             if (globalBypassTargetTemp != v) { globalBypassTargetTemp = v; editor.putString("globalBypassTargetTemp", v) }
         }
@@ -316,7 +309,6 @@ fun HomeScreen(
         Unit
     } }
 
-    // ── 旁路充电配置写入 /data/adb/modules/SetoSkins/旁路充电配置.prop ──
     val writeBypassConfigFile = remember(scope) { {
         val config = buildMap {
             put("分应用旁路", switch17.toString())
@@ -333,7 +325,6 @@ fun HomeScreen(
         scope.launch { ModuleDetector.writeBypassConfig(config) }
     } }
 
-    // ── 旁路滑块值变化时 300ms 防抖写入配置 ──
     LaunchedEffect(appBypassTargetTemp, appBypassRecoveryTemp, appBypassMaxCurrent, appBypassStopLevel) {
         kotlinx.coroutines.delay(300)
         writeBypassConfigFile()
@@ -342,7 +333,6 @@ fun HomeScreen(
         kotlinx.coroutines.delay(300)
         writeBypassConfigFile()
     }
-
 
     val homeExclusiveActive = switch17 || switch18
     val speedExclusiveActive = switch4 || switch10 || switch11 || switch12 || switch13 || switch8 || switch9
@@ -367,9 +357,9 @@ fun HomeScreen(
                 state = listState,
                 modifier = Modifier.fillMaxSize().customOverScroll()
                     .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
-                    // Material 顶栏：必须挂在列表自身（overscroll 之后），否则顶部下拉会被 overscroll 吃掉
+
                     .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 46.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 46.dp + bottomContentInset),
                 verticalArrangement = Arrangement.spacedBy(11.dp)
             ) {
         item(key = "status_card") {
@@ -378,8 +368,7 @@ fun HomeScreen(
                 hasUpdate -> 1
                 else -> 2
             }
-            // Tip 与状态卡合并在同一个 item 内：避免启动检测完成后在列表头部插入新 item 导致
-            // LazyColumn 按 key 锚定首个可见项、把 Tip 挤到可视区上方（需下拉才能看到）
+
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 if (moduleInstalled) {
                     ThemedOptionCard(
@@ -993,7 +982,6 @@ fun HomeScreen(
         )
     }
 
-    // ── 滑块数值输入对话框 ──
     val state = dialogState
     if (state != null) {
         ConfigDialog(
