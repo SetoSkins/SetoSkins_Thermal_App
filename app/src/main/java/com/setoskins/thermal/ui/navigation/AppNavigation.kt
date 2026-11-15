@@ -134,10 +134,6 @@ private val OverlayEnterSpec = tween<Float>(480, easing = OverlayEase)
 private val OverlayExitSpec = tween<Float>(320, easing = OverlayEase)
 private val OverlayBackCancelSpec = tween<Float>(400, easing = OverlayEase)
 
-/**
- * 全屏覆盖页（捐赠、致谢、分应用调速名单、无温控应用名单、旁路充电名单）的统一进出场状态。
- * 打开时先挂载遮罩再推进度，关闭时先回退进度再卸载，配合预测性返回手势可被用户拖拽控制。
- */
 @Stable
 private class OverlayPageState {
     var open by mutableStateOf(false)
@@ -382,7 +378,6 @@ fun MyApplicationApp(
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 1,
-                            // 主页、关于是两端页面。关掉边缘回弹，左右拖到头时内容停在屏幕内。
                             overscrollEffect = null,
                             modifier = Modifier
                                 .fillMaxSize()

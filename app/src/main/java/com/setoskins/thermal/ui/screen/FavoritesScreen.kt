@@ -156,8 +156,6 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
     val listState = rememberLazyListState()
 
     Box(modifier = modifier.fillMaxSize()) {
-        // miuix 风格:modifier 版过滚动(内容不满一屏也能回弹);
-        // material 风格:平台默认工厂(Theme 提供,Android 12+ 原生拉伸)。
         LazyColumn(
             state = listState,
             overscrollEffect = if (useMonet) rememberOverscrollEffect() else null,

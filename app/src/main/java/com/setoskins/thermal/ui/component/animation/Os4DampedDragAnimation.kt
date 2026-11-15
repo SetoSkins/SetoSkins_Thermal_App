@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 btm_m
 //
-// 从 HyperChanger（https://github.com/ColdP/HyperChanger，Apache-2.0）移植：
+// Ported from HyperChanger (https://github.com/ColdP/HyperChanger, Apache-2.0):
 // app/src/main/java/btm/m/liquidglass/hook/LiquidInteraction.kt
-// 原注释：Adapted from the Backdrop catalog's Apache-2.0 LiquidBottomTabs interaction helpers.
+// Original note: Adapted from the Backdrop catalog's Apache-2.0 LiquidBottomTabs interaction helpers.
 package com.setoskins.thermal.ui.component.animation
 
 import android.os.SystemClock

@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 btm_m
 //
-// 从 HyperChanger **v1.1.3**（https://github.com/ColdP/HyperChanger，Apache-2.0）移植：
-// app/src/main/java/btm/m/liquidglass/hook/GlassNavigation.kt 的 HyperFloatingNavigationBar。
-// ⚠️ 版本号不能删（2026-11-02 查证）：v1.1.3 是 Apache-2.0，上游后来换成了 AGPL-3.0-or-later；
-//    Apache-2.0 不可撤销，本文件按 v1.1.3 的授权使用。
-// 改动：去掉与业务无关的 tabIconContent/FontNavigationItem 分支，标签用传进来的 ImageVector；
-//      宽度改成参数（2026-10-04 按主题商店 4-tab 底栏截图实测对齐：0.88 屏宽 + 内边距
-//      —— 主题商店实测 4dp，用户随后要求改成 3dp；原上游的 floatingScale 缩放整体移除）。
+// Ported from HyperChanger v1.1.3 (https://github.com/ColdP/HyperChanger, Apache-2.0):
+// HyperFloatingNavigationBar in app/src/main/java/btm/m/liquidglass/hook/GlassNavigation.kt.
+// Do not drop the version number (verified 2026-11-02): v1.1.3 is Apache-2.0, while upstream
+// later switched to AGPL-3.0-or-later; Apache-2.0 grants are irrevocable, so this file is
+// used under the v1.1.3 license.
 package com.setoskins.thermal.ui.component.liquid
 
 import android.util.Log

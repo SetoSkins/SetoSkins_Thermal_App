@@ -22,6 +22,7 @@ import com.materialkolor.rememberDynamicColorScheme
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
+import top.yukonga.miuix.kmp.utils.MiuixOverscrollFactory
 
 private val SukiSuShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
@@ -46,9 +47,6 @@ fun MyApplicationTheme(
         )
     }
 
-    // MiuixTheme 会在全局把 LocalOverscrollFactory 覆盖为 MiuixOverscrollFactory(miuix 弹簧)。
-    // 在进入 MiuixTheme 之前读取一次,拿到的还是平台默认工厂(Android 12+ 原生拉伸 stretch),
-    // material(useMonet)风格用它覆盖回去,miuix 风格继续用 miuix 弹簧。
     val platformOverscrollFactory = LocalOverscrollFactory.current
 
     MiuixTheme(
@@ -123,24 +121,10 @@ fun MyApplicationTheme(
                 miuixMaterialColors
             }
 
-            if (useMonet) {
-                // Material 风格：还原平台默认过滚动（Android 12+ 原生拉伸 stretch），
-                // 覆盖 MiuixTheme 全局提供的 miuix 弹簧回弹，与 SukiSU-Ultra Material 界面一致。
-                CompositionLocalProvider(LocalOverscrollFactory provides platformOverscrollFactory) {
-                    MaterialTheme(
-                        colorScheme = materialColors,
-                        // 与 SukiSU-Ultra 的 Material 风格保持一致：使用 expressive 弹性动画，
-                        // 让 Switch 等组件在切换时带有回弹效果。
-                        motionScheme = MotionScheme.expressive(),
-                        shapes = if (useMonet) SukiSuShapes else MaterialTheme.shapes,
-                        content = content,
-                    )
-                }
-            } else {
+            val overscrollFactory = if (useMonet) platformOverscrollFactory else MiuixOverscrollFactory
+            CompositionLocalProvider(LocalOverscrollFactory provides overscrollFactory) {
                 MaterialTheme(
                     colorScheme = materialColors,
-                    // 与 SukiSU-Ultra 的 Material 风格保持一致：使用 expressive 弹性动画，
-                    // 让 Switch 等组件在切换时带有回弹效果。
                     motionScheme = MotionScheme.expressive(),
                     shapes = if (useMonet) SukiSuShapes else MaterialTheme.shapes,
                     content = content,
