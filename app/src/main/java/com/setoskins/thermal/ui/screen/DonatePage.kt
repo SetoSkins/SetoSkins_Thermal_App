@@ -51,6 +51,7 @@ import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -216,6 +217,7 @@ private fun DonateBody(
             modifier = Modifier
                 .fillMaxSize()
                 .then(scrollModifier)
+                .scrollEndHaptic()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
         ) {

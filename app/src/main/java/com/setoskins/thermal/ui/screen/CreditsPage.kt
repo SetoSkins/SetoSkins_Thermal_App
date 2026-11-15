@@ -49,6 +49,7 @@ import com.setoskins.thermal.ui.component.MaterialChevron
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -217,6 +218,7 @@ private fun CreditsBody(
             modifier = Modifier
                 .fillMaxSize()
                 .then(scrollModifier)
+                .scrollEndHaptic()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
         ) {

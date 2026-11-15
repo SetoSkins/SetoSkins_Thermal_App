@@ -91,11 +91,8 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.utils.MiuixOverscrollFactory
-import androidx.compose.foundation.LocalOverscrollFactory
-import androidx.compose.runtime.CompositionLocalProvider
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.foundation.ExperimentalFoundationApi
 
 @OptIn(ExperimentalMaterial3Api::class, top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
@@ -352,11 +349,10 @@ fun HomeScreen(
     val listState = rememberLazyListState()
 
     Box(modifier = modifier.fillMaxSize()) {
-        @OptIn(ExperimentalFoundationApi::class)
-        CompositionLocalProvider(LocalOverscrollFactory provides MiuixOverscrollFactory) {
-            LazyColumn(
-                state = listState,
+        LazyColumn(
+            state = listState,
                 modifier = Modifier.fillMaxSize()
+                    .scrollEndHaptic()
                     .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
 
                     .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
@@ -975,7 +971,6 @@ fun HomeScreen(
             item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(60.dp)) }
         }
 
-    }
     }
 
         VerticalScrollBar(

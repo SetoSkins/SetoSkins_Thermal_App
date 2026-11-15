@@ -114,10 +114,7 @@ import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
-import top.yukonga.miuix.kmp.utils.MiuixOverscrollFactory
-import androidx.compose.foundation.LocalOverscrollFactory
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.foundation.ExperimentalFoundationApi
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -234,9 +231,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             Spacer(modifier = Modifier.height(80.dp))
         }
         Box(modifier = modifier.fillMaxSize()) {
-            @OptIn(ExperimentalFoundationApi::class)
-            CompositionLocalProvider(LocalOverscrollFactory provides MiuixOverscrollFactory) {
-                LazyColumn(modifier = Modifier.fillMaxSize(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
+                LazyColumn(modifier = Modifier.fillMaxSize().scrollEndHaptic(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
 
                     item(key = "logoSpacer") {
                         Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
@@ -448,7 +443,6 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                         item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(60.dp)) }
                     }
                 }
-            }
             VerticalScrollBar(
                 adapter = rememberScrollBarAdapter(listState),
                 modifier = Modifier.align(Alignment.CenterEnd)

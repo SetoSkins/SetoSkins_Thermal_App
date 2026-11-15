@@ -65,10 +65,9 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
-import top.yukonga.miuix.kmp.utils.MiuixOverscrollFactory
-import androidx.compose.foundation.LocalOverscrollFactory
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.foundation.ExperimentalFoundationApi
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import androidx.compose.foundation.rememberOverscrollEffect
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
@@ -157,14 +156,17 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
     val listState = rememberLazyListState()
 
     Box(modifier = modifier.fillMaxSize()) {
-        @OptIn(ExperimentalFoundationApi::class)
-        CompositionLocalProvider(LocalOverscrollFactory provides MiuixOverscrollFactory) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize()
-                    .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+        // miuix 风格:modifier 版过滚动(内容不满一屏也能回弹);
+        // material 风格:平台默认工厂(Theme 提供,Android 12+ 原生拉伸)。
+        LazyColumn(
+            state = listState,
+            overscrollEffect = if (useMonet) rememberOverscrollEffect() else null,
+            modifier = Modifier.fillMaxSize()
+                .then(if (!useMonet) Modifier.overScrollVertical() else Modifier)
+                .scrollEndHaptic()
+                .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
 
-                    .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
+                .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 106.dp + bottomContentInset)
             ) {
                 item(key = "battery_card") { BatteryInfoCard(info = batteryInfo, throttleCount = throttleCount, useMonet = useMonet) }
@@ -209,7 +211,6 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                     }
                 }
             }
-        }
         VerticalScrollBar(
             adapter = rememberScrollBarAdapter(listState),
             modifier = Modifier.align(Alignment.CenterEnd)

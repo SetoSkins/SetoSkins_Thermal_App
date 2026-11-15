@@ -71,6 +71,7 @@ import com.setoskins.thermal.ui.component.ThemedTextField
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -313,6 +314,7 @@ fun BlacklistPage(
                                 if (useMonet) Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection)
                                 else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                             )
+                            .scrollEndHaptic()
                             .verticalScroll(scrollState)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {

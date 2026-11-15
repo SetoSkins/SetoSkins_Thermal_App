@@ -1,5 +1,6 @@
 package com.setoskins.thermal.ui.theme
 
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +11,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,11 @@ fun MyApplicationTheme(
             isDark = darkTheme
         )
     }
+
+    // MiuixTheme 会在全局把 LocalOverscrollFactory 覆盖为 MiuixOverscrollFactory(miuix 弹簧)。
+    // 在进入 MiuixTheme 之前读取一次,拿到的还是平台默认工厂(Android 12+ 原生拉伸 stretch),
+    // material(useMonet)风格用它覆盖回去,miuix 风格继续用 miuix 弹簧。
+    val platformOverscrollFactory = LocalOverscrollFactory.current
 
     MiuixTheme(
         controller = controller,
@@ -116,14 +123,29 @@ fun MyApplicationTheme(
                 miuixMaterialColors
             }
 
-            MaterialTheme(
-                colorScheme = materialColors,
-                // 与 SukiSU-Ultra 的 Material 风格保持一致：使用 expressive 弹性动画，
-                // 让 Switch 等组件在切换时带有回弹效果。
-                motionScheme = MotionScheme.expressive(),
-                shapes = if (useMonet) SukiSuShapes else MaterialTheme.shapes,
-                content = content,
-            )
+            if (useMonet) {
+                // Material 风格：还原平台默认过滚动（Android 12+ 原生拉伸 stretch），
+                // 覆盖 MiuixTheme 全局提供的 miuix 弹簧回弹，与 SukiSU-Ultra Material 界面一致。
+                CompositionLocalProvider(LocalOverscrollFactory provides platformOverscrollFactory) {
+                    MaterialTheme(
+                        colorScheme = materialColors,
+                        // 与 SukiSU-Ultra 的 Material 风格保持一致：使用 expressive 弹性动画，
+                        // 让 Switch 等组件在切换时带有回弹效果。
+                        motionScheme = MotionScheme.expressive(),
+                        shapes = if (useMonet) SukiSuShapes else MaterialTheme.shapes,
+                        content = content,
+                    )
+                }
+            } else {
+                MaterialTheme(
+                    colorScheme = materialColors,
+                    // 与 SukiSU-Ultra 的 Material 风格保持一致：使用 expressive 弹性动画，
+                    // 让 Switch 等组件在切换时带有回弹效果。
+                    motionScheme = MotionScheme.expressive(),
+                    shapes = if (useMonet) SukiSuShapes else MaterialTheme.shapes,
+                    content = content,
+                )
+            }
         }
     )
 }
