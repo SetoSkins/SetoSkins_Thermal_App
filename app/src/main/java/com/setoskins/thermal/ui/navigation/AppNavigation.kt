@@ -310,9 +310,7 @@ fun MyApplicationApp(
 
     val effectiveFloatingNavBar = floatingNavBar && !useMonet
     val contentRecorded = effectiveFloatingNavBar && backdrop != null
-    val normalMiuixBlur = !floatingNavBar && !useMonet && showBlur
-
-    val normalMaterialBlur = !floatingNavBar && useMonet && showBlur
+    val normalBlur = !effectiveFloatingNavBar && showBlur
 
     Box(
         modifier = Modifier
@@ -359,9 +357,9 @@ fun MyApplicationApp(
                     })
                 ) { innerPadding ->
 
-                    val bottomContentPadding = if (effectiveFloatingNavBar || normalMiuixBlur || normalMaterialBlur) 0.dp else innerPadding.calculateBottomPadding()
+                    val bottomContentPadding = if (effectiveFloatingNavBar || normalBlur) 0.dp else innerPadding.calculateBottomPadding()
 
-                    val bottomContentInset = if (normalMaterialBlur || normalMiuixBlur) innerPadding.calculateBottomPadding() else 0.dp
+                    val bottomContentInset = if (normalBlur) innerPadding.calculateBottomPadding() else 0.dp
                     Box(modifier = Modifier.fillMaxSize()) {
                         HorizontalPager(
                             state = pagerState,
@@ -370,7 +368,7 @@ fun MyApplicationApp(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clipToBounds()
-                                .then(if (normalMiuixBlur || normalMaterialBlur) Modifier.layerBackdrop(backdrop) else Modifier),
+                                .then(if (normalBlur) Modifier.layerBackdrop(backdrop) else Modifier),
                             flingBehavior = rememberPagerSettleSkipFlingBehavior(pagerState, PagerFlingSpec)
                         ) { page ->
                             when (AppDestinations.entries[page]) {

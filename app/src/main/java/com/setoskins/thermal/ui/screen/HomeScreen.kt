@@ -116,7 +116,7 @@ fun HomeScreen(
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
-    val tipIndex = remember { kotlin.random.Random.nextInt(2) }
+    val tipIndex = remember { kotlin.random.Random.nextInt(3) }
 
     var switch3 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch3", true)) }
     var switch5 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch5", false)) }
@@ -376,11 +376,17 @@ fun HomeScreen(
                     ) {
                         Text(
                             text = if (isZh) {
-                                if (tipIndex == 0) "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。"
-                                else "Tip：更新温控模块会让所有配置选项重置，注意！"
+                                when (tipIndex) {
+                                    0 -> "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。"
+                                    1 -> "Tip：更新温控模块会让所有配置选项重置，注意！"
+                                    else -> "Tip：充电宝或充电器中显示的瓦数和日志的瓦数不一样为正常现象。两者出现差异，主要是因为电压不同、转换损耗以及测量位置不同。"
+                                }
                             } else {
-                                if (tipIndex == 0) "Tip: Speed control or bypass charging may not work on some devices due to battery node differences. Please test on your own."
-                                else "Tip: Updating the thermal module will reset all configuration options. Note!"
+                                when (tipIndex) {
+                                    0 -> "Tip: Speed control or bypass charging may not work on some devices due to battery node differences. Please test on your own."
+                                    1 -> "Tip: Updating the thermal module will reset all configuration options. Note!"
+                                    else -> "Tip: The wattage shown on a power bank or charger differs from the logged wattage, which is normal. The difference is mainly caused by different voltages, conversion losses, and different measurement points."
+                                }
                             },
                             fontSize = 13.sp,
                             color = if (useMonet) MaterialTheme.colorScheme.onSurfaceVariant else MiuixTheme.colorScheme.onSurfaceVariantSummary,
