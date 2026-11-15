@@ -67,7 +67,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -88,12 +87,9 @@ import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Home
@@ -108,6 +104,7 @@ import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.ui.component.liquid.NavTab
 import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
 import com.setoskins.thermal.ui.component.BlurredBar
+import com.setoskins.thermal.ui.component.BlurredMaterialBar
 import com.setoskins.thermal.ui.component.MaterialPageTopBarScaffold
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberMaterialBlurBackdrop
@@ -187,13 +184,6 @@ enum class AppDestinations(val label: String, val labelEn: String, val icon: Ima
     PROFILE("关于", "About", Icons.Outlined.Info, Icons.Filled.Info),
 }
 
-/**
- * Wraps the pager's snap fling behavior so that when the pager is already settled on a page
- * and the incoming velocity is just leftover from an inner scrollable's finished fling
- * (nested scroll post-fling dispatch), the snap finishes immediately instead of running the
- * full [snapAnimationSpec]. Otherwise the pager holds a scroll session (~snap duration) during
- * which it consumes down events at the Initial pass, making the whole page ignore taps.
- */
 @Composable
 private fun rememberPagerSettleSkipFlingBehavior(
     pagerState: PagerState,
@@ -209,8 +199,6 @@ private fun rememberPagerSettleSkipFlingBehavior(
                 initialVelocity: Float,
                 onRemainingDistanceUpdated: (Float) -> Unit,
             ): Float {
-                // Pager untouched by the fling (settled on a page) and velocity is only a
-                // residual from an inner scrollable's fling: nothing to snap, bail out at once.
                 if (abs(initialVelocity) < 150f && abs(pagerState.currentPageOffsetFraction) < 0.001f) {
                     return 0f
                 }
@@ -763,25 +751,12 @@ fun ThemedNavigationBar(
             }
         }
         val blurActive = showBlur && backdrop != null
-        val blendColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f)
-        val navModifier = modifier
-            .fillMaxWidth()
-            .wrapContentSize()
-            .then(
-                backdrop?.takeIf { blurActive }?.let { bd ->
-                    Modifier.textureBlur(
-                        backdrop = bd,
-                        shape = RectangleShape,
-                        blurRadius = 25f,
-                        colors = BlurColors(
-                            blendColors = listOf(BlendColorEntry(color = blendColor)),
-                        ),
-                    )
-                } ?: Modifier
-            )
+        BlurredMaterialBar(backdrop = backdrop, blurEnabled = blurActive) {
         ShortNavigationBar(
 
-            modifier = navModifier,
+            modifier = modifier
+                .fillMaxWidth()
+                .wrapContentSize(),
             windowInsets = WindowInsets.safeDrawing.only(
                 WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
             ),
@@ -813,6 +788,7 @@ fun ThemedNavigationBar(
                     label = { MaterialText(text = destination.label) },
                 )
             }
+        }
         }
     } else {
         BlurredBar(backdrop = backdrop, blurEnabled = showBlur) {

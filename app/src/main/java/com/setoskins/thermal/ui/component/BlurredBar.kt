@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
+import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
@@ -33,6 +34,31 @@ fun rememberMaterialBlurBackdrop(): LayerBackdrop? {
     return rememberLayerBackdrop {
         drawRect(surfaceColor)
         drawContent()
+    }
+}
+
+@Composable
+fun BlurredMaterialBar(
+    backdrop: LayerBackdrop?,
+    blurEnabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val blendColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f)
+    Box(
+        modifier = if (blurEnabled && backdrop != null) {
+            Modifier.textureBlur(
+                backdrop = backdrop,
+                shape = RectangleShape,
+                blurRadius = 25f,
+                colors = BlurColors(
+                    blendColors = listOf(BlendColorEntry(color = blendColor)),
+                ),
+            )
+        } else {
+            Modifier
+        },
+    ) {
+        content()
     }
 }
 
