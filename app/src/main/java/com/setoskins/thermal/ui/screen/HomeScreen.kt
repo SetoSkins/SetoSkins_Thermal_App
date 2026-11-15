@@ -81,16 +81,17 @@ import com.setoskins.thermal.ui.component.RedNotInstalledCard
 import com.setoskins.thermal.ui.component.SliderRow
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
-import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.UpdateWarningCard
 import com.setoskins.thermal.ui.component.compactSmallTitle
-import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.basic.VerticalScrollBar
+import androidx.compose.ui.Alignment
+import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import com.setoskins.thermal.ui.component.animation.customOverScroll
+import top.yukonga.miuix.kmp.utils.MiuixOverscrollFactory
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -352,10 +353,10 @@ fun HomeScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         @OptIn(ExperimentalFoundationApi::class)
-        CompositionLocalProvider(LocalOverscrollFactory provides null) {
+        CompositionLocalProvider(LocalOverscrollFactory provides MiuixOverscrollFactory) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().customOverScroll()
+                modifier = Modifier.fillMaxSize()
                     .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
 
                     .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
@@ -978,7 +979,8 @@ fun HomeScreen(
     }
 
         VerticalScrollBar(
-            adapter = rememberScrollBarAdapter(listState)
+            adapter = rememberScrollBarAdapter(listState),
+            modifier = Modifier.align(Alignment.CenterEnd)
         )
     }
 

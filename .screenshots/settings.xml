@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="switch5" value="true" />
+    <boolean name="switch3" value="false" />
+    <boolean name="useMonet" value="true" />
+</map>

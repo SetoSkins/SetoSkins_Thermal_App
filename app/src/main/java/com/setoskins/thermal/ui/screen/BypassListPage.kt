@@ -62,9 +62,9 @@ import com.setoskins.thermal.ui.component.MaterialLargeTopBar
 import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.ThemedSwitch
-import com.setoskins.thermal.ui.component.VerticalScrollBar
-import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
-import com.setoskins.thermal.ui.component.animation.customOverScroll
+
+import top.yukonga.miuix.kmp.basic.VerticalScrollBar
+import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -197,7 +197,6 @@ fun BypassListPage(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .customOverScroll()
                             .then(
                                 if (useMonet) Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection)
                                 else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
@@ -294,7 +293,8 @@ fun BypassListPage(
                     }
                     }
                     VerticalScrollBar(
-                        adapter = rememberScrollBarAdapter(scrollState)
+                        adapter = rememberScrollBarAdapter(scrollState),
+                        modifier = Modifier.align(Alignment.CenterEnd)
                     )
                 }
             }

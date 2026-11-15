@@ -73,7 +73,6 @@ import kotlin.math.roundToInt
 import com.setoskins.thermal.R
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.ui.component.ThemedSwitch
-import com.setoskins.thermal.ui.component.VerticalScrollBar
 import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.data.UpdateManager
 import android.content.Intent
@@ -83,7 +82,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
-import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.basic.VerticalScrollBar
+import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Download
@@ -114,7 +114,7 @@ import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
-import com.setoskins.thermal.ui.component.animation.customOverScroll
+import top.yukonga.miuix.kmp.utils.MiuixOverscrollFactory
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -235,8 +235,8 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
         }
         Box(modifier = modifier.fillMaxSize()) {
             @OptIn(ExperimentalFoundationApi::class)
-            CompositionLocalProvider(LocalOverscrollFactory provides null) {
-                LazyColumn(modifier = Modifier.fillMaxSize().customOverScroll(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
+            CompositionLocalProvider(LocalOverscrollFactory provides MiuixOverscrollFactory) {
+                LazyColumn(modifier = Modifier.fillMaxSize(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
 
                     item(key = "logoSpacer") {
                         Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
@@ -450,7 +450,8 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                 }
             }
             VerticalScrollBar(
-                adapter = rememberScrollBarAdapter(listState)
+                adapter = rememberScrollBarAdapter(listState),
+                modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
 

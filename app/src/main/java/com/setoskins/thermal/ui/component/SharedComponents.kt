@@ -1,14 +1,10 @@
 package com.setoskins.thermal.ui.component
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +19,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card as MaterialCard
 import androidx.compose.material3.CardDefaults as MaterialCardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface as MaterialSurface
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
@@ -61,6 +55,7 @@ import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -86,59 +81,32 @@ fun TonalCard(
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
-    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    pressFeedbackEnabled: Boolean = true,
-    pressScale: Float = 0.97f,
-    pressHapticEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colors = MaterialCardDefaults.cardColors(
         containerColor = containerColor,
         contentColor = contentColor,
     )
-    when {
-        onLongClick != null || onClick != null -> {
-            val pressed by interactionSource.collectIsPressedAsState()
-            val targetScale = when {
-                !pressFeedbackEnabled -> 1f
-                pressed -> pressScale
-                else -> 1f
-            }
-            val scale by animateFloatAsState(
-                targetValue = targetScale,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-                label = "TonalCardPressScale",
-            )
-            val haptic = LocalHapticFeedback.current
-            LaunchedEffect(pressed) {
-                if (pressed && pressFeedbackEnabled && pressHapticEnabled) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                }
-            }
-            MaterialCard(
-                modifier = modifier
-                    .scale(scale)
-                    .clip(shape)
-                    .combinedClickable(
+    val interactionSource = remember { MutableInteractionSource() }
+    MaterialCard(
+        modifier = modifier
+            .clip(shape)
+            .then(
+                if (onClick != null || onLongClick != null) {
+                    Modifier.combinedClickable(
                         enabled = enabled,
                         onClick = onClick ?: {},
                         onLongClick = onLongClick,
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
-                    ),
-                colors = colors,
-                shape = shape,
-            ) { content() }
-        }
-        else -> MaterialCard(
-            modifier = modifier,
-            colors = colors,
-            shape = shape,
-        ) { content() }
-    }
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        colors = colors,
+        shape = shape,
+    ) { content() }
 }
 
 @Composable
@@ -179,28 +147,7 @@ fun ThemedSegmentedOptionCard(
 ) {
     if (items.isEmpty()) return
     if (useMonet) {
-        Column(
-            modifier = modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            items.forEachIndexed { index, item ->
-                val topRadius = if (index == 0) 24.dp else 6.dp
-                val bottomRadius = if (index == items.lastIndex) 24.dp else 6.dp
-                MaterialSurface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(
-                        topStart = topRadius,
-                        topEnd = topRadius,
-                        bottomStart = bottomRadius,
-                        bottomEnd = bottomRadius,
-                    ),
-                    color = MaterialTheme.colorScheme.surfaceBright,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ) {
-                    item()
-                }
-            }
-        }
+        MaterialSegmentedColumn(modifier = modifier, items = items)
     } else {
         Card(
             modifier = modifier.fillMaxWidth(),
@@ -500,7 +447,7 @@ fun SliderRow(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Image(
-                    imageVector = Icons.Filled.KeyboardArrowRight,
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     modifier = Modifier.size(width = 10.dp, height = 16.dp),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurfaceVariantActions)

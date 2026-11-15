@@ -48,9 +48,9 @@ import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.R
 import com.setoskins.thermal.ui.component.MaterialLargeTopBar
 import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
-import com.setoskins.thermal.ui.component.VerticalScrollBar
-import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
-import com.setoskins.thermal.ui.component.animation.customOverScroll
+
+import top.yukonga.miuix.kmp.basic.VerticalScrollBar
+import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -215,7 +215,6 @@ private fun DonateBody(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .customOverScroll()
                 .then(scrollModifier)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)

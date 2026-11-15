@@ -3,6 +3,7 @@ package com.setoskins.thermal.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -117,6 +118,9 @@ fun MyApplicationTheme(
 
             MaterialTheme(
                 colorScheme = materialColors,
+                // 与 SukiSU-Ultra 的 Material 风格保持一致：使用 expressive 弹性动画，
+                // 让 Switch 等组件在切换时带有回弹效果。
+                motionScheme = MotionScheme.expressive(),
                 shapes = if (useMonet) SukiSuShapes else MaterialTheme.shapes,
                 content = content,
             )

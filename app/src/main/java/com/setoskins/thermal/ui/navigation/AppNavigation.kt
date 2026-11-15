@@ -3,6 +3,7 @@ package com.setoskins.thermal.ui.navigation
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -21,10 +22,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import kotlin.math.abs
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
@@ -49,6 +53,7 @@ import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text as MaterialText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,6 +66,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -79,7 +85,6 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
-import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -100,7 +105,6 @@ import com.setoskins.thermal.data.UpdateManager
 import com.setoskins.thermal.ui.component.RestartDialog
 import com.setoskins.thermal.ui.component.RootCheckDialog
 import com.setoskins.thermal.ui.component.UpdateDialog
-import com.setoskins.thermal.ui.component.liquid.IosLiquidGlassNavigationBar
 import com.setoskins.thermal.ui.component.liquid.NavTab
 import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
 import com.setoskins.thermal.ui.component.BlurredBar
@@ -115,17 +119,111 @@ import com.setoskins.thermal.ui.screen.DonatePage
 import com.setoskins.thermal.ui.screen.BlacklistPage
 import com.setoskins.thermal.ui.screen.BypassListPage
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import kotlinx.coroutines.CoroutineScope
 import com.setoskins.thermal.R
+
+private val PagerEase = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f)
+private val OverlayEase = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
+private val PagerSettleSpec = tween<Float>(420, easing = PagerEase)
+private val PagerFlingSpec = tween<Float>(390, easing = PagerEase)
+private val OverlayEnterSpec = tween<Float>(480, easing = OverlayEase)
+private val OverlayExitSpec = tween<Float>(320, easing = OverlayEase)
+private val OverlayBackCancelSpec = tween<Float>(400, easing = OverlayEase)
+
+/**
+ * 全屏覆盖页（捐赠、致谢、分应用调速名单、无温控应用名单、旁路充电名单）的统一进出场状态。
+ * 打开时先挂载遮罩再推进度，关闭时先回退进度再卸载，配合预测性返回手势可被用户拖拽控制。
+ */
+@Stable
+private class OverlayPageState {
+    var open by mutableStateOf(false)
+    var layerVisible by mutableStateOf(false)
+        private set
+    val progress = Animatable(0f)
+
+    @Composable
+    fun bind(scope: CoroutineScope) {
+        LaunchedEffect(open) {
+            if (open) {
+                layerVisible = true
+                progress.animateTo(1f, OverlayEnterSpec)
+            } else {
+                progress.animateTo(0f, OverlayExitSpec)
+                layerVisible = false
+            }
+        }
+        PredictiveBackHandler(enabled = open) { backProgress ->
+            try {
+                backProgress.collect { progress.snapTo(1f - it.progress) }
+                open = false
+            } catch (e: Exception) {
+                scope.launch { progress.animateTo(1f, OverlayBackCancelSpec) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberOverlayPage(): OverlayPageState = remember { OverlayPageState() }
+
+@Composable
+private fun OverlayPageHost(
+    page: OverlayPageState,
+    content: @Composable () -> Unit,
+) {
+    if (!page.layerVisible) return
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = 0.22f * page.progress.value }
+            .background(Color.Black)
+    )
+    content()
+}
 
 enum class AppDestinations(val label: String, val labelEn: String, val icon: ImageVector, val filledIcon: ImageVector) {
     HOME("主页", "Home", Icons.Outlined.Home, Icons.Filled.Home),
     FAVORITES("日志", "Log", Icons.Outlined.Description, Icons.Filled.Description),
     PROFILE("关于", "About", Icons.Outlined.Info, Icons.Filled.Info),
+}
+
+/**
+ * Wraps the pager's snap fling behavior so that when the pager is already settled on a page
+ * and the incoming velocity is just leftover from an inner scrollable's finished fling
+ * (nested scroll post-fling dispatch), the snap finishes immediately instead of running the
+ * full [snapAnimationSpec]. Otherwise the pager holds a scroll session (~snap duration) during
+ * which it consumes down events at the Initial pass, making the whole page ignore taps.
+ */
+@Composable
+private fun rememberPagerSettleSkipFlingBehavior(
+    pagerState: PagerState,
+    snapAnimationSpec: AnimationSpec<Float>,
+): TargetedFlingBehavior {
+    val snapFling = PagerDefaults.flingBehavior(
+        state = pagerState,
+        snapAnimationSpec = snapAnimationSpec
+    )
+    return remember(snapFling) {
+        object : TargetedFlingBehavior {
+            override suspend fun ScrollScope.performFling(
+                initialVelocity: Float,
+                onRemainingDistanceUpdated: (Float) -> Unit,
+            ): Float {
+                // Pager untouched by the fling (settled on a page) and velocity is only a
+                // residual from an inner scrollable's fling: nothing to snap, bail out at once.
+                if (abs(initialVelocity) < 150f && abs(pagerState.currentPageOffsetFraction) < 0.001f) {
+                    return 0f
+                }
+                return with(snapFling) {
+                    performFling(initialVelocity, onRemainingDistanceUpdated)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -154,21 +252,11 @@ fun MyApplicationApp(
     }
     var reloadTrigger by remember { mutableIntStateOf(0) }
     var logReloadTrigger by remember { mutableIntStateOf(0) }
-    var showDonatePage by remember { mutableStateOf(false) }
-    var showDonateLayer by remember { mutableStateOf(false) }
-    val transitionProgress = remember { Animatable(0f) }
-    var showCreditsPage by remember { mutableStateOf(false) }
-    var showCreditsLayer by remember { mutableStateOf(false) }
-    val creditsTransitionProgress = remember { Animatable(0f) }
-    var showBlacklistPage by remember { mutableStateOf(false) }
-    var showBlacklistLayer by remember { mutableStateOf(false) }
-    val blacklistTransitionProgress = remember { Animatable(0f) }
-    var showWhitelistPage by remember { mutableStateOf(false) }
-    var showWhitelistLayer by remember { mutableStateOf(false) }
-    val whitelistTransitionProgress = remember { Animatable(0f) }
-    var showBypassListPage by remember { mutableStateOf(false) }
-    var showBypassListLayer by remember { mutableStateOf(false) }
-    val bypassListTransitionProgress = remember { Animatable(0f) }
+    val donatePage = rememberOverlayPage()
+    val creditsPage = rememberOverlayPage()
+    val blacklistPage = rememberOverlayPage()
+    val whitelistPage = rememberOverlayPage()
+    val bypassListPage = rememberOverlayPage()
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
 
     var showRootDialog by rememberSaveable { mutableStateOf(false) }
@@ -201,131 +289,21 @@ fun MyApplicationApp(
         }
     }
 
-    LaunchedEffect(showBlacklistPage) {
-        if (showBlacklistPage) {
-            showBlacklistLayer = true
-            blacklistTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-        } else {
-            blacklistTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            showBlacklistLayer = false
-        }
-    }
-
-    PredictiveBackHandler(enabled = showBlacklistPage) { progress ->
-        try {
-            progress.collect { backEvent ->
-                blacklistTransitionProgress.snapTo(1f - backEvent.progress)
-            }
-            showBlacklistPage = false
-        } catch (e: Exception) {
-            scope.launch {
-                blacklistTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            }
-        }
-    }
-
-    LaunchedEffect(showWhitelistPage) {
-        if (showWhitelistPage) {
-            showWhitelistLayer = true
-            whitelistTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-        } else {
-            whitelistTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            showWhitelistLayer = false
-        }
-    }
-
-    PredictiveBackHandler(enabled = showWhitelistPage) { progress ->
-        try {
-            progress.collect { backEvent ->
-                whitelistTransitionProgress.snapTo(1f - backEvent.progress)
-            }
-            showWhitelistPage = false
-        } catch (e: Exception) {
-            scope.launch {
-                whitelistTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            }
-        }
-    }
-
-    LaunchedEffect(showBypassListPage) {
-        if (showBypassListPage) {
-            showBypassListLayer = true
-            bypassListTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-        } else {
-            bypassListTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            showBypassListLayer = false
-        }
-    }
+    donatePage.bind(scope)
+    creditsPage.bind(scope)
+    blacklistPage.bind(scope)
+    whitelistPage.bind(scope)
+    bypassListPage.bind(scope)
 
     LaunchedEffect(Unit) {
         delay(700)
         ModuleDetector.prewarm()
     }
 
-    PredictiveBackHandler(enabled = showBypassListPage) { progress ->
-        try {
-            progress.collect { backEvent ->
-                bypassListTransitionProgress.snapTo(1f - backEvent.progress)
-            }
-            showBypassListPage = false
-        } catch (e: Exception) {
-            scope.launch {
-                bypassListTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            }
-        }
-    }
-
-    LaunchedEffect(showDonatePage) {
-        if (showDonatePage) {
-            showDonateLayer = true
-            transitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-        } else {
-            transitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            showDonateLayer = false
-        }
-    }
-
-    PredictiveBackHandler(enabled = showDonatePage) { progress ->
-        try {
-            progress.collect { backEvent ->
-
-                transitionProgress.snapTo(1f - backEvent.progress)
-            }
-            showDonatePage = false
-        } catch (e: Exception) {
-
-            scope.launch {
-                transitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            }
-        }
-    }
-
-    LaunchedEffect(showCreditsPage) {
-        if (showCreditsPage) {
-            showCreditsLayer = true
-            creditsTransitionProgress.animateTo(1f, tween(480, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-        } else {
-            creditsTransitionProgress.animateTo(0f, tween(320, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            showCreditsLayer = false
-        }
-    }
-
-    PredictiveBackHandler(enabled = showCreditsPage) { progress ->
-        try {
-            progress.collect { backEvent ->
-                creditsTransitionProgress.snapTo(1f - backEvent.progress)
-            }
-            showCreditsPage = false
-        } catch (e: Exception) {
-            scope.launch {
-                creditsTransitionProgress.animateTo(1f, tween(400, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)))
-            }
-        }
-    }
-
     val backdrop = if (useMonet) rememberMaterialBlurBackdrop() else rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
-    val reduceExpensiveEffects = showDonatePage || showDonateLayer || showCreditsPage || showCreditsLayer || showBlacklistPage || showBlacklistLayer || showWhitelistPage || showWhitelistLayer
+    val reduceExpensiveEffects = donatePage.layerVisible || creditsPage.layerVisible ||
+        blacklistPage.layerVisible || whitelistPage.layerVisible || bypassListPage.layerVisible
     val showBlur = shaderSupported && backdrop != null && !reduceExpensiveEffects
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
@@ -335,9 +313,8 @@ fun MyApplicationApp(
         derivedStateOf { pagerState.currentPage == 1 && pagerState.currentPageOffsetFraction == 0f }
     }
 
-    val pagerBusy by remember(pagerState) { derivedStateOf { pagerState.isScrollInProgress } }
     val isDark = isSystemInDarkTheme()
-    val view = LocalView.current
+    val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
     val pageSurface = if (useMonet) {
         MaterialTheme.colorScheme.surfaceContainer
@@ -362,7 +339,11 @@ fun MyApplicationApp(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationX = -screenWidth.toPx() * 0.18f * maxOf(transitionProgress.value, blacklistTransitionProgress.value, whitelistTransitionProgress.value)
+                    translationX = -screenWidth.toPx() * 0.18f * maxOf(
+                        donatePage.progress.value,
+                        blacklistPage.progress.value,
+                        whitelistPage.progress.value
+                    )
                 }
         ) {
             Box(
@@ -382,7 +363,7 @@ fun MyApplicationApp(
                                 scope.launch {
                                     pagerState.animateScrollToPage(
                                         AppDestinations.entries.indexOf(dest),
-                                        animationSpec = tween(420, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
+                                        animationSpec = PagerSettleSpec
                                     )
                                 }
                             },
@@ -401,14 +382,13 @@ fun MyApplicationApp(
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 1,
+                            // 主页、关于是两端页面。关掉边缘回弹，左右拖到头时内容停在屏幕内。
+                            overscrollEffect = null,
                             modifier = Modifier
                                 .fillMaxSize()
-
+                                .clipToBounds()
                                 .then(if (normalMiuixBlur || normalMaterialBlur) Modifier.layerBackdrop(backdrop) else Modifier),
-                            flingBehavior = PagerDefaults.flingBehavior(
-                                state = pagerState,
-                                snapAnimationSpec = tween(390, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
-                            )
+                            flingBehavior = rememberPagerSettleSkipFlingBehavior(pagerState, PagerFlingSpec)
                         ) { page ->
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
@@ -441,9 +421,9 @@ fun MyApplicationApp(
                                                 contentPaddingTop = contentPaddingTop,
                                                 bottomContentInset = bottomContentInset,
                                                 floatingNavBar = effectiveFloatingNavBar,
-                                                onNavigateToBlacklist = { showBlacklistPage = true },
-                                                onNavigateToWhitelist = { showWhitelistPage = true },
-                                                onNavigateToBypassList = { showBypassListPage = true },
+                                                onNavigateToBlacklist = { blacklistPage.open = true },
+                                                onNavigateToWhitelist = { whitelistPage.open = true },
+                                                onNavigateToBypassList = { bypassListPage.open = true },
                                                 onDialogVisibilityChange = onDialogVisibilityChange,
                                                 modifier = Modifier.padding(bottom = bottomContentPadding)
                                             )
@@ -480,9 +460,9 @@ fun MyApplicationApp(
                                                 contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
                                                 bottomContentInset = bottomContentInset,
                                                 floatingNavBar = effectiveFloatingNavBar,
-                                                onNavigateToBlacklist = { showBlacklistPage = true },
-                                                onNavigateToWhitelist = { showWhitelistPage = true },
-                                                onNavigateToBypassList = { showBypassListPage = true },
+                                                onNavigateToBlacklist = { blacklistPage.open = true },
+                                                onNavigateToWhitelist = { whitelistPage.open = true },
+                                                onNavigateToBypassList = { bypassListPage.open = true },
                                                 onDialogVisibilityChange = onDialogVisibilityChange,
                                                 modifier = Modifier.padding(bottom = bottomContentPadding)
                                             )
@@ -564,8 +544,8 @@ fun MyApplicationApp(
                                         floatingNavBar = floatingNavBar,
                                         onFloatingNavBarChange = onFloatingNavBarChange,
                                         onConfigImported = { reloadTrigger++ },
-                                        onNavigateToDonate = { showDonatePage = true },
-                                        onNavigateToCredits = { showCreditsPage = true },
+                                        onNavigateToDonate = { donatePage.open = true },
+                                        onNavigateToCredits = { creditsPage.open = true },
                                         reduceEffects = reduceExpensiveEffects,
 
                                         isPageActive = pagerState.currentPage == 2,
@@ -637,7 +617,7 @@ fun MyApplicationApp(
                                 scope.launch {
                                     pagerState.animateScrollToPage(
                                         AppDestinations.entries.indexOf(dest),
-                                        animationSpec = tween(420, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
+                                        animationSpec = PagerSettleSpec
                                     )
                                 }
                             },
@@ -649,105 +629,50 @@ fun MyApplicationApp(
             }
         }
 
-        if (showDonateLayer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = 0.22f * transitionProgress.value
-                    }
-                    .background(Color.Black)
-            )
-        }
-
-        if (showDonateLayer) {
+        OverlayPageHost(donatePage) {
             DonatePage(
                 useMonet = useMonet,
-                onDismiss = { showDonatePage = false },
-                progressProvider = { transitionProgress.value }
+                onDismiss = { donatePage.open = false },
+                progressProvider = { donatePage.progress.value }
             )
         }
 
-        if (showCreditsLayer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = 0.22f * creditsTransitionProgress.value
-                    }
-                    .background(Color.Black)
-            )
-        }
-
-        if (showCreditsLayer) {
+        OverlayPageHost(creditsPage) {
             CreditsPage(
                 useMonet = useMonet,
-                onDismiss = { showCreditsPage = false },
-                progressProvider = { creditsTransitionProgress.value }
+                onDismiss = { creditsPage.open = false },
+                progressProvider = { creditsPage.progress.value }
             )
         }
 
-        if (showBlacklistLayer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = 0.22f * blacklistTransitionProgress.value
-                    }
-                    .background(Color.Black)
-            )
-        }
-
-        if (showBlacklistLayer) {
+        OverlayPageHost(blacklistPage) {
             BlacklistPage(
                 useMonet = useMonet,
                 isZh = isZh,
-                prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE),
-                onBack = { showBlacklistPage = false },
-                progressProvider = { blacklistTransitionProgress.value }
+                prefs = prefs,
+                onBack = { blacklistPage.open = false },
+                progressProvider = { blacklistPage.progress.value }
             )
         }
 
-        if (showWhitelistLayer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = 0.22f * whitelistTransitionProgress.value
-                    }
-                    .background(Color.Black)
-            )
-        }
-
-        if (showWhitelistLayer) {
+        OverlayPageHost(whitelistPage) {
             BlacklistPage(
                 useMonet = useMonet,
                 isZh = isZh,
-                prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE),
-                onBack = { showWhitelistPage = false },
-                progressProvider = { whitelistTransitionProgress.value },
+                prefs = prefs,
+                onBack = { whitelistPage.open = false },
+                progressProvider = { whitelistPage.progress.value },
                 mode = "whitelist"
             )
         }
 
-        if (showBypassListLayer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = 0.22f * bypassListTransitionProgress.value
-                    }
-                    .background(Color.Black)
-            )
-        }
-
-        if (showBypassListLayer) {
+        OverlayPageHost(bypassListPage) {
             BypassListPage(
                 useMonet = useMonet,
                 isZh = isZh,
-                prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE),
-                onBack = { showBypassListPage = false },
-                progressProvider = { bypassListTransitionProgress.value }
+                prefs = prefs,
+                onBack = { bypassListPage.open = false },
+                progressProvider = { bypassListPage.progress.value }
             )
         }
     }
@@ -813,7 +738,7 @@ fun ThemedNavigationBar(
                         try {
                             pagerState?.animateScrollToPage(
                                 index,
-                                animationSpec = tween(420, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))
+                                animationSpec = PagerSettleSpec
                             )
                         } finally {
                             navigating = false
@@ -908,36 +833,6 @@ fun ThemedNavigationBar(
             }
         }
     }
-}
-
-@Composable
-private fun iOSLikeFloatingNavigationBar(
-    currentDestination: AppDestinations,
-    onDestinationSelected: (AppDestinations) -> Unit,
-    backdrop: LayerBackdrop?,
-    showBlur: Boolean,
-    pagerState: PagerState? = null,
-    useMonet: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
-    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
-    val items = remember(isZh) {
-        AppDestinations.entries.map {
-            NavigationItem(label = if (isZh) it.label else it.labelEn, icon = it.filledIcon)
-        }
-    }
-    val selectedIndex = remember(currentDestination) { AppDestinations.entries.indexOf(currentDestination) }
-    IosLiquidGlassNavigationBar(
-        items = items,
-        filledIcons = null,
-        selectedIndex = selectedIndex,
-        pagerState = pagerState,
-        onItemClick = { onDestinationSelected(AppDestinations.entries[it]) },
-        backdrop = backdrop,
-        isBlurActive = showBlur && backdrop != null,
-        useMonet = useMonet,
-        modifier =  modifier,
-    )
 }
 
 @Composable

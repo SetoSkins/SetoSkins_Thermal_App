@@ -46,9 +46,9 @@ import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
 import com.setoskins.thermal.ui.component.MaterialListItem
 import com.setoskins.thermal.ui.component.MaterialChevron
-import com.setoskins.thermal.ui.component.VerticalScrollBar
-import com.setoskins.thermal.ui.component.rememberScrollBarAdapter
-import com.setoskins.thermal.ui.component.animation.customOverScroll
+
+import top.yukonga.miuix.kmp.basic.VerticalScrollBar
+import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -216,7 +216,6 @@ private fun CreditsBody(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .customOverScroll()
                 .then(scrollModifier)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)

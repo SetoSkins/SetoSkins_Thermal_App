@@ -4,7 +4,6 @@ import android.graphics.Paint
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
@@ -37,8 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +59,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
 import com.setoskins.thermal.data.ModuleDetector
-import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Text
@@ -653,28 +649,16 @@ fun SingleCurveSegmentControl(
 
     var segmentWidthPx by remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
-    val indicatorAnimatable = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    var isDragging by remember { mutableStateOf(false) }
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    var justDragged by remember { mutableStateOf(false) }
-    val currentSelectedIndex by rememberUpdatedState(selectedIndex)
-    val currentOptions by rememberUpdatedState(options)
+    val indicatorAnimatable = remember { Animatable(if (hasSelection) selectedIndex.toFloat() * segmentWidthPx else 0f) }
 
-    LaunchedEffect(if (hasSelection) selectedIndex.toFloat() * segmentWidthPx else 0f, isDragging) {
-        if (!isDragging) {
-            indicatorAnimatable.animateTo(
-                targetValue = if (hasSelection) selectedIndex.toFloat() * segmentWidthPx else 0f,
-                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
-            )
-        }
+    LaunchedEffect(if (hasSelection) selectedIndex.toFloat() * segmentWidthPx else 0f) {
+        indicatorAnimatable.animateTo(
+            targetValue = if (hasSelection) selectedIndex.toFloat() * segmentWidthPx else 0f,
+            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+        )
     }
 
-    val effectiveIndicatorOffset = if (isDragging) {
-        (selectedIndex.toFloat() * segmentWidthPx + dragOffset).coerceIn(0f, 2f * segmentWidthPx)
-    } else {
-        indicatorAnimatable.value
-    }
+    val effectiveIndicatorOffset = indicatorAnimatable.value
 
     Box(
         modifier = Modifier
@@ -683,27 +667,6 @@ fun SingleCurveSegmentControl(
             .clip(RoundedCornerShape(12.dp))
             .background(surfaceColor)
             .onSizeChanged { size -> segmentWidthPx = size.width.toFloat() / 3f }
-            .pointerInput(hasSelection) {
-                if (!hasSelection) return@pointerInput
-                detectHorizontalDragGestures(
-                    onDragStart = { dragOffset = 0f; isDragging = true },
-                    onDragEnd = {
-                        val endOffset = (currentSelectedIndex.toFloat() * segmentWidthPx + dragOffset)
-                            .coerceIn(0f, (currentOptions.size - 1).toFloat() * segmentWidthPx)
-                        isDragging = false
-                        justDragged = true
-                        scope.launch { indicatorAnimatable.snapTo(endOffset) }
-                        val targetIndex = (currentSelectedIndex + (dragOffset / segmentWidthPx).roundToInt())
-                            .coerceIn(0, currentOptions.size - 1)
-                        if (targetIndex != currentSelectedIndex) {
-                            onModeChange(currentOptions[targetIndex].first)
-                        }
-                        dragOffset = 0f
-                    },
-                    onDragCancel = { isDragging = false; dragOffset = 0f },
-                    onHorizontalDrag = { _, amount -> dragOffset += amount }
-                )
-            }
     ) {
         if (hasSelection) {
             Box(
@@ -727,10 +690,6 @@ fun SingleCurveSegmentControl(
                         .weight(1f)
                         .fillMaxSize()
                         .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                            if (justDragged) {
-                                justDragged = false
-                                return@clickable
-                            }
                             onModeChange(if (isSelected) null else key)
                         }
                         .zIndex(1f),
