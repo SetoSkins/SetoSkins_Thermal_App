@@ -72,6 +72,36 @@ fun BlurredMaterialBar(
     }
 }
 
+/** [BlurredMaterialBar] 的标题栏版本，模糊层可随滚动渐显（如「关于」页）。 */
+@Composable
+fun BlurredMaterialTopBar(
+    backdrop: LayerBackdrop?,
+    blurEnabled: Boolean,
+    modifier: Modifier = Modifier,
+    alpha: () -> Float = { 1f },
+    content: @Composable () -> Unit,
+) {
+    val blendColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f)
+    Box(modifier) {
+        if (blurEnabled && backdrop != null) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { this.alpha = alpha().coerceIn(0f, 1f) }
+                    .textureBlur(
+                        backdrop = backdrop,
+                        shape = RectangleShape,
+                        blurRadius = 25f,
+                        colors = BlurColors(
+                            blendColors = listOf(BlendColorEntry(color = blendColor)),
+                        ),
+                    ),
+            )
+        }
+        content()
+    }
+}
+
 @Composable
 fun BlurredBar(
     backdrop: LayerBackdrop?,

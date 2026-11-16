@@ -23,11 +23,15 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -35,6 +39,8 @@ fun MaterialLargeTopBar(
     title: String,
     scrollBehavior: TopAppBarScrollBehavior,
     modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    scrolledContainerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
 ) {
@@ -45,8 +51,8 @@ fun MaterialLargeTopBar(
         actions = actions,
 
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = containerColor,
+            scrolledContainerColor = scrolledContainerColor,
         ),
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         scrollBehavior = scrollBehavior,
@@ -78,24 +84,40 @@ fun MaterialTopBarBackButton(
 @Composable
 fun MaterialPageTopBarScaffold(
     title: String,
+    blurEnabled: Boolean,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (topPadding: Dp, scrollConnection: NestedScrollConnection) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val backdrop = rememberMaterialBlurBackdrop()
+    val blurCapable = blurEnabled && backdrop != null
+    // 只有内容滚到标题栏下方时才显示模糊遮罩，大标题展开时保持和原来一样没有遮罩。
+    val contentScrolled by remember(scrollBehavior) {
+        derivedStateOf { scrollBehavior.state.contentOffset < -1f }
+    }
+    val blurActive = blurCapable && contentScrolled
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         topBar = {
-            MaterialLargeTopBar(
-                title = title,
-                scrollBehavior = scrollBehavior,
-                actions = actions,
-            )
+            BlurredMaterialTopBar(backdrop = backdrop, blurEnabled = blurActive) {
+                MaterialLargeTopBar(
+                    title = title,
+                    scrollBehavior = scrollBehavior,
+                    actions = actions,
+                    containerColor = if (blurActive) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+                    scrolledContainerColor = if (blurActive) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+                )
+            }
         },
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (blurCapable) Modifier.layerBackdrop(backdrop) else Modifier)
+        ) {
             content(innerPadding.calculateTopPadding(), scrollBehavior.nestedScrollConnection)
         }
     }

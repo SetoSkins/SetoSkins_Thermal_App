@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import com.setoskins.thermal.R
 import com.setoskins.thermal.data.ModuleDetector
+import com.setoskins.thermal.ui.component.BlurredMaterialTopBar
 import com.setoskins.thermal.ui.component.BlurredTopBar
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.UpdateDialog
@@ -83,6 +84,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
+import com.setoskins.thermal.ui.component.rememberMaterialBlurBackdrop
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import androidx.compose.material.icons.Icons
@@ -206,6 +208,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
         MiuixTheme.colorScheme.surface
     }
     val aboutBarBackdrop = if (!useMonet && shaderSupported && !reduceEffects) rememberBlurBackdrop(aboutBarColor) else null
+    val materialAboutBarBackdrop = if (useMonet && shaderSupported && !reduceEffects) rememberMaterialBlurBackdrop() else null
     val appIconContext = LocalContext.current
     val logoMask = remember {
         val viewportSize = 108
@@ -240,7 +243,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             Spacer(modifier = Modifier.height(80.dp))
         }
         Box(modifier = modifier.fillMaxSize()) {
-                LazyColumn(modifier = Modifier.fillMaxSize().then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier).then(aboutBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
+                LazyColumn(modifier = Modifier.fillMaxSize().then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier).then(aboutBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier).then(materialAboutBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
 
                     item(key = "logoSpacer") {
                         Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
@@ -474,23 +477,49 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
         }
         if (useMonet) {
 
-            TopAppBar(
-                title = {
-                    MaterialText(
-                        text = "关于",
-                        style = MaterialTheme.typography.titleLarge,
+            if (materialAboutBarBackdrop != null) {
+                BlurredMaterialTopBar(
+                    backdrop = materialAboutBarBackdrop,
+                    blurEnabled = true,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    alpha = { aboutBarAlpha },
+                ) {
+                    TopAppBar(
+                        title = {
+                            MaterialText(
+                                text = "关于",
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = Color.Transparent,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
+                        ),
+                        windowInsets = WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                        ),
                     )
-                },
-                modifier = Modifier.align(Alignment.TopCenter),
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = aboutBarColor.copy(alpha = aboutBarAlpha),
-                    scrolledContainerColor = aboutBarColor.copy(alpha = aboutBarAlpha),
-                    titleContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
-                ),
-                windowInsets = WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal
-                ),
-            )
+                }
+            } else {
+                TopAppBar(
+                    title = {
+                        MaterialText(
+                            text = "关于",
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    },
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = aboutBarColor.copy(alpha = aboutBarAlpha),
+                        scrolledContainerColor = aboutBarColor.copy(alpha = aboutBarAlpha),
+                        titleContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
+                    ),
+                    windowInsets = WindowInsets.safeDrawing.only(
+                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                    ),
+                )
+            }
         } else if (aboutBarBackdrop != null) {
 
             BlurredTopBar(

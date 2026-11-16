@@ -378,6 +378,7 @@ fun MyApplicationApp(
 
                                         MaterialPageTopBarScaffold(
                                             title = if (isZh) "Seto温控" else "Seto Thermal",
+                                            blurEnabled = showBlur,
                                             actions = {
                                                 MaterialIconButton(
                                                     onClick = {
@@ -457,6 +458,7 @@ fun MyApplicationApp(
 
                                         MaterialPageTopBarScaffold(
                                             title = if (isZh) "日志" else "Log",
+                                            blurEnabled = showBlur,
                                             actions = {
                                                 val haptic = LocalHapticFeedback.current
                                                 MaterialIconButton(
@@ -815,9 +817,15 @@ private fun PageTopBarScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (Dp) -> Unit,
 ) {
-    val barColor = MiuixTheme.colorScheme.surface
+    // 与页面背景保持一致：miuix 风格下深色模式页面是纯黑，即使开启 Monet 也不能用 monet surface。
+    val barColor = if (isSystemInDarkTheme()) Color.Black else MiuixTheme.colorScheme.surface
     val backdrop = rememberBlurBackdrop(barColor)
-    val blurActive = blurEnabled && backdrop != null
+    val blurCapable = blurEnabled && backdrop != null
+    // 只有内容真正滚到标题栏下方时才显示模糊遮罩；大标题展开时保持和原来一样没有遮罩。
+    val contentScrolled by remember(scrollBehavior) {
+        derivedStateOf { (scrollBehavior?.state?.contentOffset ?: 0f) < -1f }
+    }
+    val blurActive = blurCapable && contentScrolled
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -847,7 +855,7 @@ private fun PageTopBarScaffold(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (blurActive) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .then(if (blurCapable) Modifier.layerBackdrop(backdrop) else Modifier)
             ) {
                 content(innerPadding.calculateTopPadding())
             }
