@@ -314,7 +314,7 @@ fun BlacklistPage(
                                 if (useMonet) Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection)
                                 else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                             )
-                            .scrollEndHaptic()
+                            .then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier)
                             .verticalScroll(scrollState)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {

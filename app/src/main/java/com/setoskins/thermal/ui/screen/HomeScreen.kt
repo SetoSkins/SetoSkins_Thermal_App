@@ -352,7 +352,7 @@ fun HomeScreen(
         LazyColumn(
             state = listState,
                 modifier = Modifier.fillMaxSize()
-                    .scrollEndHaptic()
+                    .then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier)
                     .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
 
                     .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),

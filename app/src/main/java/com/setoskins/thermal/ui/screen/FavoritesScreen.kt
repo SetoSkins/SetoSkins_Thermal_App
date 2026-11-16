@@ -161,7 +161,7 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
             overscrollEffect = if (useMonet) rememberOverscrollEffect() else null,
             modifier = Modifier.fillMaxSize()
                 .then(if (!useMonet) Modifier.overScrollVertical() else Modifier)
-                .scrollEndHaptic()
+                .then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier)
                 .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
 
                 .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),

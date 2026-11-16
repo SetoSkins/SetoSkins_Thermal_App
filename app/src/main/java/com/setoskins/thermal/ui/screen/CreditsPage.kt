@@ -218,7 +218,7 @@ private fun CreditsBody(
             modifier = Modifier
                 .fillMaxSize()
                 .then(scrollModifier)
-                .scrollEndHaptic()
+                .then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
         ) {

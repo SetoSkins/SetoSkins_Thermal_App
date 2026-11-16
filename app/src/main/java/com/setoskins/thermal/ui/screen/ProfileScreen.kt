@@ -231,7 +231,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             Spacer(modifier = Modifier.height(80.dp))
         }
         Box(modifier = modifier.fillMaxSize()) {
-                LazyColumn(modifier = Modifier.fillMaxSize().scrollEndHaptic(), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
+                LazyColumn(modifier = Modifier.fillMaxSize().then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
 
                     item(key = "logoSpacer") {
                         Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
