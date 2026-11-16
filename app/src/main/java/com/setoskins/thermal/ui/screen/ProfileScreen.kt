@@ -496,7 +496,6 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             BlurredTopBar(
                 backdrop = aboutBarBackdrop,
                 blurEnabled = true,
-                barColor = aboutBarColor,
                 modifier = Modifier.offset(y = (-6).dp),
                 alpha = { aboutBarAlpha },
             ) {

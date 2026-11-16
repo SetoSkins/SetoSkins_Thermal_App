@@ -815,8 +815,7 @@ private fun PageTopBarScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (Dp) -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val barColor = if (isDark) Color.Black else MiuixTheme.colorScheme.surface
+    val barColor = MiuixTheme.colorScheme.surface
     val backdrop = rememberBlurBackdrop(barColor)
     val blurActive = blurEnabled && backdrop != null
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
@@ -824,12 +823,10 @@ private fun PageTopBarScaffold(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-
                 Box(modifier = Modifier.offset(y = (-6).dp)) {
                     BlurredTopBar(
                         backdrop = backdrop,
                         blurEnabled = blurActive,
-                        barColor = barColor,
                     ) {
                         TopAppBar(
                             title = title,
