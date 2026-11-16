@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import com.setoskins.thermal.R
 import com.setoskins.thermal.data.ModuleDetector
+import com.setoskins.thermal.ui.component.BlurredTopBar
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.data.UpdateManager
@@ -197,6 +198,14 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
     val cardBlend = remember(isInDark) { if (isInDark) listOf(BlendColorEntry(Color(0x4DA9A9A9), BlurBlendMode.Luminosity), BlendColorEntry(Color(0x1A9C9C9C), BlurBlendMode.PlusDarker)) else listOf(BlendColorEntry(Color(0x340034F9), BlurBlendMode.Overlay), BlendColorEntry(Color(0xB3FFFFFF), BlurBlendMode.HardLight)) }
     val aboutBlurModifier = if (backdrop != null) Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(24.dp), blurRadius = 60f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = cardBlend)) else Modifier
     val aboutCardColor = if (blurEnabled) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer
+    val aboutBarColor = if (useMonet) {
+        MaterialTheme.colorScheme.surfaceContainer
+    } else if (isInDark) {
+        Color.Black
+    } else {
+        MiuixTheme.colorScheme.surface
+    }
+    val aboutBarBackdrop = if (!useMonet && shaderSupported && !reduceEffects) rememberBlurBackdrop(aboutBarColor) else null
     val appIconContext = LocalContext.current
     val logoMask = remember {
         val viewportSize = 108
@@ -231,7 +240,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             Spacer(modifier = Modifier.height(80.dp))
         }
         Box(modifier = modifier.fillMaxSize()) {
-                LazyColumn(modifier = Modifier.fillMaxSize().then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
+                LazyColumn(modifier = Modifier.fillMaxSize().then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier).then(aboutBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
 
                     item(key = "logoSpacer") {
                         Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
@@ -449,14 +458,6 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             )
         }
 
-        val aboutBarColor = if (useMonet) {
-            MaterialTheme.colorScheme.surfaceContainer
-        } else if (isInDark) {
-            Color.Black
-        } else {
-            MiuixTheme.colorScheme.surface
-        }
-
         val aboutBarFadeDistancePx = remember(density) { with(density) { 72.dp.toPx() } }
         val aboutBarAlpha by remember {
             derivedStateOf {
@@ -490,6 +491,21 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal
                 ),
             )
+        } else if (aboutBarBackdrop != null) {
+
+            BlurredTopBar(
+                backdrop = aboutBarBackdrop,
+                blurEnabled = true,
+                barColor = aboutBarColor,
+                modifier = Modifier.offset(y = (-6).dp),
+                alpha = { aboutBarAlpha },
+            ) {
+                SmallTopAppBar(
+                    title = "关于",
+                    color = Color.Transparent,
+                    titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
+                )
+            }
         } else {
 
             SmallTopAppBar(

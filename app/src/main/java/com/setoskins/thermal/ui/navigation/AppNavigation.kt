@@ -105,6 +105,7 @@ import com.setoskins.thermal.ui.component.liquid.NavTab
 import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
 import com.setoskins.thermal.ui.component.BlurredBar
 import com.setoskins.thermal.ui.component.BlurredMaterialBar
+import com.setoskins.thermal.ui.component.BlurredTopBar
 import com.setoskins.thermal.ui.component.MaterialPageTopBarScaffold
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberMaterialBlurBackdrop
@@ -414,6 +415,7 @@ fun MyApplicationApp(
                                         PageTopBarScaffold(
                                             title = if (isZh) "Seto温控" else "Seto Thermal",
                                             scrollBehavior = homeScrollBehavior,
+                                            blurEnabled = showBlur,
                                             actions = {
                                                 IconButton(
                                                     onClick = {
@@ -485,6 +487,7 @@ fun MyApplicationApp(
                                         PageTopBarScaffold(
                                             title = if (isZh) "日志" else "Log",
                                             scrollBehavior = favoritesScrollBehavior,
+                                            blurEnabled = showBlur,
                                             actions = {
                                                 val haptic = LocalHapticFeedback.current
                                                 IconButton(
@@ -808,10 +811,14 @@ fun ThemedNavigationBar(
 private fun PageTopBarScaffold(
     title: String,
     scrollBehavior: ScrollBehavior?,
+    blurEnabled: Boolean,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (Dp) -> Unit,
 ) {
     val isDark = isSystemInDarkTheme()
+    val barColor = if (isDark) Color.Black else MiuixTheme.colorScheme.surface
+    val backdrop = rememberBlurBackdrop(barColor)
+    val blurActive = blurEnabled && backdrop != null
     val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -819,22 +826,34 @@ private fun PageTopBarScaffold(
             topBar = {
 
                 Box(modifier = Modifier.offset(y = (-6).dp)) {
-                    TopAppBar(
-                        title = title,
-                        largeTitle = title,
-                        largeTitleColor = Color.Transparent,
-                        color = if (isDark) Color.Black else MiuixTheme.colorScheme.surface,
-                        scrollBehavior = scrollBehavior,
-                        bottomContent = {
-                            val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
-                            Spacer(modifier = Modifier.height(height))
-                        },
-                        actions = actions
-                    )
+                    BlurredTopBar(
+                        backdrop = backdrop,
+                        blurEnabled = blurActive,
+                        barColor = barColor,
+                    ) {
+                        TopAppBar(
+                            title = title,
+                            largeTitle = title,
+                            largeTitleColor = Color.Transparent,
+                            color = if (blurActive) Color.Transparent else barColor,
+                            scrollBehavior = scrollBehavior,
+                            bottomContent = {
+                                val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
+                                Spacer(modifier = Modifier.height(height))
+                            },
+                            actions = actions
+                        )
+                    }
                 }
             }
         ) { innerPadding ->
-            content(innerPadding.calculateTopPadding())
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (blurActive) Modifier.layerBackdrop(backdrop) else Modifier)
+            ) {
+                content(innerPadding.calculateTopPadding())
+            }
         }
         Text(
             text = title,

@@ -58,7 +58,6 @@ dependencies {
     implementation(libs.miuix.preference)
     implementation(libs.miuix.icons)
     implementation(libs.miuix.blur)
-    implementation(libs.miuix.navigation3.ui)
     implementation(libs.kyant.shapes)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
