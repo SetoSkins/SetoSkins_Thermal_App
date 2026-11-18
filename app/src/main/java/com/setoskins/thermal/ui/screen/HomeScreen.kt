@@ -747,10 +747,10 @@ fun HomeScreen(
                             Column {
                                 MaterialSwitchItem(
                                     headline = if (isZh) "全局旁路" else "Global bypass",
-                                    enabled = switch18 || !exclusives.value.speed,
+                                    enabled = switch18 || (!exclusives.value.speed && !switch17),
                                     checked = switch18,
                                     onCheckedChange = { newVal ->
-                                        if (newVal || !exclusives.value.speed) {
+                                        if (newVal || (!exclusives.value.speed && !switch17)) {
                                             if (newVal) {
                                                 turnOffAllOtherExclusive("switch18")
                                                 if (switch17) updateSwitch("switch17", "分应用旁路", false) { switch17 = false }
@@ -837,10 +837,10 @@ fun HomeScreen(
                             Column {
                                 MaterialSwitchItem(
                                     headline = if (isZh) "分应用旁路" else "Per-app bypass",
-                                    enabled = switch17 || !exclusives.value.speed,
+                                    enabled = switch17 || (!exclusives.value.speed && !switch18),
                                     checked = switch17,
                                     onCheckedChange = { newVal ->
-                                        if (newVal || !exclusives.value.speed) {
+                                        if (newVal || (!exclusives.value.speed && !switch18)) {
                                             if (newVal) {
                                                 turnOffAllOtherExclusive("switch17")
                                                 if (switch18) updateSwitch("switch18", "全局旁路", false) { switch18 = false }
@@ -935,10 +935,10 @@ fun HomeScreen(
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         BasicComponent(
                             title = if (isZh) "全局旁路" else "Global bypass",
-                            enabled = switch18 || !exclusives.value.speed,
-                            endActions = { ThemedSwitch(checked = switch18, onCheckedChange = null, enabled = switch18 || !exclusives.value.speed, useMonet = useMonet) },
+                            enabled = switch18 || (!exclusives.value.speed && !switch17),
+                            endActions = { ThemedSwitch(checked = switch18, onCheckedChange = null, enabled = switch18 || (!exclusives.value.speed && !switch17), useMonet = useMonet) },
                             onClick = {
-                                if (switch18 || !exclusives.value.speed) {
+                                if (switch18 || (!exclusives.value.speed && !switch17)) {
                                     val newVal = !switch18
                                     if (newVal) {
                                         turnOffAllOtherExclusive("switch18")
@@ -1021,10 +1021,10 @@ fun HomeScreen(
                         }
                         BasicComponent(
                             title = if (isZh) "分应用旁路" else "Per-app bypass",
-                            enabled = switch17 || !exclusives.value.speed,
-                            endActions = { ThemedSwitch(checked = switch17, onCheckedChange = null, enabled = switch17 || !exclusives.value.speed, useMonet = useMonet) },
+                            enabled = switch17 || (!exclusives.value.speed && !switch18),
+                            endActions = { ThemedSwitch(checked = switch17, onCheckedChange = null, enabled = switch17 || (!exclusives.value.speed && !switch18), useMonet = useMonet) },
                             onClick = {
-                                if (switch17 || !exclusives.value.speed) {
+                                if (switch17 || (!exclusives.value.speed && !switch18)) {
                                     val newVal = !switch17
                                     if (newVal) {
                                         turnOffAllOtherExclusive("switch17")
