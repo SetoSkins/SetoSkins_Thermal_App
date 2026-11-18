@@ -66,8 +66,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal fun parseTimeSeconds(time: String): Long = ModuleDetector.fastParseTimeSeconds(time)
 
-fun DrawScope.drawLogPathZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color) {
-    val path = Path()
+fun DrawScope.drawLogPathZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color, path: Path = Path()) {
+    path.reset()
     values.forEachIndexed { i, v ->
         val x = i * sp; val y = baseY + zoneH - (v * zoneH)
         if (i == 0) path.moveTo(x, y)
@@ -76,8 +76,8 @@ fun DrawScope.drawLogPathZone(values: List<Float>, sp: Float, zoneH: Float, base
     drawPath(path = path, color = color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
-fun DrawScope.drawLogFillZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color) {
-    val path = Path()
+fun DrawScope.drawLogFillZone(values: List<Float>, sp: Float, zoneH: Float, baseY: Float, color: Color, path: Path = Path()) {
+    path.reset()
     values.forEachIndexed { i, v ->
         val x = i * sp; val y = baseY + zoneH - (v * zoneH)
         if (i == 0) path.moveTo(x, y)
@@ -136,6 +136,13 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     }
 
     val chartData = rememberChartData(points, maxWatt, maxTemp, minTemp)
+
+    // 复用曲线 Path，避免每帧重新分配；标签字符串只随数据变化计算一次。
+    val curvePath = remember { Path() }
+    val fillPath = remember { Path() }
+    val wattLabels = remember(points) { points.map { "%.1fW".format(it.watt) } }
+    val tempLabels = remember(points) { points.map { "${it.temp.toInt()}°" } }
+    val levelLabels = remember(points) { points.map { "${it.level.toInt()}%" } }
 
     var touchIndex by remember { mutableStateOf(-1) }
     val animatedTouchIndex = remember { Animatable(-1f) }
@@ -463,21 +470,21 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     val tempZoneH = zoneH + (h - zoneH) * tempT
 
                     if (wattExpansion > 0.001f) {
-                        drawLogFillZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = 0.08f * wattExpansion))
+                        drawLogFillZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = 0.08f * wattExpansion), fillPath)
                     }
                     if (levelExpansion > 0.001f) {
-                        drawLogFillZone(chartData.levelNorm, sp, levelZoneH, levelBaseY, levelColor.copy(alpha = 0.08f * levelExpansion))
+                        drawLogFillZone(chartData.levelNorm, sp, levelZoneH, levelBaseY, levelColor.copy(alpha = 0.08f * levelExpansion), fillPath)
                     }
                     if (tempExpansion > 0.001f) {
-                        drawLogFillZone(chartData.tempNorm, sp, tempZoneH, tempBaseY, tempColor.copy(alpha = 0.08f * tempExpansion))
+                        drawLogFillZone(chartData.tempNorm, sp, tempZoneH, tempBaseY, tempColor.copy(alpha = 0.08f * tempExpansion), fillPath)
                     }
 
-                    if (showWatt) drawLogPathZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = wattCurveAlpha))
+                    if (showWatt) drawLogPathZone(chartData.wattNorm, sp, wattZoneH, wattBaseY, wattColor.copy(alpha = wattCurveAlpha), curvePath)
                     if (showLevel && levelCurveAlpha > 0.001f) {
-                        drawLogPathZone(chartData.levelNorm, sp, levelZoneH, levelBaseY, levelColor.copy(alpha = levelCurveAlpha))
+                        drawLogPathZone(chartData.levelNorm, sp, levelZoneH, levelBaseY, levelColor.copy(alpha = levelCurveAlpha), curvePath)
                     }
                     if (showTemp && tempCurveAlpha > 0.001f) {
-                        drawLogPathZone(chartData.tempNorm, sp, tempZoneH, tempBaseY, tempColor.copy(alpha = tempCurveAlpha))
+                        drawLogPathZone(chartData.tempNorm, sp, tempZoneH, tempBaseY, tempColor.copy(alpha = tempCurveAlpha), curvePath)
                     }
 
                     val animatedIndex = animatedTouchIndex.value
@@ -488,7 +495,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                             val x = index * sp
                             drawLine(gridLineColor, Offset(x, 0f), Offset(x, h), strokeWidth = 0.8.dp.toPx())
 
-                            val p = points[index]
                             val isFirstMarker = (index == firstMarkerIndex)
 
                             val isLabelBelow = totalDurationMinutes > 30L || isFirstMarker
@@ -500,7 +506,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                                 if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                     markerPaint.color = wattColor.copy(alpha = markerAlpha).toArgb()
                                     val markLabelY = if (isLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                                    drawContext.canvas.nativeCanvas.drawText("%.1fW".format(p.watt), x, markLabelY, markerPaint)
+                                    drawContext.canvas.nativeCanvas.drawText(wattLabels[index], x, markLabelY, markerPaint)
                                 }
                             }
 
@@ -511,7 +517,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                                 if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                     markerPaint.color = tempColor.copy(alpha = markerAlpha).toArgb()
                                     val markLabelY = if (isLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                                    drawContext.canvas.nativeCanvas.drawText("${p.temp.toInt()}°", x, markLabelY, markerPaint)
+                                    drawContext.canvas.nativeCanvas.drawText(tempLabels[index], x, markLabelY, markerPaint)
                                 }
                             }
 
@@ -522,7 +528,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                                 if (animatedIndex < 0f && markerAlpha > 0.001f) {
                                     markerPaint.color = levelColor.copy(alpha = markerAlpha).toArgb()
                                     val markLabelY = if (isLabelBelow) y + 22.dp.toPx() else y - 10.dp.toPx()
-                                    drawContext.canvas.nativeCanvas.drawText("${p.level.toInt()}%", x, markLabelY, markerPaint)
+                                    drawContext.canvas.nativeCanvas.drawText(levelLabels[index], x, markLabelY, markerPaint)
                                 }
                             }
                         }
@@ -531,7 +537,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                     val alpha = animatedAlpha.value
                     if (animatedIndex >= 0f && animatedIndex <= points.lastIndex) {
                         val x = animatedIndex * sp
-                        val p = points[animatedIndex.toInt().coerceIn(points.indices)]
                         val idx = animatedIndex.toInt().coerceIn(points.indices)
                         val touchLineColor = when (singleCurveMode) {
                             "watt" -> wattColor
@@ -547,7 +552,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         val touchLabelBelow = totalDurationMinutes > 30L || touchIsFirst
 
                         if (showWatt && wattCurveAlpha > 0.001f) {
-                            val value = "%.1fW".format(p.watt)
+                            val value = wattLabels[idx]
                             val y = wattBaseY + (1f - chartData.wattNorm[idx]) * wattZoneH
                             val touchAlpha = alpha * wattCurveAlpha
                             drawCircle(wattColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
@@ -560,7 +565,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         }
 
                         if (showTemp && tempCurveAlpha > 0.001f) {
-                            val value = "${p.temp.toInt()}°"
+                            val value = tempLabels[idx]
                             val y = tempBaseY + (1f - chartData.tempNorm[idx]) * tempZoneH
                             val touchAlpha = alpha * tempCurveAlpha
                             drawCircle(tempColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))
@@ -573,7 +578,7 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
                         }
 
                         if (showLevel && levelCurveAlpha > 0.001f) {
-                            val value = "${p.level.toInt()}%"
+                            val value = levelLabels[idx]
                             val y = levelBaseY + (1f - chartData.levelNorm[idx]) * levelZoneH
                             val touchAlpha = alpha * levelCurveAlpha
                             drawCircle(levelColor.copy(alpha = touchAlpha), radius = 5.dp.toPx(), center = Offset(x, y))

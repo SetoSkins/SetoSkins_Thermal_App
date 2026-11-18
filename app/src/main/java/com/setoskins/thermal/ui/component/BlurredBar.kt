@@ -18,14 +18,10 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-/** 底栏使用的 miuix 模糊半径（dp）。 */
 private const val MiuixBarBlurRadius = 40f
 
-// 以下顶栏参数与 miuix 示例中标题栏外层的 BlurredBar 完全一致。
-/** 标题栏模糊半径（dp），对应 miuix 示例标题栏的 blurRadius = 25f。 */
 private const val MiuixTopBarBlurRadius = 25f
 
-/** 标题栏覆盖在模糊之上的底色不透明度，对应 miuix 示例标题栏的 surface.copy(alpha = 0.8f)。 */
 private const val MiuixTopBarTintAlpha = 0.8f
 
 @Composable
@@ -72,7 +68,6 @@ fun BlurredMaterialBar(
     }
 }
 
-/** [BlurredMaterialBar] 的标题栏版本，模糊层可随滚动渐显（如「关于」页）。 */
 @Composable
 fun BlurredMaterialTopBar(
     backdrop: LayerBackdrop?,
@@ -135,18 +130,6 @@ fun BlurredBar(
     }
 }
 
-/**
- * 与 miuix 标题栏完全一致的模糊层。
- *
- * 参数取自 miuix 示例中包裹标题栏的 `BlurredBar`：`textureBlur`、半径 25dp、
- * 底色 `surface.copy(alpha = 0.8f)`。调用方需要把标题栏下方的滚动内容通过
- * `Modifier.layerBackdrop(backdrop)` 记录进 [backdrop]，并把标题栏自身的 `color` 设为
- * [Color.Transparent]；静止时底色与页面背景一致，滚动后内容从模糊层下透出。
- *
- * @param backdrop 记录标题栏下方滚动内容的背景层。
- * @param blurEnabled 是否启用模糊（不支持 RuntimeShader 或需要节省性能时传 false）。
- * @param alpha 模糊层不透明度，可用于随滚动渐显的标题栏（如「关于」页）。
- */
 @Composable
 fun BlurredTopBar(
     backdrop: LayerBackdrop?,

@@ -92,7 +92,6 @@ fun MaterialPageTopBarScaffold(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val backdrop = rememberMaterialBlurBackdrop()
     val blurCapable = blurEnabled && backdrop != null
-    // 只有内容滚到标题栏下方时才显示模糊遮罩，大标题展开时保持和原来一样没有遮罩。
     val contentScrolled by remember(scrollBehavior) {
         derivedStateOf { scrollBehavior.state.contentOffset < -1f }
     }

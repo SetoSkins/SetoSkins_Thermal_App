@@ -19,7 +19,7 @@ def to_abs(d):
     prev = None
     last_cmd_curve = None
     last_ctrl = None
-    out=[]  # (cmd, args) with cmd in uppercase absolute
+    out=[]
     i=0
     while i < len(tk):
         t = tk[i]
@@ -113,7 +113,6 @@ def transform_and_print(d):
                 a2.append(SX*v+TX)
             else:
                 a2.append(SY*v+TY)
-        # track bounds
         for k,v in enumerate(a2):
             if k%2==0:
                 all_bounds[0]=min(all_bounds[0],v); all_bounds[2]=max(all_bounds[2],v)

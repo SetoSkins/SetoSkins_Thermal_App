@@ -817,11 +817,9 @@ private fun PageTopBarScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (Dp) -> Unit,
 ) {
-    // 与页面背景保持一致：miuix 风格下深色模式页面是纯黑，即使开启 Monet 也不能用 monet surface。
     val barColor = if (isSystemInDarkTheme()) Color.Black else MiuixTheme.colorScheme.surface
     val backdrop = rememberBlurBackdrop(barColor)
     val blurCapable = blurEnabled && backdrop != null
-    // 只有内容真正滚到标题栏下方时才显示模糊遮罩；大标题展开时保持和原来一样没有遮罩。
     val contentScrolled by remember(scrollBehavior) {
         derivedStateOf { (scrollBehavior?.state?.contentOffset ?: 0f) < -1f }
     }

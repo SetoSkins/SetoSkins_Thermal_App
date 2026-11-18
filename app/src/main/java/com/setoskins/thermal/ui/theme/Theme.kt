@@ -32,6 +32,9 @@ private val SukiSuShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
+// 主题重组时不再重复构造动效方案对象。
+private val ExpressiveMotionScheme = MotionScheme.expressive()
+
 @Composable
 fun MyApplicationTheme(
     useMonet: Boolean = false,
@@ -125,7 +128,7 @@ fun MyApplicationTheme(
             CompositionLocalProvider(LocalOverscrollFactory provides overscrollFactory) {
                 MaterialTheme(
                     colorScheme = materialColors,
-                    motionScheme = MotionScheme.expressive(),
+                    motionScheme = ExpressiveMotionScheme,
                     shapes = if (useMonet) SukiSuShapes else MaterialTheme.shapes,
                     content = content,
                 )

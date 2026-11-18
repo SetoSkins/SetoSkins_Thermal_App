@@ -16,12 +16,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // 仅保留 arm64-v8a，minSdk 32 设备均为 64 位 ARM
         ndk {
             abiFilters += "arm64-v8a"
         }
 
-        // 仅保留中文和英文资源，去除其他语言
         resourceConfigurations += setOf("zh", "en")
     }
 
@@ -68,11 +66,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // Debug only
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

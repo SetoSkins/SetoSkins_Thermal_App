@@ -76,12 +76,33 @@ object ModuleDetector {
         result ?: false
     }
 
-    suspend fun updateConfig(key: String, value: Any): Unit = withContext(Dispatchers.IO) {
-        runCatching {
-            val strValue = value.toString()
-            val command = "if grep -q '^$key=' '$CONFIG_PATH'; then sed -i 's/^$key=.*/$key=$strValue/g' '$CONFIG_PATH'; else echo '$key=$strValue' >> '$CONFIG_PATH'; fi"
-            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
+    suspend fun updateConfig(key: String, value: Any) {
+        withContext(Dispatchers.IO) {
+            updateConfigs(mapOf(key to value.toString()))
         }
+    }
+
+    /**
+     * 一次 su 内写入多个键，供 [ConfigWriter] 合并连续输入使用。
+     * 返回是否写入成功（超时或异常返回 false）。
+     */
+    suspend fun updateConfigs(values: Map<String, String>): Boolean = withContext(Dispatchers.IO) {
+        if (values.isEmpty()) return@withContext true
+        runCatching {
+            val command = values.entries.joinToString("\n") { (key, value) ->
+                "if grep -q '^$key=' '$CONFIG_PATH' 2>/dev/null; then " +
+                    "sed -i 's|^$key=.*|$key=$value|g' '$CONFIG_PATH'; " +
+                    "else echo '$key=$value' >> '$CONFIG_PATH'; fi"
+            }
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            val finished = withTimeoutOrNull(TIMEOUT_MS) { process.waitFor() }
+            if (finished == null) {
+                process.destroyForcibly()
+                false
+            } else {
+                finished == 0
+            }
+        }.getOrDefault(false)
     }
 
     suspend fun executeThermalScript(): Unit = withContext(Dispatchers.IO) {
@@ -95,6 +116,68 @@ object ModuleDetector {
                 process.destroyForcibly()
             }
         }
+    }
+
+    /** 启动时一次性读取的模块状态，替代 3 次独立的 su 调用。 */
+    data class ModuleSnapshot(
+        val installed: Boolean = false,
+        val version: String = "未知版本",
+        val localVersionCode: Int = 0,
+        val config: Map<String, String> = emptyMap(),
+    )
+
+    /**
+     * 用单次 su 读取「是否安装 / 版本 / 配置」，把首屏原本串行的 3~4 次 root 进程合并成 1 次。
+     */
+    suspend fun readModuleSnapshot(): ModuleSnapshot = withContext(Dispatchers.IO) {
+        runCatching {
+            val script = buildString {
+                append("echo '#INSTALLED'; ")
+                append("if [ -e '").append(MODULE_PATH).append("' ]; then echo 1; else echo 0; fi; ")
+                append("echo '#MODULE_PROP'; cat '").append(MODULE_PROP_PATH).append("' 2>/dev/null; ")
+                append("echo '#CONFIG'; cat '").append(CONFIG_PATH).append("' 2>/dev/null")
+            }
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", script))
+            val lines = process.inputStream.bufferedReader().use { it.readLines() }
+            withTimeoutOrNull(TIMEOUT_MS) { process.waitFor() } ?: process.destroyForcibly()
+
+            var section = ""
+            var installed = false
+            var version = ""
+            var versionCode = 0
+            val config = mutableMapOf<String, String>()
+            for (raw in lines) {
+                when (raw.trim()) {
+                    "#INSTALLED" -> { section = "installed"; continue }
+                    "#MODULE_PROP" -> { section = "prop"; continue }
+                    "#CONFIG" -> { section = "config"; continue }
+                }
+                when (section) {
+                    "installed" -> installed = raw.trim() == "1"
+                    "prop" -> {
+                        val trimmed = raw.trim()
+                        when {
+                            trimmed.startsWith("version=") ->
+                                version = trimmed.substringAfter('=').trim()
+                            trimmed.startsWith("versionCode=") ->
+                                versionCode = trimmed.substringAfter('=').trim().toIntOrNull() ?: 0
+                        }
+                    }
+                    "config" -> {
+                        val index = raw.indexOf('=')
+                        if (index > 0) {
+                            config[raw.substring(0, index).trim()] = raw.substring(index + 1).trim()
+                        }
+                    }
+                }
+            }
+            ModuleSnapshot(
+                installed = installed,
+                version = version.ifEmpty { "未知版本" },
+                localVersionCode = versionCode,
+                config = config,
+            )
+        }.getOrElse { ModuleSnapshot() }
     }
 
     suspend fun readConfig(): Map<String, String> = withContext(Dispatchers.IO) {
@@ -205,29 +288,50 @@ object ModuleDetector {
         }
     }
 
-    private suspend fun findFilePath(fileName: String): String? = withContext(Dispatchers.IO) {
-        runCatching {
-            val process = Runtime.getRuntime().exec(
-                arrayOf("su", "-c", "find '$MODULE_PATH' -name '$fileName' -type f 2>/dev/null | head -1")
-            )
-            process.inputStream.bufferedReader().readLine()?.trim()?.takeIf { it.isNotEmpty() }
-        }.getOrNull()
+    private val resolvedPaths = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * 解析模块内文件路径。find 需要 root，结果按文件名缓存，避免每次读写名单都重启一次 su。
+     */
+    private suspend fun findFilePath(fileName: String): String? {
+        resolvedPaths[fileName]?.let { return it }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val process = Runtime.getRuntime().exec(
+                    arrayOf("su", "-c", "find '$MODULE_PATH' -name '$fileName' -type f 2>/dev/null | head -1")
+                )
+                process.inputStream.bufferedReader().readLine()?.trim()?.takeIf { it.isNotEmpty() }
+            }.getOrNull()?.also { resolvedPaths[fileName] = it }
+        }
     }
 
+    @Volatile private var lastBypassConfig: String? = null
+
     suspend fun writeBypassConfig(config: Map<String, String>): Unit = withContext(Dispatchers.IO) {
+        val content = config.entries.joinToString("\n") { "${it.key}=${it.value}" }
+        if (content == lastBypassConfig) return@withContext
         runCatching {
-            val content = config.entries.joinToString("\n") { "${it.key}=${it.value}" }
             val command = "echo '$content' > '$BYPASS_CONFIG_PATH'"
-            Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor()
+            if (Runtime.getRuntime().exec(arrayOf("su", "-c", command)).waitFor() == 0) {
+                lastBypassConfig = content
+            }
         }
     }
 
     suspend fun readLog(): String = withContext(Dispatchers.IO) {
-        runCatching {
-            val output = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'")).inputStream.bufferedReader().use { it.readText() }
-            output.ifEmpty { "日志文件为空" }
-        }.getOrDefault("无法读取日志文件")
+        readLogText()?.ifEmpty { "日志文件为空" } ?: "无法读取日志文件"
     }
+
+    /** 原始日志内容，失败返回 null。 */
+    private suspend fun readLogText(): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'"))
+                .inputStream.bufferedReader().use { it.readText() }
+        }.getOrNull()
+    }
+
+    private fun countThrottleLines(text: String): Int =
+        text.lineSequence().count { it.contains("触发内核墙限流") && !it.contains("：") }
 
     suspend fun restartDevice(): Boolean = withContext(Dispatchers.IO) {
         runCatching {
@@ -255,9 +359,13 @@ object ModuleDetector {
         }.getOrDefault(0)
     }
 
-    suspend fun checkUpdate(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun checkUpdate(): Boolean = checkUpdate(getLocalVersionCode())
+
+    /**
+     * 与 [readModuleSnapshot] 配合使用：版本号已知时不再额外拉起一次 su 去读 module.prop。
+     */
+    suspend fun checkUpdate(localVersion: Int): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            val localVersion = getLocalVersionCode()
             val connection = java.net.URL(UPDATE_URL).openConnection() as java.net.HttpURLConnection
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
@@ -287,28 +395,23 @@ object ModuleDetector {
         }.getOrDefault(BatteryInfo())
     }
 
-    suspend fun readThermalThrottleCount(): Int = withContext(Dispatchers.IO) {
-        runCatching {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'"))
-            process.inputStream.bufferedReader().useLines { lines ->
-                lines.count { line ->
-                    line.contains("触发内核墙限流") && !line.contains("：")
-                }
-            }
-        }.getOrDefault(0)
-    }
+    suspend fun readThermalThrottleCount(): Int = countThrottleLines(readLogText().orEmpty())
 
     @Volatile private var prewarmedLog: String? = null
     @Volatile private var prewarmedBattery: BatteryInfo? = null
     @Volatile private var prewarmedThrottle: Int? = null
     @Volatile private var prewarmStarted = false
 
+    /**
+     * 进入日志页前预热：日志与限流计数来自同一次 cat，避免两次 root 进程。
+     */
     suspend fun prewarm() = withContext(Dispatchers.IO) {
         if (prewarmStarted) return@withContext
         prewarmStarted = true
         prewarmedBattery = readBatteryInfo()
-        prewarmedLog = readLog()
-        prewarmedThrottle = readThermalThrottleCount()
+        val raw = readLogText() ?: return@withContext
+        prewarmedLog = raw.ifEmpty { "日志文件为空" }
+        prewarmedThrottle = countThrottleLines(raw)
         Unit
     }
 

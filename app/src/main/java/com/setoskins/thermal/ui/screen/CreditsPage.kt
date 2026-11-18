@@ -87,21 +87,28 @@ fun CreditsPage(
 
     val primaryEntries = remember(isZh) {
         listOf(
-            CreditEntry("SetoSkins Thermal", if (isZh) "Seto温控模块" else "Seto Thermal", "https://github.com/SetoSkins/SetoSkins_Thermal")
+            CreditEntry("SetoSkins Thermal", if (isZh) "Seto温控模块" else "Seto Thermal", "https://github.com/SetoSkins/SetoSkins_Thermal"),
+            CreditEntry(
+                "HyperOS Thermal Refresh Guard",
+                "MIT License",
+                "https://github.com/E3N-glotm/HyperOS-Thermal-Refresh-Guard/tree/main"
+            )
         )
     }
 
     val entries = remember(isZh) {
         if (isZh) listOf(
-            CreditEntry("Miuix", "MIUI 风格 Compose 组件库 (yukonga)", "https://github.com/yukonga/Miuix"),
-            CreditEntry("HyperExtreme / HyperChanger", "悬浮底栏与动效参考 (22Frederic)", "https://github.com/22Frederic/HyperExtreme"),
-            CreditEntry("HyperCeiler", "HyperOS 增强模块 (ReChronoRain)", "https://github.com/ReChronoRain/HyperCeiler"),
-            CreditEntry("SukiSU Ultra", "状态卡片样式参考", "https://github.com/SukiSU-Ultra/SukiSU-Ultra")
+            CreditEntry("Miuix", "Apache License 2.0", "https://github.com/yukonga/Miuix"),
+            CreditEntry("HyperExtreme / HyperChanger", "GNU AGPL v3.0", "https://github.com/22Frederic/HyperExtreme"),
+            CreditEntry("HyperCeiler", "GNU AGPL v3.0", "https://github.com/ReChronoRain/HyperCeiler"),
+            CreditEntry("SukiSU Ultra", "GNU GPL v3.0", "https://github.com/SukiSU-Ultra/SukiSU-Ultra"),
+            CreditEntry("InstallerX-Revived", "GNU GPL v3.0", "https://github.com/wxxsfxyzm/InstallerX-Revived")
         ) else listOf(
-            CreditEntry("Miuix", "MIUI-style Compose UI library (yukonga)", "https://github.com/yukonga/Miuix"),
-            CreditEntry("HyperExtreme / HyperChanger", "Floating nav bar & animations reference (22Frederic)", "https://github.com/22Frederic/HyperExtreme"),
-            CreditEntry("HyperCeiler", "HyperOS enhancement module (ReChronoRain)", "https://github.com/ReChronoRain/HyperCeiler"),
-            CreditEntry("SukiSU Ultra", "Status card style reference", "https://github.com/SukiSU-Ultra/SukiSU-Ultra")
+            CreditEntry("Miuix", "License: Apache License 2.0", "https://github.com/yukonga/Miuix"),
+            CreditEntry("HyperExtreme / HyperChanger", "License: GNU AGPL v3.0", "https://github.com/22Frederic/HyperExtreme"),
+            CreditEntry("HyperCeiler", "License: GNU AGPL v3.0", "https://github.com/ReChronoRain/HyperCeiler"),
+            CreditEntry("SukiSU Ultra", "License: GNU GPL v3.0", "https://github.com/SukiSU-Ultra/SukiSU-Ultra"),
+            CreditEntry("InstallerX-Revived", "License: GNU GPL v3.0", "https://github.com/wxxsfxyzm/InstallerX-Revived")
         )
     }
 

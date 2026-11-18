@@ -8,8 +8,12 @@ import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
+/** 动效不可见时的轮询间隔，用于替代逐帧请求。 */
+private const val PAUSED_POLL_MS = 400L
 
 internal fun Modifier.bgEffectDraw(
     painter: BgEffectPainter,
@@ -141,14 +145,21 @@ private class BgEffectNode(
         startOffset = animTime
         animationJob = coroutineScope.launch {
             val minDeltaNanos = 1_000_000_000L / 60L
-            val origin = withFrameNanos { it }
+            var origin = withFrameNanos { it }
             var lastEmit = origin
             while (isActive) {
                 val now = withFrameNanos { it }
                 if (now - lastEmit < minDeltaNanos) continue
-                lastEmit = now
 
-                if (alpha() <= 0f) continue
+                if (alpha() <= 0f) {
+                    // 不可见（例如关于页已经滚出、或被其他页面遮挡）时不再按 60Hz 空转 vsync，
+                    // 否则即使一帧都不画，设备也无法进入低功耗帧率。
+                    delay(PAUSED_POLL_MS)
+                    origin = withFrameNanos { it }
+                    lastEmit = origin
+                    continue
+                }
+                lastEmit = now
                 animTime = startOffset + (now - origin) / 1_000_000_000f
                 invalidateDraw()
             }

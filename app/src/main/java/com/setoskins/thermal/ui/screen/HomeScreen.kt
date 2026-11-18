@@ -44,6 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -56,6 +58,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.setoskins.thermal.data.BatteryMonitor
+import com.setoskins.thermal.data.ConfigWriter
 import com.setoskins.thermal.data.ModuleDetector
 import com.setoskins.thermal.service.SuperIslandService
 import com.setoskins.thermal.ui.component.ConfigDialog
@@ -75,6 +79,7 @@ import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Apps
 import com.setoskins.thermal.ui.component.RedNotInstalledCard
@@ -87,6 +92,10 @@ import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import androidx.compose.ui.Alignment
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -94,7 +103,11 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-@OptIn(ExperimentalMaterial3Api::class, top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class,
+    kotlinx.coroutines.FlowPreview::class,
+)
 @Composable
 fun HomeScreen(
     useMonet: Boolean,
@@ -116,7 +129,7 @@ fun HomeScreen(
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
-    val tipIndex = remember { kotlin.random.Random.nextInt(3) }
+    val tipIndex = remember { kotlin.random.Random.nextInt(4) }
 
     var switch3 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch3", true)) }
     var switch5 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch5", false)) }
@@ -129,6 +142,7 @@ fun HomeScreen(
     var switch16 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch16", false)) }
     var switch17 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch17", false)) }
     var switch18 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch18", false)) }
+    var switch19 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch19", false)) }
     var switch4 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch4", false)) }
     var switch10 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch10", false)) }
     var switch11 by rememberSaveable { mutableStateOf(prefs.getBoolean("switch11", false)) }
@@ -168,8 +182,9 @@ fun HomeScreen(
     }
 
     LaunchedEffect(switch16) {
-        val batteryInfo = ModuleDetector.readBatteryInfo()
-        isChargingState.value = batteryInfo.status == "Charging"
+        isChargingState.value = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            BatteryMonitor.getBatteryState(context).isCharging
+        }
         if (switch16) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -237,10 +252,11 @@ fun HomeScreen(
     var externalConfig by rememberSaveable { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(reloadTrigger) {
 
-        moduleInstalled = ModuleDetector.isModuleInstalled()
-        moduleVersion = ModuleDetector.getModuleVersion()
-        hasUpdate = ModuleDetector.checkUpdate()
-        val config = ModuleDetector.readConfig()
+        // 一次 su 拿到「是否安装 / 版本 / 配置」，原来这里是 4 次串行 root 进程。
+        val snapshot = ModuleDetector.readModuleSnapshot()
+        moduleInstalled = snapshot.installed
+        moduleVersion = snapshot.version
+        val config = snapshot.config
         externalConfig = config
 
         val editor = prefs.edit()
@@ -261,12 +277,27 @@ fun HomeScreen(
         syncSwitch("分应用调速", switch8, { switch8 = it }, "switch8")
         syncSwitch("无温控应用", switch9, { switch9 = it }, "switch9")
         syncSwitch("分应用旁路", switch17, { switch17 = it }, "switch17")
-        syncSwitch("温度旁路", switch18, { switch18 = it }, "switch18")
+        syncSwitch("全局旁路", switch18, { switch18 = it }, "switch18")
+        syncSwitch("默认温控强制高刷", switch19, { switch19 = it }, "switch19")
         syncSwitch("修改最大电流数", switch4, { switch4 = it }, "switch4")
         syncSwitch("充电调速", switch11, { switch11 = it }, "switch11")
         syncSwitch("亮息屏调速", switch10, { switch10 = it }, "switch10")
         syncSwitch("当电流低于阈值执行停充", switch12, { switch12 = it }, "switch12")
         syncSwitch("自定义阶梯模式", switch13, { switch13 = it }, "switch13")
+
+        // 全局旁路与分应用旁路互斥：配置异常导致两者同时为 true 时只保留全局旁路
+        if (switch17 && switch18) {
+            switch17 = false
+            editor.putBoolean("switch17", false)
+            ModuleDetector.updateConfig("分应用旁路", false)
+        }
+
+        // 默认温控强制高刷仅在任一性能温控恢复项开启时可用
+        if (!switch6 && !switch7 && !switch14 && !switch15 && switch19) {
+            switch19 = false
+            editor.putBoolean("switch19", false)
+            ModuleDetector.updateConfig("默认温控强制高刷", false)
+        }
 
         config["分应用旁路到达温度"]?.trim()?.let { v ->
             if (appBypassTargetTemp != v) { appBypassTargetTemp = v; editor.putString("appBypassTargetTemp", v) }
@@ -294,6 +325,9 @@ fun HomeScreen(
             if (globalBypassStopLevel != v) { globalBypassStopLevel = v; editor.putString("globalBypassStopLevel", v) }
         }
         editor.apply()
+
+        // 网络检查放到配置同步之后，不再串在首屏可见状态的路径上，也不再额外拉起一次 su 读版本号。
+        hasUpdate = ModuleDetector.checkUpdate(snapshot.localVersionCode)
     }
 
     val updateSwitch = remember(scope, prefs) { { prefKey: String, configKey: String, newValue: Boolean, setter: (Boolean) -> Unit ->
@@ -303,7 +337,8 @@ fun HomeScreen(
     } }
     val updateText = remember(scope, prefs) { { prefKey: String, configKey: String, newValue: String, setter: (String) -> Unit ->
         setter(newValue); prefs.edit().putString(prefKey, newValue).apply()
-        scope.launch { ModuleDetector.updateConfig(configKey, newValue) }
+        // 文本/滑块连续输入时会被合并成一次 su，避免每个字符都拉起一次 root 进程。
+        ConfigWriter.submit(configKey, newValue)
         Unit
     } }
 
@@ -320,20 +355,47 @@ fun HomeScreen(
             put("全局最大电流数", globalBypassMaxCurrent)
             put("全局停充电量", globalBypassStopLevel)
         }
+        ConfigWriter.submitAll(
+            mapOf(
+                "分应用旁路到达温度" to appBypassTargetTemp,
+                "分应用旁路恢复温度" to appBypassRecoveryTemp,
+                "分应用旁路最大电流数" to appBypassMaxCurrent,
+                "分应用旁路停充电量" to appBypassStopLevel,
+                "全局旁路到达温度" to globalBypassTargetTemp,
+                "全局旁路恢复温度" to globalBypassRecoveryTemp,
+                "全局旁路最大电流数" to globalBypassMaxCurrent,
+                "全局旁路停充电量" to globalBypassStopLevel,
+            )
+        )
         scope.launch { ModuleDetector.writeBypassConfig(config) }
     } }
 
-    LaunchedEffect(appBypassTargetTemp, appBypassRecoveryTemp, appBypassMaxCurrent, appBypassStopLevel) {
-        kotlinx.coroutines.delay(300)
-        writeBypassConfigFile()
-    }
-    LaunchedEffect(globalBypassTargetTemp, globalBypassRecoveryTemp, globalBypassMaxCurrent, globalBypassStopLevel) {
-        kotlinx.coroutines.delay(300)
-        writeBypassConfigFile()
+    // 旁路参数变化后统一去抖落盘：原来两个 LaunchedEffect 会在首屏就各写一次文件，
+    // 且拖动滑块时每个数值都触发一次 root 写入。
+    LaunchedEffect(Unit) {
+        snapshotFlow {
+            listOf(
+                appBypassTargetTemp, appBypassRecoveryTemp, appBypassMaxCurrent, appBypassStopLevel,
+                globalBypassTargetTemp, globalBypassRecoveryTemp, globalBypassMaxCurrent, globalBypassStopLevel,
+                switch17, switch18,
+            )
+        }
+            .distinctUntilChanged()
+            .drop(1)
+            .debounce(400)
+            .collect { writeBypassConfigFile() }
     }
 
-    val homeExclusiveActive = switch17 || switch18
-    val speedExclusiveActive = switch4 || switch10 || switch11 || switch12 || switch13 || switch8 || switch9
+    // 排他状态只是给各卡片内的开关做可用性判断，延迟到 item 作用域读取，
+    // 避免任意一个开关变化就重组整个 HomeScreen。
+    val exclusives = remember {
+        derivedStateOf {
+            Exclusives(
+                home = switch17 || switch18,
+                speed = switch4 || switch10 || switch11 || switch12 || switch13 || switch8 || switch9,
+            )
+        }
+    }
     val turnOffAllOtherExclusive: (String) -> Unit = { exceptKey ->
         if (exceptKey != "switch4" && switch4) updateSwitch("switch4", "修改最大电流数", false) { switch4 = false }
         if (exceptKey != "switch10" && switch10) updateSwitch("switch10", "亮息屏调速", false) { switch10 = false }
@@ -379,12 +441,14 @@ fun HomeScreen(
                                 when (tipIndex) {
                                     0 -> "Tip：部分机型可能因电池节点差异无法使用调速或旁路充电功能，请自行测试。"
                                     1 -> "Tip：更新温控模块会让所有配置选项重置，注意！"
+                                    2 -> "Tip：默认温控强制高刷开关，修改后需要重启才能生效。"
                                     else -> "Tip：充电宝或充电器中显示的瓦数和日志的瓦数不一样为正常现象。两者出现差异，主要是因为电压不同、转换损耗以及测量位置不同。"
                                 }
                             } else {
                                 when (tipIndex) {
                                     0 -> "Tip: Speed control or bypass charging may not work on some devices due to battery node differences. Please test on your own."
                                     1 -> "Tip: Updating the thermal module will reset all configuration options. Note!"
+                                    2 -> "Tip: Changes to the 'Force high refresh rate on default thermal' switch take effect only after a reboot."
                                     else -> "Tip: The wattage shown on a power bank or charger differs from the logged wattage, which is normal. The difference is mainly caused by different voltages, conversion losses, and different measurement points."
                                 }
                             },
@@ -454,8 +518,8 @@ fun HomeScreen(
         item(key = "thermal_card") {
             if (useMonet) {
                 MaterialSegmentedColumn(
-                    items = listOf(
-                        {
+                    items = buildList<@Composable () -> Unit> {
+                        add {
                             MaterialSwitchItem(
                                 headline = if (isZh) "温控空挂载模式" else "Empty-mount thermal mode",
                                 supporting = if (isZh) "非必要建议不开启此选项" else "Not recommended unless necessary",
@@ -466,69 +530,153 @@ fun HomeScreen(
                                 },
                                 leading = { IconTile(Icons.Filled.Layers, contentDescription = null) }
                             )
-                        },
-                        {
-                            MaterialSwitchItem(
-                                headline = if (isZh) "还原均衡模式温控" else "Restore Balanced mode thermal",
-                                enabled = switch15 || !switch6,
-                                checked = switch15,
-                                onCheckedChange = { newVal ->
-                                    if (newVal || !switch6) {
-                                        updateSwitch("switch15", "还原均衡模式温控", newVal) { switch15 = newVal }
-                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    }
-                                },
-                                leading = { IconTile(Icons.Filled.Balance, contentDescription = null) }
-                            )
-                        },
-                        {
-                            MaterialSwitchItem(
-                                headline = if (isZh) "还原性能模式温控" else "Restore Performance mode thermal",
-                                enabled = switch6 || !switch15,
-                                checked = switch6,
-                                onCheckedChange = { newVal ->
-                                    if (newVal || !switch15) {
-                                        updateSwitch("switch6", "还原性能模式温控", newVal) { switch6 = newVal }
-                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    }
-                                },
-                                leading = { IconTile(Icons.Filled.Bolt, contentDescription = null) }
-                            )
-                        },
-                        {
-                            MaterialSwitchItem(
-                                headline = if (isZh) "游戏均衡式性能温控" else "Game: Balanced uses Performance thermal",
-                                supporting = if (isZh) "把游戏中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in games; Performance mode then has no thermal control",
-                                checked = switch7,
-                                onCheckedChange = { newVal ->
-                                    updateSwitch("switch7", "游戏均衡式性能温控", newVal) { switch7 = newVal }
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                },
-                                leading = { IconTile(Icons.Filled.SportsEsports, contentDescription = null) }
-                            )
-                        },
-                        {
-                            MaterialSwitchItem(
-                                headline = if (isZh) "系统均衡式性能温控" else "System: Balanced uses Performance thermal",
-                                supporting = if (isZh) "把系统中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in system; Performance mode then has no thermal control",
-                                checked = switch14,
-                                onCheckedChange = { newVal ->
-                                    updateSwitch("switch14", "系统均衡式性能温控", newVal) { switch14 = newVal }
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                },
-                                leading = { IconTile(Icons.Filled.PhoneAndroid, contentDescription = null) }
-                            )
                         }
-                    )
+                        add {
+                            Column {
+                                MaterialSwitchItem(
+                                    headline = if (isZh) "还原均衡模式温控" else "Restore Balanced mode thermal",
+                                    enabled = switch15 || !switch6,
+                                    checked = switch15,
+                                    onCheckedChange = { newVal ->
+                                        if (newVal || !switch6) {
+                                            updateSwitch("switch15", "还原均衡模式温控", newVal) { switch15 = newVal }
+                                            if (!newVal && !switch6 && !switch7 && !switch14 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        }
+                                    },
+                                    leading = { IconTile(Icons.Filled.Balance, contentDescription = null) }
+                                )
+                                AnimatedVisibility(
+                                    visible = switch15,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    MaterialSwitchItem(
+                                        headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        checked = switch19,
+                                        onCheckedChange = { newVal ->
+                                            updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        leading = { IconTile(Icons.Filled.Speed, contentDescription = null) }
+                                    )
+                                }
+                            }
+                        }
+                        add {
+                            Column {
+                                MaterialSwitchItem(
+                                    headline = if (isZh) "还原性能模式温控" else "Restore Performance mode thermal",
+                                    enabled = switch6 || !switch15,
+                                    checked = switch6,
+                                    onCheckedChange = { newVal ->
+                                        if (newVal || !switch15) {
+                                            updateSwitch("switch6", "还原性能模式温控", newVal) { switch6 = newVal }
+                                            if (!newVal && !switch7 && !switch14 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        }
+                                    },
+                                    leading = { IconTile(Icons.Filled.Bolt, contentDescription = null) }
+                                )
+                                AnimatedVisibility(
+                                    visible = switch6,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    MaterialSwitchItem(
+                                        headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        checked = switch19,
+                                        onCheckedChange = { newVal ->
+                                            updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        leading = { IconTile(Icons.Filled.Speed, contentDescription = null) }
+                                    )
+                                }
+                            }
+                        }
+                        add {
+                            Column {
+                                MaterialSwitchItem(
+                                    headline = if (isZh) "游戏均衡式性能温控" else "Game: Balanced uses Performance thermal",
+                                    supporting = if (isZh) "把游戏中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in games; Performance mode then has no thermal control",
+                                    checked = switch7,
+                                    onCheckedChange = { newVal ->
+                                        updateSwitch("switch7", "游戏均衡式性能温控", newVal) { switch7 = newVal }
+                                        if (!newVal && !switch6 && !switch14 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    },
+                                    leading = { IconTile(Icons.Filled.SportsEsports, contentDescription = null) }
+                                )
+                                AnimatedVisibility(
+                                    visible = switch7,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    MaterialSwitchItem(
+                                        headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        checked = switch19,
+                                        onCheckedChange = { newVal ->
+                                            updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        leading = { IconTile(Icons.Filled.Speed, contentDescription = null) }
+                                    )
+                                }
+                            }
+                        }
+                        add {
+                            Column {
+                                MaterialSwitchItem(
+                                    headline = if (isZh) "系统均衡式性能温控" else "System: Balanced uses Performance thermal",
+                                    supporting = if (isZh) "把系统中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in system; Performance mode then has no thermal control",
+                                    checked = switch14,
+                                    onCheckedChange = { newVal ->
+                                        updateSwitch("switch14", "系统均衡式性能温控", newVal) { switch14 = newVal }
+                                        if (!newVal && !switch6 && !switch7 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    },
+                                    leading = { IconTile(Icons.Filled.PhoneAndroid, contentDescription = null) }
+                                )
+                                AnimatedVisibility(
+                                    visible = switch14,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    MaterialSwitchItem(
+                                        headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        checked = switch19,
+                                        onCheckedChange = { newVal ->
+                                            updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        leading = { IconTile(Icons.Filled.Speed, contentDescription = null) }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 )
             } else {
                 MiuixCard {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         BasicComponent(title = if (isZh) "温控空挂载模式" else "Empty-mount thermal mode", summary = if (isZh) "非必要建议不开启此选项" else "Not recommended unless necessary", endActions = { ThemedSwitch(checked = switch3, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch3", "温控空挂载模式", !switch3) { switch3 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
-                        BasicComponent(title = if (isZh) "还原均衡模式温控" else "Restore Balanced mode thermal", enabled = switch15 || !switch6, endActions = { ThemedSwitch(checked = switch15, onCheckedChange = null, enabled = switch15 || !switch6, useMonet = useMonet) }, onClick = { if (switch15 || !switch6) { updateSwitch("switch15", "还原均衡模式温控", !switch15) { switch15 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
-                        BasicComponent(title = if (isZh) "还原性能模式温控" else "Restore Performance mode thermal", enabled = switch6 || !switch15, endActions = { ThemedSwitch(checked = switch6, onCheckedChange = null, enabled = switch6 || !switch15, useMonet = useMonet) }, onClick = { if (switch6 || !switch15) { updateSwitch("switch6", "还原性能模式温控", !switch6) { switch6 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
-                        BasicComponent(title = if (isZh) "游戏均衡式性能温控" else "Game: Balanced uses Performance thermal", summary = if (isZh) "把游戏中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in games; Performance mode then has no thermal control", endActions = { ThemedSwitch(checked = switch7, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch7", "游戏均衡式性能温控", !switch7) { switch7 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
-                        BasicComponent(title = if (isZh) "系统均衡式性能温控" else "System: Balanced uses Performance thermal", summary = if (isZh) "把系统中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in system; Performance mode then has no thermal control", endActions = { ThemedSwitch(checked = switch14, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch14", "系统均衡式性能温控", !switch14) { switch14 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        BasicComponent(title = if (isZh) "还原均衡模式温控" else "Restore Balanced mode thermal", enabled = switch15 || !switch6, endActions = { ThemedSwitch(checked = switch15, onCheckedChange = null, enabled = switch15 || !switch6, useMonet = useMonet) }, onClick = { if (switch15 || !switch6) { updateSwitch("switch15", "还原均衡模式温控", !switch15) { switch15 = it }; if (!switch15 && !switch6 && !switch7 && !switch14 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
+                        AnimatedVisibility(visible = switch15, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        }
+                        BasicComponent(title = if (isZh) "还原性能模式温控" else "Restore Performance mode thermal", enabled = switch6 || !switch15, endActions = { ThemedSwitch(checked = switch6, onCheckedChange = null, enabled = switch6 || !switch15, useMonet = useMonet) }, onClick = { if (switch6 || !switch15) { updateSwitch("switch6", "还原性能模式温控", !switch6) { switch6 = it }; if (!switch6 && !switch7 && !switch14 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
+                        AnimatedVisibility(visible = switch6, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        }
+                        BasicComponent(title = if (isZh) "游戏均衡式性能温控" else "Game: Balanced uses Performance thermal", summary = if (isZh) "把游戏中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in games; Performance mode then has no thermal control", endActions = { ThemedSwitch(checked = switch7, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch7", "游戏均衡式性能温控", !switch7) { switch7 = it }; if (!switch7 && !switch6 && !switch14 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        AnimatedVisibility(visible = switch7, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        }
+                        BasicComponent(title = if (isZh) "系统均衡式性能温控" else "System: Balanced uses Performance thermal", summary = if (isZh) "把系统中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in system; Performance mode then has no thermal control", endActions = { ThemedSwitch(checked = switch14, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch14", "系统均衡式性能温控", !switch14) { switch14 = it }; if (!switch14 && !switch6 && !switch7 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        AnimatedVisibility(visible = switch14, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                        }
                     }
                 }
             }
@@ -554,7 +702,7 @@ fun HomeScreen(
                 switch13 = switch13,
                 switch8 = switch8,
                 switch9 = switch9,
-                homeExclusiveActive = homeExclusiveActive,
+                homeExclusiveActive = exclusives.value.home,
                 onToggleSwitch4 = { newVal ->
                     if (newVal) turnOffAllOtherExclusive("switch4")
                     updateSwitch("switch4", "修改最大电流数", newVal) { switch4 = newVal }
@@ -599,10 +747,10 @@ fun HomeScreen(
                             Column {
                                 MaterialSwitchItem(
                                     headline = if (isZh) "全局旁路" else "Global bypass",
-                                    enabled = switch18 || !speedExclusiveActive,
+                                    enabled = switch18 || !exclusives.value.speed,
                                     checked = switch18,
                                     onCheckedChange = { newVal ->
-                                        if (newVal || !speedExclusiveActive) {
+                                        if (newVal || !exclusives.value.speed) {
                                             if (newVal) {
                                                 turnOffAllOtherExclusive("switch18")
                                                 if (switch17) updateSwitch("switch17", "分应用旁路", false) { switch17 = false }
@@ -689,10 +837,10 @@ fun HomeScreen(
                             Column {
                                 MaterialSwitchItem(
                                     headline = if (isZh) "分应用旁路" else "Per-app bypass",
-                                    enabled = switch17 || !speedExclusiveActive,
+                                    enabled = switch17 || !exclusives.value.speed,
                                     checked = switch17,
                                     onCheckedChange = { newVal ->
-                                        if (newVal || !speedExclusiveActive) {
+                                        if (newVal || !exclusives.value.speed) {
                                             if (newVal) {
                                                 turnOffAllOtherExclusive("switch17")
                                                 if (switch18) updateSwitch("switch18", "全局旁路", false) { switch18 = false }
@@ -787,10 +935,10 @@ fun HomeScreen(
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         BasicComponent(
                             title = if (isZh) "全局旁路" else "Global bypass",
-                            enabled = switch18 || !speedExclusiveActive,
-                            endActions = { ThemedSwitch(checked = switch18, onCheckedChange = null, enabled = switch18 || !speedExclusiveActive, useMonet = useMonet) },
+                            enabled = switch18 || !exclusives.value.speed,
+                            endActions = { ThemedSwitch(checked = switch18, onCheckedChange = null, enabled = switch18 || !exclusives.value.speed, useMonet = useMonet) },
                             onClick = {
-                                if (switch18 || !speedExclusiveActive) {
+                                if (switch18 || !exclusives.value.speed) {
                                     val newVal = !switch18
                                     if (newVal) {
                                         turnOffAllOtherExclusive("switch18")
@@ -873,10 +1021,10 @@ fun HomeScreen(
                         }
                         BasicComponent(
                             title = if (isZh) "分应用旁路" else "Per-app bypass",
-                            enabled = switch17 || !speedExclusiveActive,
-                            endActions = { ThemedSwitch(checked = switch17, onCheckedChange = null, enabled = switch17 || !speedExclusiveActive, useMonet = useMonet) },
+                            enabled = switch17 || !exclusives.value.speed,
+                            endActions = { ThemedSwitch(checked = switch17, onCheckedChange = null, enabled = switch17 || !exclusives.value.speed, useMonet = useMonet) },
                             onClick = {
-                                if (switch17 || !speedExclusiveActive) {
+                                if (switch17 || !exclusives.value.speed) {
                                     val newVal = !switch17
                                     if (newVal) {
                                         turnOffAllOtherExclusive("switch17")
@@ -1001,3 +1149,6 @@ fun HomeScreen(
     }
 
 }
+
+/** 互斥开关状态：由 [derivedStateOf] 缓存，只在 item 作用域内读取。 */
+private data class Exclusives(val home: Boolean, val speed: Boolean)
