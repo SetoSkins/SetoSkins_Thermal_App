@@ -69,12 +69,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.shapes.Capsule
 import top.yukonga.miuix.kmp.blur.Backdrop
-import top.yukonga.miuix.kmp.blur.highlight.BloomStroke
-import top.yukonga.miuix.kmp.blur.highlight.Highlight
-import top.yukonga.miuix.kmp.blur.highlight.LightPosition
-import top.yukonga.miuix.kmp.blur.highlight.LightSource
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.textureBlur
+import top.yukonga.miuix.kmp.material.EdgeLightSource
+import top.yukonga.miuix.kmp.material.EdgeStroke
+import top.yukonga.miuix.kmp.material.edgeStroke
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -189,14 +188,13 @@ private const val NavEdgeFallDelaySec = 0.25f
 private const val NavEdgeSqueezeFraction = 0.05f
 private const val NavEdgeSqueezeMs = 150
 
-private val NavGlassStroke = BloomStroke(
+private val NavGlassStroke = EdgeStroke(
+    width = 1.35.dp,
+    bevel = 1.35.dp,
     color = Color.White,
-    innerBlurRadius = 1.35.dp,
-    primaryLight = LightSource(LightPosition(0.5f, 0.5f, -0.5f), intensity = 0f),
-    secondaryLight = LightSource(LightPosition(0.5f, 0.8f, -0.5f), intensity = 0f),
+    primary = EdgeLightSource(0.5f, 0.5f, -0.5f, intensity = 0f),
+    secondary = EdgeLightSource(0.5f, 0.8f, -0.5f, intensity = 0f),
 )
-private val NavGlassHighlightLight = Highlight(width = 1.35.dp, alpha = 0.9f, style = NavGlassStroke)
-private val NavGlassHighlightDark = Highlight(width = 1.35.dp, alpha = 0.1f, style = NavGlassStroke)
 
 @Composable
 internal fun Os4FloatingNavigationBar(
@@ -753,11 +751,14 @@ internal fun Os4FloatingNavigationBar(
                                     blurRadius = GlassBlurRadiusDp,
 
                                     noiseCoefficient = 0f,
-
-                                    highlight = if (isDarkTheme) NavGlassHighlightDark else NavGlassHighlightLight,
                                 )
 
                                 .background(containerSurface, capsule)
+                                .edgeStroke(
+                                    shape = capsule,
+                                    stroke = NavGlassStroke,
+                                    alpha = if (isDarkTheme) 0.1f else 0.9f,
+                                )
                         } else {
                             Modifier.clip(capsule).background(fallbackSurface)
                         },

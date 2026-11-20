@@ -83,6 +83,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.setoskins.thermal.ui.component.effect.BgEffectBackground
 import com.setoskins.thermal.ui.component.ThemedOptionCard
+import com.setoskins.thermal.ui.component.Os4DialogHost
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberMaterialBlurBackdrop
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
@@ -91,6 +92,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -111,7 +113,9 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurDefaults
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.glass.GlassDropdownPreference
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
@@ -123,11 +127,28 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
-fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixMonet: Boolean = false, onMiuixMonetChange: (Boolean) -> Unit = {}, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, onNavigateToCredits: () -> Unit = {}, reduceEffects: Boolean = false, isPageActive: Boolean = true, onDialogVisibilityChange: (Boolean) -> Unit = {}, bottomContentInset: Dp = 0.dp, modifier: Modifier = Modifier) {
+fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixMonet: Boolean = false, onMiuixMonetChange: (Boolean) -> Unit = {}, floatingNavBar: Boolean, onFloatingNavBarChange: (Boolean) -> Unit, os4Style: Boolean = true, onOs4StyleChange: (Boolean) -> Unit = {}, onConfigImported: () -> Unit = {}, onNavigateToDonate: () -> Unit = {}, onNavigateToCredits: () -> Unit = {}, reduceEffects: Boolean = false, isPageActive: Boolean = true, onDialogVisibilityChange: (Boolean) -> Unit = {}, bottomContentInset: Dp = 0.dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val uriHandler = LocalUriHandler.current
     val repoUrl = "https://github.com/SetoSkins/SetoSkins_Thermal_App"
+    val qqGroupUrl = "https://qun.qq.com/universal-share/share?ac=1&authKey=O%2BSsjfEd%2FWn%2Fp02ljmznLyTPAgZY3PXEAuyr4YRGPkE57GAuLf%2BGkGXzHn9pcvIV&busi_data=eyJncm91cENvZGUiOiIyMTYwMDczNDExIiwidG9rZW4iOiJibG9rclZpTG5TWHhXNHVpZG81NlRVUm01TCt6eUt1aDA3ZTUvV3NzZDZZZXpnZEkrUzFiUlVQRHBQcDlwWjI4IiwidWluIjoiMzIyMDU2NTc3NSJ9&data=FW1gO9YnAMIkULdZC5ZIHhstur_qn37ODAWYz4hRrlVLnpDqsSl6t07gCYw6_019gwgYQPsSJbR2jhEnfss_cQ&svctype=4&tempid=h5_group_info"
+    val qqGroupCode = "2160073411"
+    val openQqGroup: () -> Unit = {
+        val intents = listOf(
+            Intent(Intent.ACTION_VIEW, Uri.parse("mqqapi://card/show_pslcard?src_type=internal&version=1&uin=$qqGroupCode&card_type=group&source=qrcode")),
+            Intent(Intent.ACTION_VIEW, Uri.parse(qqGroupUrl)).apply { setPackage("com.tencent.mobileqq") }
+        )
+        val openedInQq = intents.any { intent ->
+            try {
+                context.startActivity(intent)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+        if (!openedInQq) uriHandler.openUri(qqGroupUrl)
+    }
     var versionName by remember { mutableStateOf("1.0") }
     var versionCode by remember { mutableStateOf(0L) }
     var appName by remember { mutableStateOf("") }
@@ -180,7 +201,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
     var resetDialogInternalShow by remember { mutableStateOf(false) }
     var resetPendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(showResetDialog) { if (showResetDialog) { resetDialogInternalShow = true; resetPendingAction = null } }
-    OverlayDialog(show = resetDialogInternalShow, title = if (isZh) "重置模块配置" else "Reset Module Config", summary = if (isZh) "确定要重置模块配置吗？所有开关将被关闭。" else "Are you sure you want to reset the module config? All switches will be turned off.", onDismissRequest = { resetDismissStarted = true; onDialogVisibilityChange(false); resetDialogInternalShow = false }, onDismissFinished = { if (!resetDialogInternalShow) { resetPendingAction?.invoke(); showResetDialog = false } }, content = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Os4DialogHost(show = resetDialogInternalShow, title = if (isZh) "重置模块配置" else "Reset Module Config", summary = if (isZh) "确定要重置模块配置吗？所有开关将被关闭。" else "Are you sure you want to reset the module config? All switches will be turned off.", onDismissRequest = { resetDismissStarted = true; onDialogVisibilityChange(false); resetDialogInternalShow = false }, onDismissFinished = { if (!resetDialogInternalShow) { resetPendingAction?.invoke(); showResetDialog = false } }, content = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(onClick = {
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
             resetDismissStarted = true; onDialogVisibilityChange(false); resetDialogInternalShow = false
@@ -198,7 +219,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
     val logoBlend = remember(isInDark) { if (isInDark) listOf(BlendColorEntry(Color(0xe6a1a1a1), BlurBlendMode.ColorDodge), BlendColorEntry(Color(0x4de6e6e6), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af500), BlurBlendMode.Lab)) else listOf(BlendColorEntry(Color(0xcc4a4a4a), BlurBlendMode.ColorBurn), BlendColorEntry(Color(0xff4f4f4f), BlurBlendMode.LinearLight), BlendColorEntry(Color(0xff1af200), BlurBlendMode.Lab)) }
     val blurEnabled = backdrop != null
     val cardBlend = remember(isInDark) { if (isInDark) listOf(BlendColorEntry(Color(0x4DA9A9A9), BlurBlendMode.Luminosity), BlendColorEntry(Color(0x1A9C9C9C), BlurBlendMode.PlusDarker)) else listOf(BlendColorEntry(Color(0x340034F9), BlurBlendMode.Overlay), BlendColorEntry(Color(0xB3FFFFFF), BlurBlendMode.HardLight)) }
-    val aboutBlurModifier = if (backdrop != null) Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(24.dp), blurRadius = 60f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = cardBlend)) else Modifier
+    val aboutBlurModifier = if (backdrop != null) Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(16.dp), blurRadius = 60f, noiseCoefficient = noiseCoefficient, colors = BlurDefaults.blurColors(blendColors = cardBlend)) else Modifier
     val aboutCardColor = if (blurEnabled) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer
     val aboutBarColor = if (useMonet) {
         MaterialTheme.colorScheme.surfaceContainer
@@ -280,7 +301,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                                 )
                             }))
                         } else {
-                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor) { ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) }
+                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor, miuixGlass = false) { ArrowPreference(title = if (isZh) "SetoSkins" else "SetoSkins", startAction = { Box(modifier = Modifier.padding(end = 10.dp)) { Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape)) } }, onClick = { uriHandler.openUri("https://github.com/SetoSkins") }) }
                         }
                     }
                     item(key = "ui_style") {
@@ -298,8 +319,14 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                                 }
                             ))
                         } else {
-                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor) {
-                                WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) })
+                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor, miuixGlass = false) {
+                                if (os4Style) {
+                                    GlassDropdownPreference(onSelectedIndexChange = { onUseMonetChange(it == 1) }, items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", backdrop = backdrop)
+                                    GlassDropdownPreference(onSelectedIndexChange = { onOs4StyleChange(it == 0) }, items = listOf("OS4", "OS3"), selectedIndex = if (os4Style) 0 else 1, title = if (isZh) "样式版本" else "Style Version", backdrop = backdrop)
+                                } else {
+                                    WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) })
+                                    WindowDropdownPreference(items = listOf("OS4", "OS3"), selectedIndex = if (os4Style) 0 else 1, title = if (isZh) "样式版本" else "Style Version", onSelectedIndexChange = { onOs4StyleChange(it == 0) })
+                                }
                                 AnimatedVisibility(
                                     visible = !useMonet,
                                     enter = expandVertically(animationSpec = tween(320, easing = CubicBezierEasing(0.12f, 0.0f, 0.05f, 1.0f))) + fadeIn(tween(200)),
@@ -357,7 +384,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                                 }
                             ))
                         } else {
-                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor) {
+                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor, miuixGlass = false) {
                                 ArrowPreference(title = if (isZh) "导出软件配置" else "Export App Config", onClick = {
                                     scope.launch {
                                         if (!ModuleDetector.requestRoot()) {
@@ -399,12 +426,21 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                                         trailing = { MaterialChevron() },
                                         onClick = onNavigateToDonate
                                     )
+                                },
+                                {
+                                    MaterialListItem(
+                                        headline = if (isZh) "QQ群组" else "QQ Group",
+                                        leading = { IconTile(Icons.Filled.Groups, contentDescription = if (isZh) "QQ群组" else "QQ Group") },
+                                        trailing = { MaterialChevron() },
+                                        onClick = { openQqGroup() }
+                                    )
                                 }
                             ))
                         } else {
-                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor) {
+                            ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor, miuixGlass = false) {
                                 ArrowPreference(title = if (isZh) "致谢" else "Credits", onClick = onNavigateToCredits)
                                 ArrowPreference(title = if (isZh) "捐赠" else "Donate", onClick = onNavigateToDonate)
+                                ArrowPreference(title = if (isZh) "QQ群组" else "QQ Group", onClick = { openQqGroup() })
                             }
                         }
                     }
@@ -441,6 +477,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                                 useMonet = useMonet,
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier),
                                 miuixColor = aboutCardColor,
+                                miuixGlass = false,
                             ) {
                                 Box(modifier = Modifier.clickable { checkUpdate() }) {
                                     ArrowPreference(
@@ -520,6 +557,15 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                     ),
                 )
             }
+        } else if (os4Style && aboutBarBackdrop != null) {
+            GlassTopAppBar(
+                title = "关于",
+                backdrop = aboutBarBackdrop,
+                expandable = false,
+                modifier = Modifier.align(Alignment.TopCenter),
+                titleAlpha = { aboutBarAlpha },
+                backgroundAlpha = { aboutBarAlpha },
+            )
         } else if (aboutBarBackdrop != null) {
 
             BlurredTopBar(

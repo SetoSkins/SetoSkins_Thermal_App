@@ -52,6 +52,7 @@ import androidx.compose.material3.ShortNavigationBarArrangement
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text as MaterialText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -88,7 +89,9 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Delete
@@ -106,6 +109,8 @@ import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
 import com.setoskins.thermal.ui.component.BlurredBar
 import com.setoskins.thermal.ui.component.BlurredMaterialBar
 import com.setoskins.thermal.ui.component.BlurredTopBar
+import com.setoskins.thermal.ui.component.LocalGlassBackdrop
+import com.setoskins.thermal.ui.component.LocalOs4Style
 import com.setoskins.thermal.ui.component.MaterialPageTopBarScaffold
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberMaterialBlurBackdrop
@@ -219,6 +224,8 @@ fun MyApplicationApp(
     onMiuixMonetChange: (Boolean) -> Unit,
     floatingNavBar: Boolean,
     onFloatingNavBarChange: (Boolean) -> Unit,
+    os4Style: Boolean = true,
+    onOs4StyleChange: (Boolean) -> Unit = {},
     initialPage: Int = 0,
     onPageChange: (Int) -> Unit = {}
 ) {
@@ -312,12 +319,28 @@ fun MyApplicationApp(
     val effectiveFloatingNavBar = floatingNavBar && !useMonet
     val contentRecorded = effectiveFloatingNavBar && backdrop != null
     val normalBlur = !effectiveFloatingNavBar && showBlur
+    val os4Active = os4Style && !useMonet
+    val os4GlassBackdrop = rememberLayerBackdrop {
+        drawRect(pageSurface)
+        drawContent()
+    }
 
+    CompositionLocalProvider(
+        LocalOs4Style provides os4Active,
+        LocalGlassBackdrop provides os4GlassBackdrop,
+    ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(pageSurface)
     ) {
+        if (os4Active) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .layerBackdrop(os4GlassBackdrop)
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -417,6 +440,7 @@ fun MyApplicationApp(
                                             title = if (isZh) "Seto温控" else "Seto Thermal",
                                             scrollBehavior = homeScrollBehavior,
                                             blurEnabled = showBlur,
+                                            os4 = os4Active,
                                             actions = {
                                                 IconButton(
                                                     onClick = {
@@ -490,6 +514,7 @@ fun MyApplicationApp(
                                             title = if (isZh) "日志" else "Log",
                                             scrollBehavior = favoritesScrollBehavior,
                                             blurEnabled = showBlur,
+                                            os4 = os4Active,
                                             actions = {
                                                 val haptic = LocalHapticFeedback.current
                                                 IconButton(
@@ -529,6 +554,8 @@ fun MyApplicationApp(
                                         onMiuixMonetChange = onMiuixMonetChange,
                                         floatingNavBar = floatingNavBar,
                                         onFloatingNavBarChange = onFloatingNavBarChange,
+                                        os4Style = os4Style,
+                                        onOs4StyleChange = onOs4StyleChange,
                                         onConfigImported = { reloadTrigger++ },
                                         onNavigateToDonate = { donatePage.open = true },
                                         onNavigateToCredits = { creditsPage.open = true },
@@ -661,6 +688,7 @@ fun MyApplicationApp(
                 progressProvider = { bypassListPage.progress.value }
             )
         }
+    }
     }
 }
 
@@ -814,10 +842,57 @@ private fun PageTopBarScaffold(
     title: String,
     scrollBehavior: ScrollBehavior?,
     blurEnabled: Boolean,
+    os4: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (Dp) -> Unit,
 ) {
     val barColor = if (isSystemInDarkTheme()) Color.Black else MiuixTheme.colorScheme.surface
+    if (os4) {
+        val glassBarColor = if (isSystemInDarkTheme()) Color.Black else MiuixTheme.colorScheme.surface
+        val glassBackdrop = rememberBlurBackdrop(glassBarColor)
+        val glassCollapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                containerColor = Color.Transparent,
+                topBar = {
+                    GlassTopAppBar(
+                        title = title,
+                        largeTitle = " ",
+                        backdrop = glassBackdrop,
+                        scrollBehavior = scrollBehavior,
+                        bottomContent = {
+                            val height = (24 * (1f - glassCollapsedFraction.coerceIn(0f, 1f))).dp
+                            Spacer(modifier = Modifier.height(height))
+                        },
+                        actions = actions,
+                    )
+                }
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (blurEnabled && glassBackdrop != null) Modifier.layerBackdrop(glassBackdrop) else Modifier)
+                ) {
+                    content(innerPadding.calculateTopPadding())
+                }
+            }
+            Text(
+                text = title,
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Normal,
+                color = MiuixTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(top = 58.dp, start = 28.dp)
+                    .graphicsLayer {
+                        val fraction = glassCollapsedFraction.coerceIn(0f, 1f)
+                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
+                        translationY = -fraction * 45.dp.toPx()
+                    }
+            )
+        }
+        return
+    }
     val backdrop = rememberBlurBackdrop(barColor)
     val blurCapable = blurEnabled && backdrop != null
     val contentScrolled by remember(scrollBehavior) {

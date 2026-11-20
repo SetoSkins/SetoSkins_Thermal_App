@@ -56,15 +56,16 @@ import com.setoskins.thermal.ui.component.MaterialDropdownItem
 import com.setoskins.thermal.ui.component.IconTile
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DisplaySettings
-import com.setoskins.thermal.ui.component.SectionTitle
+import com.setoskins.thermal.ui.component.LocalGlassBackdrop
+import com.setoskins.thermal.ui.component.LocalOs4Style
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
 import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
+import top.yukonga.miuix.kmp.glass.GlassDropdownPreference
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import androidx.compose.foundation.rememberOverscrollEffect
@@ -168,7 +169,6 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 106.dp + bottomContentInset)
             ) {
                 item(key = "battery_card") { BatteryInfoCard(info = batteryInfo, throttleCount = throttleCount, useMonet = useMonet) }
-                item(key = "log_title") { SectionTitle { SmallTitle(text = if (isZh) "日志" else "Log", modifier = Modifier.offset(y = (4).dp)) } }
                 item(key = "log_style") {
                     if (useMonet) {
                         MaterialSegmentedColumn(
@@ -188,7 +188,11 @@ fun FavoritesScreen(useMonet: Boolean, reloadTrigger: Int = 0, scrollBehavior: S
                         )
                     } else {
                         ThemedOptionCard(useMonet = useMonet, modifier = Modifier.padding(top = 11.dp)) {
-                            WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
+                            if (LocalOs4Style.current) {
+                                GlassDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", backdrop = LocalGlassBackdrop.current, onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
+                            } else {
+                                WindowDropdownPreference(items = listOf(if (isZh) "文字样式" else "Text", if (isZh) "曲线样式" else "Curve"), selectedIndex = selectedIndex, title = if (isZh) "显示样式" else "View Mode", onSelectedIndexChange = { selectedIndex = it; prefs.edit().putInt("logViewStyle", it).apply() })
+                            }
                         }
                     }
                 }

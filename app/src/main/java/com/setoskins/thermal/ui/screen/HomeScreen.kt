@@ -582,6 +582,7 @@ fun HomeScreen(
                                 ) {
                                     MaterialSwitchItem(
                                         headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        supporting = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit",
                                         checked = switch19,
                                         onCheckedChange = { newVal ->
                                             updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
@@ -613,6 +614,7 @@ fun HomeScreen(
                                 ) {
                                     MaterialSwitchItem(
                                         headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        supporting = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit",
                                         checked = switch19,
                                         onCheckedChange = { newVal ->
                                             updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
@@ -645,6 +647,7 @@ fun HomeScreen(
                                 ) {
                                     MaterialSwitchItem(
                                         headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        supporting = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit",
                                         checked = switch19,
                                         onCheckedChange = { newVal ->
                                             updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
@@ -677,6 +680,7 @@ fun HomeScreen(
                                 ) {
                                     MaterialSwitchItem(
                                         headline = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal",
+                                        supporting = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit",
                                         checked = switch19,
                                         onCheckedChange = { newVal ->
                                             updateSwitch("switch19", "默认温控强制高刷", newVal) { switch19 = newVal }
@@ -695,19 +699,19 @@ fun HomeScreen(
                         BasicComponent(title = if (isZh) "温控空挂载模式" else "Empty-mount thermal mode", summary = if (isZh) "非必要建议不开启此选项" else "Not recommended unless necessary", enabled = !switch6 && !switch7 && !switch14 && !switch15, endActions = { ThemedSwitch(checked = switch3, onCheckedChange = null, enabled = !switch6 && !switch7 && !switch14 && !switch15, useMonet = useMonet) }, onClick = { if (!switch6 && !switch7 && !switch14 && !switch15) { turnOffOtherThermalModes("switch3"); updateSwitch("switch3", "温控空挂载模式", !switch3) { switch3 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
                         BasicComponent(title = if (isZh) "还原均衡模式温控" else "Restore Balanced mode thermal", enabled = !switch3 && !switch6 && !switch14, endActions = { ThemedSwitch(checked = switch15, onCheckedChange = null, enabled = !switch3 && !switch6 && !switch14, useMonet = useMonet) }, onClick = { if (!switch3 && !switch6 && !switch14) { if (!switch15) turnOffOtherThermalModes("switch15"); updateSwitch("switch15", "还原均衡模式温控", !switch15) { switch15 = it }; if (!switch15 && !switch6 && !switch7 && !switch14 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
                         AnimatedVisibility(visible = switch15 && !switch7, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", summary = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                         }
                         BasicComponent(title = if (isZh) "还原性能模式温控" else "Restore Performance mode thermal", enabled = !switch3 && !switch14 && !switch15, endActions = { ThemedSwitch(checked = switch6, onCheckedChange = null, enabled = !switch3 && !switch14 && !switch15, useMonet = useMonet) }, onClick = { if (!switch3 && !switch14 && !switch15) { if (!switch6) turnOffOtherThermalModes("switch6"); updateSwitch("switch6", "还原性能模式温控", !switch6) { switch6 = it }; if (!switch6 && !switch7 && !switch14 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
                         AnimatedVisibility(visible = switch6 && !switch7, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", summary = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                         }
                         BasicComponent(title = if (isZh) "游戏均衡式性能温控" else "Game: Balanced uses Performance thermal", summary = if (isZh) "把游戏中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in games; Performance mode then has no thermal control", enabled = !switch3 && !switch14, endActions = { ThemedSwitch(checked = switch7, onCheckedChange = null, enabled = !switch3 && !switch14, useMonet = useMonet) }, onClick = { if (!switch3 && !switch14) { if (!switch7) turnOffOtherThermalModes("switch7"); updateSwitch("switch7", "游戏均衡式性能温控", !switch7) { switch7 = it }; if (!switch7 && !switch6 && !switch14 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
                         AnimatedVisibility(visible = switch7, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", summary = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                         }
                         BasicComponent(title = if (isZh) "系统均衡式性能温控" else "System: Balanced uses Performance thermal", summary = if (isZh) "把系统中均衡模式的温控改成性能模式的原有温控,性能模式则无温控" else "Use Performance mode's original thermal for Balanced mode in system; Performance mode then has no thermal control", enabled = !switch3 && !switch6 && !switch7 && !switch15, endActions = { ThemedSwitch(checked = switch14, onCheckedChange = null, enabled = !switch3 && !switch6 && !switch7 && !switch15, useMonet = useMonet) }, onClick = { if (!switch3 && !switch6 && !switch7 && !switch15) { if (!switch14) turnOffOtherThermalModes("switch14"); updateSwitch("switch14", "系统均衡式性能温控", !switch14) { switch14 = it }; if (!switch14 && !switch6 && !switch7 && !switch15 && switch19) updateSwitch("switch19", "默认温控强制高刷", false) { switch19 = false }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) } })
                         AnimatedVisibility(visible = switch14, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
+                            BasicComponent(title = if (isZh) "默认温控强制高刷" else "Force high refresh rate on default thermal", summary = if (isZh) "解除高温影响刷新率限制" else "Remove the high-temperature refresh rate limit", endActions = { ThemedSwitch(checked = switch19, onCheckedChange = null, useMonet = useMonet) }, onClick = { updateSwitch("switch19", "默认温控强制高刷", !switch19) { switch19 = it }; hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) })
                         }
                     }
                 }

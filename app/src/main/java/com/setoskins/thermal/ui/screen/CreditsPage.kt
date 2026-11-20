@@ -46,6 +46,9 @@ import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
 import com.setoskins.thermal.ui.component.MaterialListItem
 import com.setoskins.thermal.ui.component.MaterialChevron
+import com.setoskins.thermal.ui.component.LocalOs4Style
+import com.setoskins.thermal.ui.component.Os4BackButton
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
@@ -102,13 +105,15 @@ fun CreditsPage(
             CreditEntry("HyperExtreme / HyperChanger", "GNU AGPL v3.0", "https://github.com/22Frederic/HyperExtreme"),
             CreditEntry("HyperCeiler", "GNU AGPL v3.0", "https://github.com/ReChronoRain/HyperCeiler"),
             CreditEntry("SukiSU Ultra", "GNU GPL v3.0", "https://github.com/SukiSU-Ultra/SukiSU-Ultra"),
-            CreditEntry("InstallerX-Revived", "GNU GPL v3.0", "https://github.com/wxxsfxyzm/InstallerX-Revived")
+            CreditEntry("InstallerX-Revived", "GNU GPL v3.0", "https://github.com/wxxsfxyzm/InstallerX-Revived"),
+            CreditEntry("HyperMusicCover", "GNU AGPL v3.0", "https://github.com/zyl6932/HyperMusicCover")
         ) else listOf(
             CreditEntry("Miuix", "License: Apache License 2.0", "https://github.com/yukonga/Miuix"),
             CreditEntry("HyperExtreme / HyperChanger", "License: GNU AGPL v3.0", "https://github.com/22Frederic/HyperExtreme"),
             CreditEntry("HyperCeiler", "License: GNU AGPL v3.0", "https://github.com/ReChronoRain/HyperCeiler"),
             CreditEntry("SukiSU Ultra", "License: GNU GPL v3.0", "https://github.com/SukiSU-Ultra/SukiSU-Ultra"),
-            CreditEntry("InstallerX-Revived", "License: GNU GPL v3.0", "https://github.com/wxxsfxyzm/InstallerX-Revived")
+            CreditEntry("InstallerX-Revived", "License: GNU GPL v3.0", "https://github.com/wxxsfxyzm/InstallerX-Revived"),
+            CreditEntry("HyperMusicCover", "License: GNU AGPL v3.0", "https://github.com/zyl6932/HyperMusicCover")
         )
     }
 
@@ -155,25 +160,33 @@ fun CreditsPage(
             Scaffold(
                 containerColor = Color.Transparent,
                 topBar = {
-                    TopAppBar(
-                        title = title,
-                        largeTitle = title,
-                        largeTitleColor = Color.Transparent,
-                        scrollBehavior = scrollBehavior,
-                        navigationIcon = {
-                            IconButton(
-                                onClick = onDismiss,
-                                modifier = Modifier.padding(start = 0.dp)
-                            ) {
-                                Icon(
-                                    imageVector = MiuixIcons.Back,
-                                    contentDescription = "Back",
-                                    tint = MiuixTheme.colorScheme.onBackground,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                    if (LocalOs4Style.current) {
+                        GlassTopAppBar(
+                            title = title,
+                            scrollBehavior = scrollBehavior,
+                            navigationIcon = { Os4BackButton(onClick = onDismiss) }
+                        )
+                    } else {
+                        TopAppBar(
+                            title = title,
+                            largeTitle = title,
+                            largeTitleColor = Color.Transparent,
+                            scrollBehavior = scrollBehavior,
+                            navigationIcon = {
+                                IconButton(
+                                    onClick = onDismiss,
+                                    modifier = Modifier.padding(start = 0.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = MiuixIcons.Back,
+                                        contentDescription = "Back",
+                                        tint = MiuixTheme.colorScheme.onBackground,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             ) { innerPadding ->
                 CreditsBody(
@@ -189,7 +202,7 @@ fun CreditsPage(
             }
         }
 
-        if (!useMonet) {
+        if (!useMonet && !LocalOs4Style.current) {
             val collapsedFraction by remember { derivedStateOf { scrollBehavior.state.collapsedFraction } }
             Text(
                 text = title,

@@ -68,7 +68,11 @@ fun DeviceInfoItem(value: String, label: String) {
 
 @Composable
 fun MiuixCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Card(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
+    if (LocalOs4Style.current) {
+        Os4GlassCard(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
+    } else {
+        Card(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -115,6 +119,7 @@ fun ThemedOptionCard(
     modifier: Modifier = Modifier,
     miuixCornerRadius: Dp = 16.dp,
     miuixColor: Color = MiuixTheme.colorScheme.surfaceContainer,
+    miuixGlass: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     if (useMonet) {
@@ -124,14 +129,25 @@ fun ThemedOptionCard(
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) { content() }
     } else {
-        Card(
-            modifier = modifier.fillMaxWidth(),
-            cornerRadius = miuixCornerRadius,
-            colors = CardDefaults.defaultColors(
-                color = miuixColor,
-                contentColor = MiuixTheme.colorScheme.onSurface,
-            ),
-        ) { content() }
+        if (LocalOs4Style.current && miuixGlass) {
+            Os4GlassCard(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { content() }
+        } else {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { content() }
+        }
     }
 }
 
@@ -149,20 +165,32 @@ fun ThemedSegmentedOptionCard(
     if (useMonet) {
         MaterialSegmentedColumn(modifier = modifier, items = items)
     } else {
-        Card(
-            modifier = modifier.fillMaxWidth(),
-            cornerRadius = miuixCornerRadius,
-            colors = CardDefaults.defaultColors(
-                color = miuixColor,
-                contentColor = MiuixTheme.colorScheme.onSurface,
-            ),
-        ) {
+        val cardContent: @Composable () -> Unit = {
             Column(
                 modifier = Modifier.padding(miuixContentPadding),
                 verticalArrangement = Arrangement.spacedBy(miuixItemSpacing),
             ) {
                 items.forEach { item -> item() }
             }
+        }
+        if (LocalOs4Style.current) {
+            Os4GlassCard(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { cardContent() }
+        } else {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { cardContent() }
         }
     }
 }
@@ -236,7 +264,7 @@ fun ConfigDialog(
     var inputValue by remember { mutableStateOf(initialValue) }
     var internalShow by remember { mutableStateOf(show) }
     LaunchedEffect(show) { if (show) { inputValue = initialValue; internalShow = true } }
-    OverlayDialog(
+    Os4DialogHost(
         show = internalShow,
         title = title,
         summary = summary,
@@ -289,7 +317,7 @@ fun RootCheckDialog(
     var internalShow by remember { mutableStateOf(show) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
-    OverlayDialog(
+    Os4DialogHost(
         show = internalShow,
         title = if (isZh) "缺少 Root 权限" else "Root Access Missing",
         summary = if (isZh) "未授权 Root 权限，部分功能将无法使用。请确保已授权 Root 管理器。"
@@ -330,7 +358,7 @@ fun RestartDialog(
     var internalShow by remember { mutableStateOf(show) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
-    OverlayDialog(
+    Os4DialogHost(
         show = internalShow,
         title = if (isZh) "重启设备" else "Restart Device",
         summary = if (isZh) "确定要重启设备吗？" else "Are you sure you want to restart the device?",
@@ -372,7 +400,7 @@ fun UpdateDialog(
     var internalShow by remember { mutableStateOf(show) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
-    OverlayDialog(
+    Os4DialogHost(
         show = internalShow,
         title = if (isZh) "发现新版本 $version" else "New Version Found $version",
         onDismissRequest = { onDismissStart(); pendingAction = onDismiss; internalShow = false },

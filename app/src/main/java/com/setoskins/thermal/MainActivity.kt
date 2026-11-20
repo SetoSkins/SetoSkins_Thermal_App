@@ -29,11 +29,13 @@ class MainActivity : ComponentActivity() {
         val savedUseMonet = prefs.getBoolean("useMonet", false)
         val savedMiuixMonet = prefs.getBoolean("miuixMonet", false)
         val savedFloatingNavBar = prefs.getBoolean("floatingNavBar", false)
+        val savedOs4Style = prefs.getInt("miuixStyleVersion", 1) == 1
 
         setContent {
             var useMonet by remember { mutableStateOf(savedUseMonet) }
             var miuixMonet by remember { mutableStateOf(savedMiuixMonet) }
             var floatingNavBar by remember { mutableStateOf(savedFloatingNavBar) }
+            var os4Style by remember { mutableStateOf(savedOs4Style) }
             MyApplicationTheme(useMonet = useMonet, miuixMonet = miuixMonet) {
                 MyApplicationApp(
                     useMonet = useMonet,
@@ -51,7 +53,11 @@ class MainActivity : ComponentActivity() {
                         floatingNavBar = value
                         prefs.edit().putBoolean("floatingNavBar", value).apply()
                     },
-
+                    os4Style = os4Style,
+                    onOs4StyleChange = { value ->
+                        os4Style = value
+                        prefs.edit().putInt("miuixStyleVersion", if (value) 1 else 0).apply()
+                    },
                     initialPage = 0,
                     onPageChange = {}
                 )

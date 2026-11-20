@@ -15,10 +15,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamiccolor.ColorSpec
-import com.materialkolor.rememberDynamicColorScheme
-
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
@@ -113,13 +109,9 @@ fun MyApplicationTheme(
 
             val materialColors = if (useMonet) {
                 val context = LocalContext.current
-                val systemColors = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-                rememberDynamicColorScheme(
-                    seedColor = systemColors.primary,
-                    isDark = darkTheme,
-                    style = PaletteStyle.TonalSpot,
-                    specVersion = ColorSpec.SpecVersion.SPEC_2025,
-                )
+                remember(context, darkTheme) {
+                    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+                }
             } else {
                 miuixMaterialColors
             }

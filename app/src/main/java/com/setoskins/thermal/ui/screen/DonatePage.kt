@@ -48,6 +48,9 @@ import androidx.compose.ui.unit.sp
 import com.setoskins.thermal.R
 import com.setoskins.thermal.ui.component.MaterialLargeTopBar
 import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
+import com.setoskins.thermal.ui.component.LocalOs4Style
+import com.setoskins.thermal.ui.component.Os4BackButton
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
@@ -147,28 +150,37 @@ fun DonatePage(
                 )
             }
         } else {
+            val os4 = LocalOs4Style.current
             Scaffold(
                 containerColor = Color.Transparent,
                 topBar = {
-                    TopAppBar(
-                        title = title,
-                        largeTitle = title,
-                        largeTitleColor = Color.Transparent,
-                        scrollBehavior = scrollBehavior,
-                        navigationIcon = {
-                            IconButton(
-                                onClick = onDismiss,
-                                modifier = Modifier.padding(start = 0.dp)
-                            ) {
-                                Icon(
-                                    imageVector = MiuixIcons.Back,
-                                    contentDescription = "Back",
-                                    tint = MiuixTheme.colorScheme.onBackground,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                    if (os4) {
+                        GlassTopAppBar(
+                            title = title,
+                            scrollBehavior = scrollBehavior,
+                            navigationIcon = { Os4BackButton(onClick = onDismiss) }
+                        )
+                    } else {
+                        TopAppBar(
+                            title = title,
+                            largeTitle = title,
+                            largeTitleColor = Color.Transparent,
+                            scrollBehavior = scrollBehavior,
+                            navigationIcon = {
+                                IconButton(
+                                    onClick = onDismiss,
+                                    modifier = Modifier.padding(start = 0.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = MiuixIcons.Back,
+                                        contentDescription = "Back",
+                                        tint = MiuixTheme.colorScheme.onBackground,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 },
                 modifier = Modifier
             ) { innerPadding ->
@@ -183,7 +195,7 @@ fun DonatePage(
             }
         }
 
-        if (!useMonet) {
+        if (!useMonet && !LocalOs4Style.current) {
             val collapsedFraction by remember { derivedStateOf { scrollBehavior.state.collapsedFraction } }
             Text(
                 text = title,
@@ -230,7 +242,7 @@ private fun DonateBody(
 
             Card(
                 modifier = donateCardModifier,
-                cornerRadius = 24.dp,
+                cornerRadius = 16.dp,
                 colors = CardDefaults.defaultColors(
                     color = donateCardColor,
                     contentColor = MiuixTheme.colorScheme.onSurface

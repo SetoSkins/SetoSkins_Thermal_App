@@ -5,7 +5,11 @@ plugins {
 
 android {
     namespace = "com.setoskins.thermal"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
 
     defaultConfig {
         applicationId = "com.setoskins.thermal"
@@ -51,12 +55,13 @@ dependencies {
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.material.kolor)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.preference)
     implementation(libs.miuix.icons)
     implementation(libs.miuix.blur)
-    implementation(libs.miuix.navigation3.ui)
+    implementation(libs.miuix.glass)
+    implementation(libs.miuix.glass.icons)
+    implementation(libs.miuix.material)
     implementation(libs.kyant.shapes)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

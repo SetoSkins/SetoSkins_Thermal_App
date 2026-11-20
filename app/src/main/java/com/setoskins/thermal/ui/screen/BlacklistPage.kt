@@ -68,6 +68,9 @@ import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
+import com.setoskins.thermal.ui.component.LocalOs4Style
+import com.setoskins.thermal.ui.component.Os4BackButton
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
@@ -208,25 +211,33 @@ fun BlacklistPage(
                     }
                 )
             } else {
-                TopAppBar(
-                    title = title,
-                    largeTitle = title,
-                    largeTitleColor = Color.Transparent,
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.padding(start = 0.dp)
-                        ) {
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = if (isZh) "返回" else "Back",
-                                tint = MiuixTheme.colorScheme.onBackground,
-                                modifier = Modifier.size(24.dp)
-                            )
+                if (LocalOs4Style.current) {
+                    GlassTopAppBar(
+                        title = title,
+                        scrollBehavior = scrollBehavior,
+                        navigationIcon = { Os4BackButton(onClick = onBack, contentDescription = if (isZh) "返回" else "Back") }
+                    )
+                } else {
+                    TopAppBar(
+                        title = title,
+                        largeTitle = title,
+                        largeTitleColor = Color.Transparent,
+                        scrollBehavior = scrollBehavior,
+                        navigationIcon = {
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier.padding(start = 0.dp)
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.Back,
+                                    contentDescription = if (isZh) "返回" else "Back",
+                                    tint = MiuixTheme.colorScheme.onBackground,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
 
             if (isWhitelist) {
@@ -236,7 +247,7 @@ fun BlacklistPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
-                    miuixCornerRadius = 20.dp,
+                    miuixCornerRadius = 16.dp,
                     miuixColor = MiuixTheme.colorScheme.surfaceContainer,
                 ) {
                     Column(
@@ -261,7 +272,7 @@ fun BlacklistPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
-                    miuixCornerRadius = 20.dp,
+                    miuixCornerRadius = 16.dp,
                     miuixColor = MiuixTheme.colorScheme.surfaceContainer,
                 ) {
                     BasicComponent(
@@ -321,7 +332,7 @@ fun BlacklistPage(
                     ThemedOptionCard(
                         useMonet = useMonet,
                         modifier = Modifier.fillMaxWidth(),
-                        miuixCornerRadius = 20.dp,
+                        miuixCornerRadius = 16.dp,
                         miuixColor = cardColor,
                     ) {
                         Column(
@@ -352,7 +363,7 @@ fun BlacklistPage(
             }
         }
 
-        if (!useMonet) {
+        if (!useMonet && !LocalOs4Style.current) {
             Text(
                 text = title,
                 fontSize = 32.sp,
