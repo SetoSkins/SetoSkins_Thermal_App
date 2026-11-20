@@ -10,7 +10,7 @@ kotlin = "2.4.21"
 composeBom = "2025.12.00"
 foundation = "1.11.2"
 animation = "1.11.2"
-miuix = "0.9.5-beta01"
+miuix = "0.9.5-beta02"
 material3 = "1.5.0-alpha29"
 kyant-shapes = "1.2.0"
 

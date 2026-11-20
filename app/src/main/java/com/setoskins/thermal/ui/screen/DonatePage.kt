@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,7 +26,6 @@ import androidx.compose.material3.Scaffold as MaterialScaffold
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -164,7 +162,6 @@ fun DonatePage(
                         TopAppBar(
                             title = title,
                             largeTitle = title,
-                            largeTitleColor = Color.Transparent,
                             scrollBehavior = scrollBehavior,
                             navigationIcon = {
                                 IconButton(
@@ -195,23 +192,6 @@ fun DonatePage(
             }
         }
 
-        if (!useMonet && !LocalOs4Style.current) {
-            val collapsedFraction by remember { derivedStateOf { scrollBehavior.state.collapsedFraction } }
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 52.dp, start = 26.dp)
-                    .graphicsLayer {
-                        val fraction = collapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
-                    }
-            )
-        }
     }
 }
 

@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -571,7 +570,6 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             BlurredTopBar(
                 backdrop = aboutBarBackdrop,
                 blurEnabled = true,
-                modifier = Modifier.offset(y = (-6).dp),
                 alpha = { aboutBarAlpha },
             ) {
                 SmallTopAppBar(
@@ -585,7 +583,6 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             SmallTopAppBar(
                 title = "关于",
 
-                modifier = Modifier.offset(y = (-6).dp),
                 color = aboutBarColor.copy(alpha = aboutBarAlpha),
                 titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
             )

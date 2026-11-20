@@ -1,5 +1,6 @@
 package com.setoskins.thermal.ui.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +24,9 @@ private const val MiuixBarBlurRadius = 40f
 private const val MiuixTopBarBlurRadius = 25f
 
 private const val MiuixTopBarTintAlpha = 0.8f
+
+// HyperCeiler OS3 顶栏使用系统 actionBar 模糊，视觉上是强模糊 + 深色遮罩
+private const val HyperCeilerTopBarBlurRadius = 80f
 
 @Composable
 fun rememberBlurBackdrop(baseColor: Color = MiuixTheme.colorScheme.surface): LayerBackdrop? {
@@ -155,6 +159,46 @@ fun BlurredTopBar(
                         blurRadius = MiuixTopBarBlurRadius,
                         colors = colors,
                     ),
+            )
+        }
+        content()
+    }
+}
+
+/**
+ * HyperCeiler 风格的 OS3 顶栏模糊。
+ *
+ * 强模糊把内容揉成色块，再用近不透明的底色压暗，形成 HyperCeiler 那种
+ * “内容滑到标题下面时被整块磨砂遮住”的效果。无模糊能力时用不透明底色兜底。
+ */
+@Composable
+fun HyperCeilerTopBarBlur(
+    backdrop: LayerBackdrop?,
+    blurEnabled: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val dark = isSystemInDarkTheme()
+    val canBlur = blurEnabled && backdrop != null
+    val tint = if (dark) Color.Black.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.86f)
+    val fallback = if (dark) Color(0xFF1B1B1B) else Color.White
+    Box(modifier) {
+        if (canBlur) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .textureBlur(
+                        backdrop = backdrop,
+                        shape = RectangleShape,
+                        blurRadius = HyperCeilerTopBarBlurRadius,
+                    )
+                    .background(tint, RectangleShape),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(fallback, RectangleShape),
             )
         }
         content()

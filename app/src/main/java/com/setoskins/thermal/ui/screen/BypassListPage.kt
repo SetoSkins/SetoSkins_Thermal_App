@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,7 +32,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,7 +96,6 @@ fun BypassListPage(
     val scrollBehavior = MiuixScrollBehavior()
 
     val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-    val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
     val bgColor = if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
     var isLoading by remember { mutableStateOf(true) }
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
@@ -166,7 +163,6 @@ fun BypassListPage(
                     TopAppBar(
                         title = title,
                         largeTitle = title,
-                        largeTitleColor = Color.Transparent,
                         scrollBehavior = scrollBehavior,
                         navigationIcon = {
                             IconButton(
@@ -313,22 +309,6 @@ fun BypassListPage(
             }
         }
 
-        if (!useMonet && !LocalOs4Style.current) {
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 52.dp, start = 26.dp)
-                    .graphicsLayer {
-                        val fraction = collapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
-                    }
-            )
-        }
     }
 }
 

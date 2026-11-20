@@ -205,7 +205,21 @@ fun MiuixListItem(title: String, subtitle: String?, modifier: Modifier = Modifie
     }
 }
 
-fun Modifier.compactSmallTitle(): Modifier = this.padding(start = 4.dp).offset(x = (-13).dp, y = 11.dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } }
+/**
+ * 让 miuix SmallTitle 在列表里的上下左右间距与 miuix 默认值完全一致：
+ * 左右 28dp、上下 8dp（SmallTitleDefaults.InsideMargin）。
+ *
+ * 列表自带 16dp 横向内边距、12dp 项间距，这里抵消掉：
+ * 标题文字距屏幕边缘回到 28dp，“标题 → 下一项”回到 8dp。
+ */
+fun Modifier.miuixSmallTitle(): Modifier = this
+    // 列表自带 16dp 横向内边距；再右移 4dp，让文字左缘比 miuix 默认的 28dp 再多 4dp
+    .offset(x = (-16).dp + 4.dp)
+    .layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        val reduce = 12.dp.roundToPx()
+        layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, 0) }
+    }
 
 @Composable
 fun SectionTitle(modifier: Modifier = Modifier, content: @Composable () -> Unit) {

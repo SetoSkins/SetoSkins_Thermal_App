@@ -97,7 +97,9 @@ fun Os4BackButton(onClick: () -> Unit, contentDescription: String = "Back") {
 /**
  * OS4 卡片：按 HyperMusicCover 的 AppCard 实现。
  *
- * 外层 glassPanel 只负责边光与兜底底色（不采样页面背景，避免卡片模糊到自身），
+ * 深色模式与 HyperMusicCover「卡片柔光玻璃关闭」一致：普通 miuix Card，
+ * 卡片色取 surfaceContainer（#242424），不叠加边光/阴影。
+ * 浅色模式外层 glassPanel 只负责边光与兜底底色（不采样页面背景，避免卡片模糊到自身），
  * 内层仍用 miuix Card 承接裁剪、内容色与内边距，填充改为透明。
  */
 @Composable
@@ -109,6 +111,16 @@ fun Os4GlassCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
+    if (dark) {
+        Card(
+            modifier = modifier,
+            cornerRadius = cornerRadius,
+            insideMargin = insideMargin,
+            colors = colors,
+            content = content,
+        )
+        return
+    }
     val shape = remember(cornerRadius) { GlassShape(cornerRadius) }
     val fallbackShape = remember(cornerRadius) { RoundedCornerShape(cornerRadius) }
     Box(

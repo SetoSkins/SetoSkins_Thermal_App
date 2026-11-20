@@ -13,15 +13,11 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.HorizontalPager
@@ -74,10 +70,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -86,7 +80,6 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
@@ -108,9 +101,9 @@ import com.setoskins.thermal.ui.component.liquid.NavTab
 import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
 import com.setoskins.thermal.ui.component.BlurredBar
 import com.setoskins.thermal.ui.component.BlurredMaterialBar
-import com.setoskins.thermal.ui.component.BlurredTopBar
 import com.setoskins.thermal.ui.component.LocalGlassBackdrop
 import com.setoskins.thermal.ui.component.LocalOs4Style
+import com.setoskins.thermal.ui.component.HyperCeilerTopBarBlur
 import com.setoskins.thermal.ui.component.MaterialPageTopBarScaffold
 import com.setoskins.thermal.ui.component.rememberBlurBackdrop
 import com.setoskins.thermal.ui.component.rememberMaterialBlurBackdrop
@@ -447,9 +440,7 @@ fun MyApplicationApp(
                                                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         showRestartDialog = true
                                                         barVisible = false
-                                                    },
-
-                                                    modifier = Modifier.offset(y = 6.dp)
+                                                    }
                                                 ) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.restart),
@@ -465,7 +456,8 @@ fun MyApplicationApp(
                                                 reloadTrigger = reloadTrigger,
                                                 scrollBehavior = homeScrollBehavior,
 
-                                                contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                // 与 Miuix TopAppBar demo 一致：大标题与首项之间再加 8dp
+                                                contentPaddingTop = contentPaddingTop + 8.dp,
                                                 bottomContentInset = bottomContentInset,
                                                 floatingNavBar = effectiveFloatingNavBar,
                                                 onNavigateToBlacklist = { blacklistPage.open = true },
@@ -521,9 +513,7 @@ fun MyApplicationApp(
                                                     onClick = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
-                                                    },
-
-                                                    modifier = Modifier.offset(y = 6.dp)
+                                                    }
                                                 ) {
                                                     Icon(
                                                         imageVector = MiuixIcons.Delete,
@@ -538,7 +528,8 @@ fun MyApplicationApp(
                                                 reloadTrigger = logReloadTrigger,
                                                 scrollBehavior = favoritesScrollBehavior,
 
-                                                contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                // 与 Miuix TopAppBar demo 一致：大标题与首项之间再加 8dp
+                                                contentPaddingTop = contentPaddingTop + 8.dp,
                                                 bottomContentInset = bottomContentInset,
                                                 isPageActive = logPageActive,
                                                 modifier = Modifier.padding(bottom = bottomContentPadding)
@@ -850,20 +841,16 @@ private fun PageTopBarScaffold(
     if (os4) {
         val glassBarColor = if (isSystemInDarkTheme()) Color.Black else MiuixTheme.colorScheme.surface
         val glassBackdrop = rememberBlurBackdrop(glassBarColor)
-        val glassCollapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 containerColor = Color.Transparent,
                 topBar = {
+                    // OS4 的标题结构与 OS3 完全一致，只是顶栏材质换成 miuix-glass。
                     GlassTopAppBar(
                         title = title,
-                        largeTitle = " ",
+                        largeTitle = title,
                         backdrop = glassBackdrop,
                         scrollBehavior = scrollBehavior,
-                        bottomContent = {
-                            val height = (24 * (1f - glassCollapsedFraction.coerceIn(0f, 1f))).dp
-                            Spacer(modifier = Modifier.height(height))
-                        },
                         actions = actions,
                     )
                 }
@@ -876,77 +863,37 @@ private fun PageTopBarScaffold(
                     content(innerPadding.calculateTopPadding())
                 }
             }
-            Text(
-                text = title,
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 58.dp, start = 28.dp)
-                    .graphicsLayer {
-                        val fraction = glassCollapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
-                    }
-            )
         }
         return
     }
-    val backdrop = rememberBlurBackdrop(barColor)
-    val blurCapable = blurEnabled && backdrop != null
-    val contentScrolled by remember(scrollBehavior) {
-        derivedStateOf { (scrollBehavior?.state?.contentOffset ?: 0f) < -1f }
-    }
-    val blurActive = blurCapable && contentScrolled
-    val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
+    val os3Backdrop = rememberBlurBackdrop(barColor)
+    val os3BlurCapable = blurEnabled && os3Backdrop != null
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                Box(modifier = Modifier.offset(y = (-6).dp)) {
-                    BlurredTopBar(
-                        backdrop = backdrop,
-                        blurEnabled = blurActive,
-                    ) {
-                        TopAppBar(
-                            title = title,
-                            largeTitle = title,
-                            largeTitleColor = Color.Transparent,
-                            color = if (blurActive) Color.Transparent else barColor,
-                            scrollBehavior = scrollBehavior,
-                            bottomContent = {
-                                val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
-                                Spacer(modifier = Modifier.height(height))
-                            },
-                            actions = actions
-                        )
-                    }
+                // OS3：标题结构保持 Miuix，背景换成 HyperCeiler 同款磨砂遮罩。
+                HyperCeilerTopBarBlur(
+                    backdrop = os3Backdrop,
+                    blurEnabled = os3BlurCapable,
+                ) {
+                    TopAppBar(
+                        title = title,
+                        largeTitle = title,
+                        color = Color.Transparent,
+                        scrollBehavior = scrollBehavior,
+                        actions = actions
+                    )
                 }
             }
         ) { innerPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (blurCapable) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .then(if (os3BlurCapable) Modifier.layerBackdrop(os3Backdrop) else Modifier)
             ) {
                 content(innerPadding.calculateTopPadding())
             }
         }
-        Text(
-            text = title,
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Normal,
-            color = MiuixTheme.colorScheme.onBackground,
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(top = 58.dp, start = 28.dp)
-                .graphicsLayer {
-                    val fraction = collapsedFraction.coerceIn(0f, 1f)
-
-                    alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                    translationY = -fraction * 45.dp.toPx()
-                }
-        )
     }
 }

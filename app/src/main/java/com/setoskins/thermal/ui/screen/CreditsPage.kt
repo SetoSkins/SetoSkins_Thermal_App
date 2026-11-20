@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,7 +25,6 @@ import androidx.compose.material3.Scaffold as MaterialScaffold
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -170,7 +168,6 @@ fun CreditsPage(
                         TopAppBar(
                             title = title,
                             largeTitle = title,
-                            largeTitleColor = Color.Transparent,
                             scrollBehavior = scrollBehavior,
                             navigationIcon = {
                                 IconButton(
@@ -202,23 +199,6 @@ fun CreditsPage(
             }
         }
 
-        if (!useMonet && !LocalOs4Style.current) {
-            val collapsedFraction by remember { derivedStateOf { scrollBehavior.state.collapsedFraction } }
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 52.dp, start = 26.dp)
-                    .graphicsLayer {
-                        val fraction = collapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
-                    }
-            )
-        }
     }
 }
 
@@ -242,16 +222,16 @@ private fun CreditsBody(
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
         ) {
-            Spacer(Modifier.height(8.dp))
+            // 非主页小标题统一向右 4dp：20dp 页面边距 + 28dp 内边距 - 16dp 偏移 = 32dp
             SmallTitle(
                 text = if (isZh) "温控模块" else "Thermal Module",
-                modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp, start = 0.dp, bottom = 2.dp)
+                modifier = Modifier.offset(x = (-16).dp)
             )
             CreditCard(entries = primaryEntries, useMonet = useMonet, onOpen = onOpen)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(12.dp))
             SmallTitle(
                 text = if (isZh) "引用" else "References",
-                modifier = Modifier.offset(x = (-12).dp).padding(top = 8.dp, start = 0.dp, bottom = 2.dp)
+                modifier = Modifier.offset(x = (-16).dp)
             )
             CreditCard(entries = entries, useMonet = useMonet, onOpen = onOpen)
             Spacer(Modifier.height(24.dp))
