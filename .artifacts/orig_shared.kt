@@ -1,0 +1,494 @@
+﻿package com.setoskins.thermal.ui.component
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Card as MaterialCard
+import androidx.compose.material3.CardDefaults as MaterialCardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.contentColorFor
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import com.setoskins.thermal.ui.component.MaterialSegmentedColumn
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+@Composable
+fun DeviceInfoItem(value: String, label: String) {
+    Column(modifier = Modifier.padding(vertical = 10.dp)) {
+        Text(text = value, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = ColorDeviceInfoValue)
+        Text(text = label, fontSize = 13.sp, color = ColorDeviceInfoLabel)
+    }
+}
+
+@Composable
+fun MiuixCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    if (LocalOs4Style.current) {
+        Os4GlassCard(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
+    } else {
+        Card(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TonalCard(
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
+    contentColor: Color = contentColorFor(containerColor),
+    shape: Shape = MaterialTheme.shapes.large,
+    enabled: Boolean = true,
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    val colors = MaterialCardDefaults.cardColors(
+        containerColor = containerColor,
+        contentColor = contentColor,
+    )
+    val interactionSource = remember { MutableInteractionSource() }
+    MaterialCard(
+        modifier = modifier
+            .clip(shape)
+            .then(
+                if (onClick != null || onLongClick != null) {
+                    Modifier.combinedClickable(
+                        enabled = enabled,
+                        onClick = onClick ?: {},
+                        onLongClick = onLongClick,
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        colors = colors,
+        shape = shape,
+    ) { content() }
+}
+
+@Composable
+fun ThemedOptionCard(
+    useMonet: Boolean,
+    modifier: Modifier = Modifier,
+    miuixCornerRadius: Dp = 16.dp,
+    miuixColor: Color = MiuixTheme.colorScheme.surfaceContainer,
+    miuixGlass: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    if (useMonet) {
+        TonalCard(
+            modifier = modifier.fillMaxWidth(),
+            containerColor = MaterialTheme.colorScheme.surfaceBright,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ) { content() }
+    } else {
+        if (LocalOs4Style.current && miuixGlass) {
+            Os4GlassCard(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { content() }
+        } else {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { content() }
+        }
+    }
+}
+
+@Composable
+fun ThemedSegmentedOptionCard(
+    useMonet: Boolean,
+    items: List<@Composable () -> Unit>,
+    modifier: Modifier = Modifier,
+    miuixCornerRadius: Dp = 16.dp,
+    miuixColor: Color = MiuixTheme.colorScheme.surfaceContainer,
+    miuixContentPadding: PaddingValues = PaddingValues(0.dp),
+    miuixItemSpacing: Dp = 0.dp,
+) {
+    if (items.isEmpty()) return
+    if (useMonet) {
+        MaterialSegmentedColumn(modifier = modifier, items = items)
+    } else {
+        val cardContent: @Composable () -> Unit = {
+            Column(
+                modifier = Modifier.padding(miuixContentPadding),
+                verticalArrangement = Arrangement.spacedBy(miuixItemSpacing),
+            ) {
+                items.forEach { item -> item() }
+            }
+        }
+        if (LocalOs4Style.current) {
+            Os4GlassCard(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { cardContent() }
+        } else {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                cornerRadius = miuixCornerRadius,
+                colors = CardDefaults.defaultColors(
+                    color = miuixColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface,
+                ),
+            ) { cardContent() }
+        }
+    }
+}
+
+@Composable
+fun MiuixListItem(title: String, subtitle: String?, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, fontSize = 15.sp, color = MiuixTheme.colorScheme.onSurface)
+            if (subtitle != null) { Spacer(modifier = Modifier.height(2.dp)); Text(text = subtitle, fontSize = 13.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary) }
+        }
+    }
+}
+
+fun Modifier.compactSmallTitle(): Modifier = this.padding(start = 4.dp).offset(x = (-13).dp, y = 11.dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } }
+
+@Composable
+fun SectionTitle(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier = modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 8.dp.roundToPx()) { placeable.place(0, 0) } }) { content() }
+}
+
+@Composable
+fun ThemedTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    useMonet: Boolean,
+    modifier: Modifier = Modifier,
+    inputFilter: (String) -> Boolean = { true },
+    isValid: Boolean = true,
+    errorMessage: String? = null
+) {
+    val filteredChange: (String) -> Unit = { newValue ->
+        if (inputFilter(newValue)) onValueChange(newValue)
+    }
+    if (useMonet) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = filteredChange,
+            modifier = modifier,
+            label = { Text(label) },
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            isError = !isValid,
+            supportingText = if (errorMessage != null && !isValid) ({ Text(errorMessage) }) else null,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MiuixTheme.colorScheme.primary,
+                focusedLabelColor = MiuixTheme.colorScheme.primary,
+                cursorColor = MiuixTheme.colorScheme.primary,
+                focusedTextColor = MiuixTheme.colorScheme.onSurface
+            )
+        )
+    } else {
+        TextField(value = value, onValueChange = filteredChange, modifier = modifier, label = label, singleLine = true)
+    }
+}
+
+@Composable
+fun ConfigDialog(
+    show: Boolean,
+    title: String,
+    summary: String,
+    initialValue: String,
+    validationRange: IntRange,
+    isZh: Boolean,
+    onConfirm: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    onDismissStart: () -> Unit = {}
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var inputValue by remember { mutableStateOf(initialValue) }
+    var internalShow by remember { mutableStateOf(show) }
+    LaunchedEffect(show) { if (show) { inputValue = initialValue; internalShow = true } }
+    Os4DialogHost(
+        show = internalShow,
+        title = title,
+        summary = summary,
+        onDismissRequest = { onDismissStart(); internalShow = false },
+        onDismissFinished = { if (!internalShow) onDismiss() },
+        content = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                TextField(
+                    value = inputValue,
+                    onValueChange = { if (it.all { char -> char.isDigit() } || it.isEmpty()) inputValue = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDismissStart()
+                        internalShow = false
+                    }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                        Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold)
+                    }
+                    Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val v = inputValue.toIntOrNull()
+                        if (v != null && v in validationRange) {
+                            onConfirm(v)
+                            internalShow = false
+                        }
+                    }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                        Text(if (isZh) "确认" else "Confirm", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun RootCheckDialog(
+    show: Boolean,
+    isZh: Boolean,
+    onDismiss: () -> Unit,
+    onExit: () -> Unit,
+    onDismissStart: () -> Unit = {}
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var internalShow by remember { mutableStateOf(show) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
+    Os4DialogHost(
+        show = internalShow,
+        title = if (isZh) "缺少 Root 权限" else "Root Access Missing",
+        summary = if (isZh) "未授权 Root 权限，部分功能将无法使用。请确保已授权 Root 管理器。"
+                  else "Root access not detected. Some features will not work. Please authorize a Root manager.",
+        onDismissRequest = {  },
+        onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
+        content = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDismissStart()
+                    pendingAction = onDismiss
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                    Text(if (isZh) "忽略" else "Ignore", fontWeight = FontWeight.Bold)
+                }
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pendingAction = onExit
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                    Text(if (isZh) "退出" else "Exit", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun RestartDialog(
+    show: Boolean,
+    isZh: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    onDismissStart: () -> Unit = {}
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var internalShow by remember { mutableStateOf(show) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
+    Os4DialogHost(
+        show = internalShow,
+        title = if (isZh) "重启设备" else "Restart Device",
+        summary = if (isZh) "确定要重启设备吗？" else "Are you sure you want to restart the device?",
+        onDismissRequest = { onDismissStart(); pendingAction = onDismiss; internalShow = false },
+        onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
+        content = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDismissStart()
+                    pendingAction = onDismiss
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                    Text(if (isZh) "取消" else "Cancel", fontWeight = FontWeight.Bold)
+                }
+                Button(onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pendingAction = onConfirm
+                    internalShow = false
+                }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                    Text(if (isZh) "确认" else "Confirm", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun UpdateDialog(
+    show: Boolean,
+    version: String,
+    releaseNotes: String,
+    isZh: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    onDismissStart: () -> Unit = {}
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var internalShow by remember { mutableStateOf(show) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(show) { if (show) { internalShow = true; pendingAction = null } }
+    Os4DialogHost(
+        show = internalShow,
+        title = if (isZh) "发现新版本 $version" else "New Version Found $version",
+        onDismissRequest = { onDismissStart(); pendingAction = onDismiss; internalShow = false },
+        onDismissFinished = { if (!internalShow) pendingAction?.invoke() },
+        content = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = releaseNotes,
+                    fontSize = 14.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDismissStart()
+                        pendingAction = onDismiss
+                        internalShow = false
+                    }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors()) {
+                        Text(if (isZh) "以后再说" else "Later", fontWeight = FontWeight.Bold)
+                    }
+                    Button(onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        pendingAction = onConfirm
+                        internalShow = false
+                    }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                        Text(if (isZh) "立即更新" else "Update Now", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun UpdateDialogPreview() {
+    MiuixTheme {
+        UpdateDialog(
+            show = true,
+            version = "1.2.3",
+            releaseNotes = "1. 适配 MIUIX 风格\n2. 适配 Material You 动态取色\n3. 优化温控逻辑\n4. 修复已知问题",
+            isZh = true,
+            onConfirm = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@Composable
+fun SliderRow(
+    title: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    suffix: String,
+    summary: String? = null,
+    onClickLabel: () -> Unit
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var previousValue by remember { mutableStateOf(value) }
+    BasicComponent(
+        title = title,
+        summary = summary,
+        endActions = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${value.toInt()}$suffix",
+                    fontSize = 14.sp,
+                    color = MiuixTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Image(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    modifier = Modifier.size(width = 10.dp, height = 16.dp),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurfaceVariantActions)
+                )
+            }
+        },
+        onClick = onClickLabel
+    )
+    Slider(
+        value = value,
+        onValueChange = { if (it != previousValue) { previousValue = it; hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove) }; onValueChange(it) },
+        valueRange = valueRange,
+        steps = steps,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+    )
+}

@@ -212,7 +212,6 @@ fun SpeedControlSection(
 
     ThemedOptionCard(useMonet = useMonet, modifier = modifier) {
         Column {
-
             BasicComponent(
                 title = if (isZh) "修改最大电流数" else "Max current",
                 enabled = switch4 || isExclusiveEnabled(),

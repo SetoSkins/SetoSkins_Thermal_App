@@ -1,0 +1,287 @@
+package com.setoskins.thermal.ui.screen
+
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold as MaterialScaffold
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.setoskins.thermal.R
+import com.setoskins.thermal.ui.component.MaterialLargeTopBar
+import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
+import com.setoskins.thermal.ui.component.LocalOs4Style
+import com.setoskins.thermal.ui.component.Os4BackButton
+import com.setoskins.thermal.ui.component.PageTopBarScaffold
+
+import top.yukonga.miuix.kmp.basic.VerticalScrollBar
+import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+@OptIn(ExperimentalScrollBarApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun DonatePage(
+    useMonet: Boolean,
+    onDismiss: () -> Unit,
+    progressProvider: () -> Float,
+    modifier: Modifier = Modifier
+) {
+    val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
+    val isDark = isSystemInDarkTheme()
+    val colors = MiuixTheme.colorScheme
+    val scrollState = rememberScrollState()
+    val scrollBehavior = MiuixScrollBehavior()
+
+    val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val title = if (isZh) "捐赠" else "Donate"
+
+    val donateCardShape = remember { RoundedCornerShape(24.dp) }
+    val donateCardColor = remember(isDark, useMonet) {
+        if (isDark) colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
+        else colors.surfaceContainer.copy(alpha = if (useMonet) 0.72f else 0.62f)
+    }
+    val donateCardShadowColor = remember(isDark, useMonet) {
+        if (isDark) colors.primary.copy(alpha = if (useMonet) 0.18f else 0.10f)
+        else Color.Black.copy(alpha = 0.08f)
+    }
+    val donateCardModifier = remember(donateCardShape, donateCardShadowColor, isDark) {
+        Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = if (isDark) 10.dp else 4.dp,
+                shape = donateCardShape,
+                clip = false,
+                ambientColor = donateCardShadowColor,
+                spotColor = donateCardShadowColor
+            )
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                val transitionProgress = progressProvider()
+
+                translationX = (1f - transitionProgress) * size.width
+
+                scaleX = 1f
+                scaleY = 1f
+            }
+            .background(if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
+    ) {
+        if (useMonet) {
+
+            MaterialScaffold(
+                containerColor = Color.Transparent,
+                topBar = {
+                    MaterialLargeTopBar(
+                        title = title,
+                        scrollBehavior = materialScrollBehavior,
+                        navigationIcon = {
+                            MaterialTopBarBackButton(
+                                onClick = onDismiss,
+                                contentDescription = "Back",
+                            )
+                        },
+                    )
+                }
+            ) { innerPadding ->
+                DonateBody(
+                    topPadding = innerPadding.calculateTopPadding(),
+                    scrollState = scrollState,
+                    scrollModifier = Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection),
+                    isZh = isZh,
+                    useMonet = true,
+                    donateCardModifier = donateCardModifier,
+                    donateCardColor = donateCardColor
+                )
+            }
+        } else {
+            val os4 = LocalOs4Style.current
+            PageTopBarScaffold(
+                title = title,
+                scrollBehavior = scrollBehavior,
+                blurEnabled = true,
+                os4 = os4,
+                navigationIcon = {
+                    if (os4) {
+                        Os4BackButton(onClick = onDismiss)
+                    } else {
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.padding(start = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = "Back",
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            ) { contentPaddingTop ->
+                DonateBody(
+                    topPadding = contentPaddingTop,
+                    scrollState = scrollState,
+                    scrollModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    isZh = isZh,
+                    useMonet = false,
+                    donateCardModifier = donateCardModifier,
+                    donateCardColor = donateCardColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DonateBody(
+    topPadding: Dp,
+    scrollState: ScrollState,
+    scrollModifier: Modifier,
+    isZh: Boolean,
+    useMonet: Boolean,
+    donateCardModifier: Modifier,
+    donateCardColor: Color
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!useMonet) Modifier.overScrollVertical() else Modifier)
+                .scrollEndHaptic()
+                .then(scrollModifier)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp)
+        ) {
+            Spacer(Modifier.height(topPadding))
+            Spacer(Modifier.height(16.dp))
+            Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(80.dp).clip(CircleShape).align(Alignment.CenterHorizontally))
+            Spacer(Modifier.height(12.dp))
+            Text(text = "SetoSkins", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            Text(text = if (isZh) "温度调控模块" else "Thermal Control Module", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            Spacer(Modifier.height(24.dp))
+
+            Card(
+                modifier = donateCardModifier,
+                cornerRadius = 16.dp,
+                colors = CardDefaults.defaultColors(
+                    color = donateCardColor,
+                    contentColor = MiuixTheme.colorScheme.onSurface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    DonateQrImage(
+                        title = if (isZh) "微信" else "WeChat",
+                        imageRes = R.drawable.weixin,
+                        contentDescription = "WeChat QR Code",
+                        height = 180.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    DonateQrImage(
+                        title = if (isZh) "支付宝" else "Alipay",
+                        imageRes = R.drawable.zfb,
+                        contentDescription = "Alipay QR Code",
+                        height = 260.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+
+        VerticalScrollBar(
+            adapter = rememberScrollBarAdapter(scrollState),
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
+    }
+}
+
+@Composable
+private fun DonateQrImage(
+    title: String,
+    imageRes: Int,
+    contentDescription: String,
+    height: Dp,
+    imageOffsetY: Dp = 0.dp,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(MiuixTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MiuixTheme.colorScheme.onPrimaryContainer
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+                .offset(y = imageOffsetY)
+                .clip(RoundedCornerShape(18.dp))
+        )
+    }
+}

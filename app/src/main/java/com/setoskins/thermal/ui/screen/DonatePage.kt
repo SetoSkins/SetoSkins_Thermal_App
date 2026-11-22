@@ -3,7 +3,6 @@ package com.setoskins.thermal.ui.screen
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,7 +25,6 @@ import androidx.compose.material3.Scaffold as MaterialScaffold
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,18 +47,17 @@ import com.setoskins.thermal.ui.component.MaterialLargeTopBar
 import com.setoskins.thermal.ui.component.MaterialTopBarBackButton
 import com.setoskins.thermal.ui.component.LocalOs4Style
 import com.setoskins.thermal.ui.component.Os4BackButton
-import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import com.setoskins.thermal.ui.component.PageTopBarScaffold
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi
@@ -89,25 +85,20 @@ fun DonatePage(
         if (isDark) colors.surfaceVariant.copy(alpha = if (useMonet) 0.82f else 0.78f)
         else colors.surfaceContainer.copy(alpha = if (useMonet) 0.72f else 0.62f)
     }
-    val donateCardBorderColor = remember(isDark, useMonet) {
-        if (isDark) colors.primary.copy(alpha = if (useMonet) 0.30f else 0.22f)
-        else colors.outline.copy(alpha = if (useMonet) 0.18f else 0.12f)
-    }
     val donateCardShadowColor = remember(isDark, useMonet) {
         if (isDark) colors.primary.copy(alpha = if (useMonet) 0.18f else 0.10f)
         else Color.Black.copy(alpha = 0.08f)
     }
-    val donateCardModifier = remember(donateCardShape, donateCardBorderColor, donateCardShadowColor, isDark) {
+    val donateCardModifier = remember(donateCardShape, donateCardShadowColor, isDark) {
         Modifier
             .fillMaxWidth()
             .shadow(
-            elevation = if (isDark) 10.dp else 4.dp,
-            shape = donateCardShape,
-            clip = false,
-            ambientColor = donateCardShadowColor,
-            spotColor = donateCardShadowColor
-        )
-        .border(1.dp, donateCardBorderColor, donateCardShape)
+                elevation = if (isDark) 10.dp else 4.dp,
+                shape = donateCardShape,
+                clip = false,
+                ambientColor = donateCardShadowColor,
+                spotColor = donateCardShadowColor
+            )
     }
 
     Box(
@@ -124,7 +115,6 @@ fun DonatePage(
             .background(if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
         if (useMonet) {
-
             MaterialScaffold(
                 containerColor = Color.Transparent,
                 topBar = {
@@ -145,72 +135,46 @@ fun DonatePage(
                     scrollState = scrollState,
                     scrollModifier = Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection),
                     isZh = isZh,
+                    useMonet = true,
                     donateCardModifier = donateCardModifier,
                     donateCardColor = donateCardColor
                 )
             }
         } else {
             val os4 = LocalOs4Style.current
-            Scaffold(
-                containerColor = Color.Transparent,
-                topBar = {
+            PageTopBarScaffold(
+                title = title,
+                scrollBehavior = scrollBehavior,
+                blurEnabled = true,
+                os4 = os4,
+                navigationIcon = {
                     if (os4) {
-                        GlassTopAppBar(
-                            title = title,
-                            scrollBehavior = scrollBehavior,
-                            navigationIcon = { Os4BackButton(onClick = onDismiss) }
-                        )
+                        Os4BackButton(onClick = onDismiss)
                     } else {
-                        TopAppBar(
-                            title = title,
-                            largeTitle = title,
-                            largeTitleColor = Color.Transparent,
-                            scrollBehavior = scrollBehavior,
-                            navigationIcon = {
-                                IconButton(
-                                    onClick = onDismiss,
-                                    modifier = Modifier.padding(start = 0.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Back,
-                                        contentDescription = "Back",
-                                        tint = MiuixTheme.colorScheme.onBackground,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                        )
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.padding(start = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = "Back",
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
-                },
-                modifier = Modifier
-            ) { innerPadding ->
+                }
+            ) { contentPaddingTop ->
                 DonateBody(
-                    topPadding = innerPadding.calculateTopPadding(),
+                    topPadding = contentPaddingTop,
                     scrollState = scrollState,
                     scrollModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
                     isZh = isZh,
+                    useMonet = false,
                     donateCardModifier = donateCardModifier,
                     donateCardColor = donateCardColor
                 )
             }
-        }
-
-        if (!useMonet && !LocalOs4Style.current) {
-            val collapsedFraction by remember { derivedStateOf { scrollBehavior.state.collapsedFraction } }
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 52.dp, start = 26.dp)
-                    .graphicsLayer {
-                        val fraction = collapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
-                    }
-            )
         }
     }
 }
@@ -221,18 +185,21 @@ private fun DonateBody(
     scrollState: ScrollState,
     scrollModifier: Modifier,
     isZh: Boolean,
+    useMonet: Boolean,
     donateCardModifier: Modifier,
     donateCardColor: Color
 ) {
-    Box(modifier = Modifier.fillMaxSize().padding(top = topPadding)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .then(scrollModifier)
+                .then(if (!useMonet) Modifier.overScrollVertical() else Modifier)
                 .scrollEndHaptic()
+                .then(scrollModifier)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
         ) {
+            Spacer(Modifier.height(topPadding))
             Spacer(Modifier.height(16.dp))
             Image(painter = painterResource(id = R.drawable.seto), contentDescription = null, modifier = Modifier.size(80.dp).clip(CircleShape).align(Alignment.CenterHorizontally))
             Spacer(Modifier.height(12.dp))

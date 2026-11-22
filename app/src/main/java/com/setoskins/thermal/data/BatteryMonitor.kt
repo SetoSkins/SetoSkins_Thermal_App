@@ -7,7 +7,6 @@ import android.os.BatteryManager
 import java.io.File
 
 object BatteryMonitor {
-
     data class BatteryState(
         val isCharging: Boolean,
         val level: Int,

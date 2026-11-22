@@ -12,7 +12,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** 动效不可见时的轮询间隔，用于替代逐帧请求。 */
 private const val PAUSED_POLL_MS = 400L
 
 internal fun Modifier.bgEffectDraw(
@@ -93,7 +92,6 @@ private class BgEffectNode(
     private var alpha: () -> Float,
 ) : Modifier.Node(),
     DrawModifierNode {
-
     private var animationJob: Job? = null
     private var animTime: Float = 0f
     private var startOffset: Float = 0f
@@ -152,8 +150,6 @@ private class BgEffectNode(
                 if (now - lastEmit < minDeltaNanos) continue
 
                 if (alpha() <= 0f) {
-                    // 不可见（例如关于页已经滚出、或被其他页面遮挡）时不再按 60Hz 空转 vsync，
-                    // 否则即使一帧都不画，设备也无法进入低功耗帧率。
                     delay(PAUSED_POLL_MS)
                     origin = withFrameNanos { it }
                     lastEmit = origin

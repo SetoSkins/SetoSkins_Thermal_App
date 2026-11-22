@@ -10,11 +10,7 @@ import org.junit.Before
 import org.junit.Test
 import java.util.Collections
 
-/**
- * ConfigWriter 的核心承诺：连续输入（拖动滑块、连续输入文字）只会产生一次落盘。
- */
 class ConfigWriterTest {
-
     private val writes = Collections.synchronizedList(mutableListOf<Map<String, String>>())
 
     @Before

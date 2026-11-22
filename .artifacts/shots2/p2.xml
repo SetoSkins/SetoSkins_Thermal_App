@@ -1,0 +1,16 @@
+﻿<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="floatingNavBar" value="true" />
+    <boolean name="switch15" value="false" />
+    <boolean name="switch3" value="false" />
+    <boolean name="useMonet" value="false" />
+    <boolean name="miuixMonet" value="true" />
+    <boolean name="switch7" value="false" />
+    <boolean name="switch10" value="false" />
+    <int name="miuixStyleVersion" value="1" />
+    <boolean name="switch14" value="false" />
+    <boolean name="switch11" value="false" />
+    <boolean name="switch12" value="false" />
+</map>
+
+

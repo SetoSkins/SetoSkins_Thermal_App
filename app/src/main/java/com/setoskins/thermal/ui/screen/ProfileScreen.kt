@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -115,7 +115,7 @@ import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.glass.GlassDropdownPreference
-import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import com.setoskins.thermal.ui.component.Os4GlassTopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
@@ -124,6 +124,8 @@ import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+private const val StyleSwitchDelayMillis = 360L
 
 @OptIn(top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi::class)
 @Composable
@@ -265,7 +267,6 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
         }
         Box(modifier = modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize().then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier).then(aboutBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier).then(materialAboutBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier), state = listState, horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 170.dp, bottom = 46.dp + bottomContentInset)) {
-
                     item(key = "logoSpacer") {
                         Box(Modifier.fillMaxWidth().height(logoHeightDp + 80.dp), contentAlignment = Alignment.TopCenter) {
                             Column(
@@ -322,7 +323,21 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                             ThemedOptionCard(useMonet = useMonet, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).then(aboutBlurModifier), miuixColor = aboutCardColor, miuixGlass = false) {
                                 if (os4Style) {
                                     GlassDropdownPreference(onSelectedIndexChange = { onUseMonetChange(it == 1) }, items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", backdrop = backdrop)
-                                    GlassDropdownPreference(onSelectedIndexChange = { onOs4StyleChange(it == 0) }, items = listOf("OS4", "OS3"), selectedIndex = if (os4Style) 0 else 1, title = if (isZh) "样式版本" else "Style Version", backdrop = backdrop)
+
+                                    GlassDropdownPreference(
+                                        onSelectedIndexChange = { index ->
+                                            val value = index == 0
+                                            if (value == os4Style) return@GlassDropdownPreference
+                                            scope.launch {
+                                                delay(StyleSwitchDelayMillis)
+                                                onOs4StyleChange(value)
+                                            }
+                                        },
+                                        items = listOf("OS4", "OS3"),
+                                        selectedIndex = if (os4Style) 0 else 1,
+                                        title = if (isZh) "样式版本" else "Style Version",
+                                        backdrop = backdrop,
+                                    )
                                 } else {
                                     WindowDropdownPreference(items = listOf("MiuiX", "Material"), selectedIndex = if (useMonet) 1 else 0, title = if (isZh) "界面风格" else "UI Style", onSelectedIndexChange = { onUseMonetChange(it == 1) })
                                     WindowDropdownPreference(items = listOf("OS4", "OS3"), selectedIndex = if (os4Style) 0 else 1, title = if (isZh) "样式版本" else "Style Version", onSelectedIndexChange = { onOs4StyleChange(it == 0) })
@@ -513,7 +528,6 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
             }
         }
         if (useMonet) {
-
             if (materialAboutBarBackdrop != null) {
                 BlurredMaterialTopBar(
                     backdrop = materialAboutBarBackdrop,
@@ -558,7 +572,7 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                 )
             }
         } else if (os4Style && aboutBarBackdrop != null) {
-            GlassTopAppBar(
+            Os4GlassTopAppBar(
                 title = "关于",
                 backdrop = aboutBarBackdrop,
                 expandable = false,
@@ -567,28 +581,26 @@ fun ProfileScreen(useMonet: Boolean, onUseMonetChange: (Boolean) -> Unit, miuixM
                 backgroundAlpha = { aboutBarAlpha },
             )
         } else if (aboutBarBackdrop != null) {
-
             BlurredTopBar(
                 backdrop = aboutBarBackdrop,
                 blurEnabled = true,
-                modifier = Modifier.offset(y = (-6).dp),
                 alpha = { aboutBarAlpha },
             ) {
-                SmallTopAppBar(
-                    title = "关于",
-                    color = Color.Transparent,
-                    titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
-                )
+                Os3AboutBar(aboutBarAlpha = aboutBarAlpha)
             }
         } else {
-
-            SmallTopAppBar(
-                title = "关于",
-
-                modifier = Modifier.offset(y = (-6).dp),
-                color = aboutBarColor.copy(alpha = aboutBarAlpha),
-                titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
-            )
+            Column(modifier = Modifier.background(aboutBarColor.copy(alpha = aboutBarAlpha))) {
+                Os3AboutBar(aboutBarAlpha = aboutBarAlpha)
+            }
         }
     }
+}
+
+@Composable
+private fun Os3AboutBar(aboutBarAlpha: Float) {
+    SmallTopAppBar(
+        title = "关于",
+        color = Color.Transparent,
+        titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = aboutBarAlpha),
+    )
 }

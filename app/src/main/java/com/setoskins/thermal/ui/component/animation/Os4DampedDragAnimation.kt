@@ -79,7 +79,6 @@ internal class Os4DampedDragAnimation(
     }
 
     val modifier: Modifier = Modifier.pointerInput(Unit) {
-
         val dragSlop = viewConfiguration.touchSlop
         os4InspectDragGestures(
             onDragStart = {

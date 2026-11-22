@@ -90,13 +90,16 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import com.setoskins.thermal.ui.component.Os4GlassTopAppBar
+import com.setoskins.thermal.ui.component.Os4TopBarIconButton
+import com.setoskins.thermal.ui.component.PageTopBarScaffold
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Info
+import top.yukonga.miuix.kmp.icon.extended.Refresh
 
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.setoskins.thermal.data.ModuleDetector
@@ -294,8 +297,13 @@ fun MyApplicationApp(
 
     val backdrop = if (useMonet) rememberMaterialBlurBackdrop() else rememberBlurBackdrop()
     val shaderSupported = remember { isRuntimeShaderSupported() }
-    val reduceExpensiveEffects = donatePage.layerVisible || creditsPage.layerVisible ||
-        blacklistPage.layerVisible || whitelistPage.layerVisible || bypassListPage.layerVisible
+
+    val reduceExpensiveEffects by remember {
+        derivedStateOf {
+            listOf(donatePage, creditsPage, blacklistPage, whitelistPage, bypassListPage)
+                .any { it.layerVisible && it.progress.value >= 1f }
+        }
+    }
     val showBlur = shaderSupported && backdrop != null && !reduceExpensiveEffects
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val homeScrollBehavior = MiuixScrollBehavior()
@@ -398,7 +406,6 @@ fun MyApplicationApp(
                             when (AppDestinations.entries[page]) {
                                 AppDestinations.HOME -> {
                                     if (useMonet) {
-
                                         MaterialPageTopBarScaffold(
                                             title = if (isZh) "Seto温控" else "Seto Thermal",
                                             blurEnabled = showBlur,
@@ -435,28 +442,37 @@ fun MyApplicationApp(
                                             )
                                         }
                                     } else {
-
                                         PageTopBarScaffold(
                                             title = if (isZh) "Seto温控" else "Seto Thermal",
                                             scrollBehavior = homeScrollBehavior,
                                             blurEnabled = showBlur,
                                             os4 = os4Active,
                                             actions = {
-                                                IconButton(
-                                                    onClick = {
-                                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        showRestartDialog = true
-                                                        barVisible = false
-                                                    },
-
-                                                    modifier = Modifier.offset(y = 6.dp)
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.restart),
+                                                if (os4Active) {
+                                                    Os4TopBarIconButton(
+                                                        onClick = {
+                                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            showRestartDialog = true
+                                                            barVisible = false
+                                                        },
+                                                        icon = MiuixIcons.Refresh,
                                                         contentDescription = if (isZh) "重启" else "Restart",
-                                                        tint = MiuixTheme.colorScheme.onSurface,
-                                                        modifier = Modifier.size(32.dp)
                                                     )
+                                                } else {
+                                                    IconButton(
+                                                        onClick = {
+                                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            showRestartDialog = true
+                                                            barVisible = false
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(R.drawable.restart),
+                                                            contentDescription = if (isZh) "重启" else "Restart",
+                                                            tint = MiuixTheme.colorScheme.onSurface,
+                                                            modifier = Modifier.size(32.dp)
+                                                        )
+                                                    }
                                                 }
                                             }
                                         ) { contentPaddingTop ->
@@ -464,8 +480,7 @@ fun MyApplicationApp(
                                                 useMonet = false,
                                                 reloadTrigger = reloadTrigger,
                                                 scrollBehavior = homeScrollBehavior,
-
-                                                contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                contentPaddingTop = contentPaddingTop,
                                                 bottomContentInset = bottomContentInset,
                                                 floatingNavBar = effectiveFloatingNavBar,
                                                 onNavigateToBlacklist = { blacklistPage.open = true },
@@ -479,7 +494,6 @@ fun MyApplicationApp(
                                 }
                                 AppDestinations.FAVORITES -> {
                                     if (useMonet) {
-
                                         MaterialPageTopBarScaffold(
                                             title = if (isZh) "日志" else "Log",
                                             blurEnabled = showBlur,
@@ -517,19 +531,28 @@ fun MyApplicationApp(
                                             os4 = os4Active,
                                             actions = {
                                                 val haptic = LocalHapticFeedback.current
-                                                IconButton(
-                                                    onClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
-                                                    },
-
-                                                    modifier = Modifier.offset(y = 6.dp)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = MiuixIcons.Delete,
+                                                if (os4Active) {
+                                                    Os4TopBarIconButton(
+                                                        onClick = {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
+                                                        },
+                                                        icon = MiuixIcons.Delete,
                                                         contentDescription = "Clear Log",
-                                                        tint = MiuixTheme.colorScheme.onSurface
                                                     )
+                                                } else {
+                                                    IconButton(
+                                                        onClick = {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            scope.launch { if (ModuleDetector.clearLog()) logReloadTrigger++ }
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = MiuixIcons.Delete,
+                                                            contentDescription = "Clear Log",
+                                                            tint = MiuixTheme.colorScheme.onSurface
+                                                        )
+                                                    }
                                                 }
                                             }
                                         ) { contentPaddingTop ->
@@ -537,8 +560,7 @@ fun MyApplicationApp(
                                                 useMonet = false,
                                                 reloadTrigger = logReloadTrigger,
                                                 scrollBehavior = favoritesScrollBehavior,
-
-                                                contentPaddingTop = (contentPaddingTop - 6.dp).coerceAtLeast(0.dp),
+                                                contentPaddingTop = contentPaddingTop,
                                                 bottomContentInset = bottomContentInset,
                                                 isPageActive = logPageActive,
                                                 modifier = Modifier.padding(bottom = bottomContentPadding)
@@ -768,7 +790,6 @@ fun ThemedNavigationBar(
     }
     val barAlpha = 0.25f
     if (useMonet) {
-
         val destinations = AppDestinations.entries
         var selectedIndex by remember {
             mutableIntStateOf(pagerState?.currentPage ?: destinations.indexOf(currentDestination))
@@ -834,119 +855,5 @@ fun ThemedNavigationBar(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun PageTopBarScaffold(
-    title: String,
-    scrollBehavior: ScrollBehavior?,
-    blurEnabled: Boolean,
-    os4: Boolean = false,
-    actions: @Composable RowScope.() -> Unit = {},
-    content: @Composable (Dp) -> Unit,
-) {
-    val barColor = if (isSystemInDarkTheme()) Color.Black else MiuixTheme.colorScheme.surface
-    if (os4) {
-        val glassBarColor = if (isSystemInDarkTheme()) Color.Black else MiuixTheme.colorScheme.surface
-        val glassBackdrop = rememberBlurBackdrop(glassBarColor)
-        val glassCollapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
-        Box(modifier = Modifier.fillMaxSize()) {
-            Scaffold(
-                containerColor = Color.Transparent,
-                topBar = {
-                    GlassTopAppBar(
-                        title = title,
-                        largeTitle = " ",
-                        backdrop = glassBackdrop,
-                        scrollBehavior = scrollBehavior,
-                        bottomContent = {
-                            val height = (24 * (1f - glassCollapsedFraction.coerceIn(0f, 1f))).dp
-                            Spacer(modifier = Modifier.height(height))
-                        },
-                        actions = actions,
-                    )
-                }
-            ) { innerPadding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(if (blurEnabled && glassBackdrop != null) Modifier.layerBackdrop(glassBackdrop) else Modifier)
-                ) {
-                    content(innerPadding.calculateTopPadding())
-                }
-            }
-            Text(
-                text = title,
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 58.dp, start = 28.dp)
-                    .graphicsLayer {
-                        val fraction = glassCollapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
-                    }
-            )
-        }
-        return
-    }
-    val backdrop = rememberBlurBackdrop(barColor)
-    val blurCapable = blurEnabled && backdrop != null
-    val contentScrolled by remember(scrollBehavior) {
-        derivedStateOf { (scrollBehavior?.state?.contentOffset ?: 0f) < -1f }
-    }
-    val blurActive = blurCapable && contentScrolled
-    val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior?.state?.collapsedFraction ?: 0f } }
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                Box(modifier = Modifier.offset(y = (-6).dp)) {
-                    BlurredTopBar(
-                        backdrop = backdrop,
-                        blurEnabled = blurActive,
-                    ) {
-                        TopAppBar(
-                            title = title,
-                            largeTitle = title,
-                            largeTitleColor = Color.Transparent,
-                            color = if (blurActive) Color.Transparent else barColor,
-                            scrollBehavior = scrollBehavior,
-                            bottomContent = {
-                                val height = (24 * (1f - collapsedFraction.coerceIn(0f, 1f))).dp
-                                Spacer(modifier = Modifier.height(height))
-                            },
-                            actions = actions
-                        )
-                    }
-                }
-            }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (blurCapable) Modifier.layerBackdrop(backdrop) else Modifier)
-            ) {
-                content(innerPadding.calculateTopPadding())
-            }
-        }
-        Text(
-            text = title,
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Normal,
-            color = MiuixTheme.colorScheme.onBackground,
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(top = 58.dp, start = 28.dp)
-                .graphicsLayer {
-                    val fraction = collapsedFraction.coerceIn(0f, 1f)
-
-                    alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                    translationY = -fraction * 45.dp.toPx()
-                }
-        )
     }
 }

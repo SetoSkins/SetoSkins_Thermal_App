@@ -272,17 +272,14 @@ internal fun Os4FloatingNavigationBar(
 
             pressedScale = 0.915f,
             onDragStopped = {
-
                 isHolding = false
                 squeezeEdge = 0
 
                 if (hasDragged) {
                     val target = targetValue.roundToInt().coerceIn(0, tabCount - 1)
                     if (target == selectedIndex.intValue) {
-
                         animateToValue(target.toFloat())
                     } else {
-
                         suppressBounce = true
                         onTabSelected(target)
                     }
@@ -336,7 +333,6 @@ internal fun Os4FloatingNavigationBar(
     }
 
     suspend fun playBounce(from: Float, target: Float) {
-
         Log.d(
             NAV_TAG,
             "playBounce 入口 from=$from target=$target hasDragged=${dragAnimation.hasDragged} " +
@@ -377,7 +373,6 @@ internal fun Os4FloatingNavigationBar(
                 }
             }
         } finally {
-
             withContext(NonCancellable) {
                 bounceLeft.snapTo(0f)
                 bounceRight.snapTo(0f)
@@ -386,7 +381,6 @@ internal fun Os4FloatingNavigationBar(
     }
 
     LaunchedEffect(isHolding, isFlying) {
-
         fun updateInertia() {
             if (!flyInertiaActive) {
                 flyLeadShift.floatValue = 0f
@@ -413,7 +407,6 @@ internal fun Os4FloatingNavigationBar(
             )
         }
         if (isHolding || isFlying) {
-
             val fingerGate = isHolding
 
             if (isHolding) {
@@ -449,14 +442,12 @@ internal fun Os4FloatingNavigationBar(
                         ) {
                             0f
                         } else {
-
                             NavStretchEasing.transform(
                                 ((speed - NavStretchV0) / (NavStretchV1 - NavStretchV0))
                                     .coerceIn(0f, 1f),
                             ) * NavStretchMax
                         }
                         if (target <= 0f) {
-
                             if (!fallingV.value) {
                                 fallFromV.floatValue = stretchNow.floatValue
                                 fallElapsedV.floatValue = 0f
@@ -474,7 +465,6 @@ internal fun Os4FloatingNavigationBar(
                                 fallingV.value = false
                             }
                         } else {
-
                             fallingV.value = false
                             val tau = if (isFlying) NavStretchTauFly else NavStretchTauDrag
                             val alpha = 1f - exp(-dtSec / tau)
@@ -495,7 +485,6 @@ internal fun Os4FloatingNavigationBar(
                 }
             }
         } else {
-
             val over = stretchOverShoot.floatValue
             val fallTarget = -over
 
@@ -594,14 +583,12 @@ internal fun Os4FloatingNavigationBar(
                 (NavBounceBaseAmplitude + NavBouncePerTabAmplitude * spanPx)
             val edgeCase = target <= 0f || target >= (tabCount - 1).toFloat()
             if (edgeCase) {
-
                 stretchOverShoot.floatValue = overshootPx / indicatorWidthPx
                 flyBoxOvershoot.floatValue = 0f
                 flyInertiaActive = false
                 flyLeadShift.floatValue = 0f
                 flyTrailShift.floatValue = 0f
             } else {
-
                 stretchOverShoot.floatValue = 0f
                 flyBoxOvershoot.floatValue = overshootPx
                 flyLeadShift.floatValue = 0f
@@ -630,12 +617,9 @@ internal fun Os4FloatingNavigationBar(
         suppressSync = false
 
         if (!fromTab) {
-
             if (fromDrag) {
-
                 dragAnimation.glideTo(target)
             } else {
-
                 bounceLeft.snapTo(0f)
                 bounceRight.snapTo(0f)
 
@@ -698,7 +682,6 @@ internal fun Os4FloatingNavigationBar(
                 .height(NavBarPillHeight),
             contentAlignment = Alignment.CenterStart,
         ) {
-
             val innerPadding = NavBarInnerPadding
             val innerWidthPx = with(density) { (maxWidth - innerPadding * 2).toPx() }
 
@@ -738,7 +721,6 @@ internal fun Os4FloatingNavigationBar(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
                     .then(
@@ -765,13 +747,11 @@ internal fun Os4FloatingNavigationBar(
                     ),
             )
             Box(Modifier.fillMaxSize().padding(innerPadding)) {
-
                 Box(
                     Modifier
                         .width(blockWidth)
                         .fillMaxHeight()
                         .graphicsLayer {
-
                             val press = dragAnimation.scaleX.coerceIn(0.01f, 1f)
                             translationX =
                                 selectedTranslation + bounceLeft.value + squeezeLeft.value * press
@@ -779,7 +759,6 @@ internal fun Os4FloatingNavigationBar(
                             scaleY = dragAnimation.scaleY
                         },
                 ) {
-
                     fun stretchSpan(): Pair<Float, Float> {
                         val stretchPx = blockWidthPx * stretchNow.floatValue
 
@@ -892,7 +871,6 @@ internal fun Os4FloatingNavigationBar(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-
                             Column(
                                 Modifier.offset(
                                     x = with(density) { iconOffsetsPx[index].toDp() },

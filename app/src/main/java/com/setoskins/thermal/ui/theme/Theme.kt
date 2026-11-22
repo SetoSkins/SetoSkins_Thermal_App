@@ -28,7 +28,6 @@ private val SukiSuShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
-// 主题重组时不再重复构造动效方案对象。
 private val ExpressiveMotionScheme = MotionScheme.expressive()
 
 @Composable
@@ -51,7 +50,6 @@ fun MyApplicationTheme(
     MiuixTheme(
         controller = controller,
         content = {
-
             val miuixColors = MiuixTheme.colorScheme
             val miuixMaterialColors = remember(miuixColors.primary, miuixColors.onPrimary, miuixColors.primaryContainer, miuixColors.onPrimaryContainer, miuixColors.secondary, miuixColors.onSecondary, miuixColors.secondaryContainer, miuixColors.onSecondaryContainer, miuixColors.background, miuixColors.onBackground, miuixColors.surface, miuixColors.onSurface, miuixColors.surfaceVariant, miuixColors.surfaceContainer, miuixColors.surfaceContainerHigh, miuixColors.surfaceContainerHighest, miuixColors.onSurfaceSecondary, miuixColors.outline, miuixColors.dividerLine, miuixColors.error, miuixColors.onError, darkTheme) {
             if (darkTheme) {

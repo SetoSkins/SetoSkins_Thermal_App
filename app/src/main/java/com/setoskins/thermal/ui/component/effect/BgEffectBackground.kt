@@ -54,7 +54,6 @@ fun BgEffectBackground(
             if (!animatesColors) return@LaunchedEffect
             var targetStage = floor(colorStage.value) + 1f
             while (isActive) {
-
                 if (alpha() > 0f) {
                     delay((preset.colorInterpPeriod * 500).toLong())
                     colorStage.animateTo(

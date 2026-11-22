@@ -6,7 +6,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import android.util.Log
 
 object ModuleDetector {
-
     private const val TAG = "SetoSkins_ModuleDetector"
     private const val MODULE_PATH = "/data/adb/modules/SetoSkins"
     private const val CONFIG_PATH = "/data/adb/modules/SetoSkins/配置.prop"
@@ -82,10 +81,6 @@ object ModuleDetector {
         }
     }
 
-    /**
-     * 一次 su 内写入多个键，供 [ConfigWriter] 合并连续输入使用。
-     * 返回是否写入成功（超时或异常返回 false）。
-     */
     suspend fun updateConfigs(values: Map<String, String>): Boolean = withContext(Dispatchers.IO) {
         if (values.isEmpty()) return@withContext true
         runCatching {
@@ -118,7 +113,6 @@ object ModuleDetector {
         }
     }
 
-    /** 启动时一次性读取的模块状态，替代 3 次独立的 su 调用。 */
     data class ModuleSnapshot(
         val installed: Boolean = false,
         val version: String = "未知版本",
@@ -126,9 +120,6 @@ object ModuleDetector {
         val config: Map<String, String> = emptyMap(),
     )
 
-    /**
-     * 用单次 su 读取「是否安装 / 版本 / 配置」，把首屏原本串行的 3~4 次 root 进程合并成 1 次。
-     */
     suspend fun readModuleSnapshot(): ModuleSnapshot = withContext(Dispatchers.IO) {
         runCatching {
             val script = buildString {
@@ -290,9 +281,6 @@ object ModuleDetector {
 
     private val resolvedPaths = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    /**
-     * 解析模块内文件路径。find 需要 root，结果按文件名缓存，避免每次读写名单都重启一次 su。
-     */
     private suspend fun findFilePath(fileName: String): String? {
         resolvedPaths[fileName]?.let { return it }
         return withContext(Dispatchers.IO) {
@@ -322,7 +310,6 @@ object ModuleDetector {
         readLogText()?.ifEmpty { "日志文件为空" } ?: "无法读取日志文件"
     }
 
-    /** 原始日志内容，失败返回 null。 */
     private suspend fun readLogText(): String? = withContext(Dispatchers.IO) {
         runCatching {
             Runtime.getRuntime().exec(arrayOf("su", "-c", "cat '$LOG_PATH'"))
@@ -361,9 +348,6 @@ object ModuleDetector {
 
     suspend fun checkUpdate(): Boolean = checkUpdate(getLocalVersionCode())
 
-    /**
-     * 与 [readModuleSnapshot] 配合使用：版本号已知时不再额外拉起一次 su 去读 module.prop。
-     */
     suspend fun checkUpdate(localVersion: Int): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             val connection = java.net.URL(UPDATE_URL).openConnection() as java.net.HttpURLConnection
@@ -402,9 +386,6 @@ object ModuleDetector {
     @Volatile private var prewarmedThrottle: Int? = null
     @Volatile private var prewarmStarted = false
 
-    /**
-     * 进入日志页前预热：日志与限流计数来自同一次 cat，避免两次 root 进程。
-     */
     suspend fun prewarm() = withContext(Dispatchers.IO) {
         if (prewarmStarted) return@withContext
         prewarmStarted = true
@@ -444,7 +425,6 @@ object ModuleDetector {
             val lines = Runtime.getRuntime().exec(arrayOf("su", "-c", "sed -n '5,\$p' '$LOG_PATH'")).inputStream.bufferedReader().readLines()
             val rawPoints = lines.mapNotNull { line ->
                 try {
-
                     val timeMatch = TIME_REGEX.find(line)
                     val time = timeMatch?.groupValues?.get(1) ?: ""
 

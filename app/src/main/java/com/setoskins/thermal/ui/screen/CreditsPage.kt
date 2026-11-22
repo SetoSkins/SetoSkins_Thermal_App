@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,10 +47,12 @@ import com.setoskins.thermal.ui.component.MaterialListItem
 import com.setoskins.thermal.ui.component.MaterialChevron
 import com.setoskins.thermal.ui.component.LocalOs4Style
 import com.setoskins.thermal.ui.component.Os4BackButton
-import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import com.setoskins.thermal.ui.component.Os4GlassTopAppBar
+import com.setoskins.thermal.ui.component.PageTopBarScaffold
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -129,7 +130,6 @@ fun CreditsPage(
             .background(if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface)
     ) {
         if (useMonet) {
-
             MaterialScaffold(
                 containerColor = Color.Transparent,
                 topBar = {
@@ -157,40 +157,32 @@ fun CreditsPage(
                 )
             }
         } else {
-            Scaffold(
-                containerColor = Color.Transparent,
-                topBar = {
-                    if (LocalOs4Style.current) {
-                        GlassTopAppBar(
-                            title = title,
-                            scrollBehavior = scrollBehavior,
-                            navigationIcon = { Os4BackButton(onClick = onDismiss) }
-                        )
+            val os4 = LocalOs4Style.current
+            PageTopBarScaffold(
+                title = title,
+                scrollBehavior = scrollBehavior,
+                blurEnabled = true,
+                os4 = os4,
+                navigationIcon = {
+                    if (os4) {
+                        Os4BackButton(onClick = onDismiss)
                     } else {
-                        TopAppBar(
-                            title = title,
-                            largeTitle = title,
-                            largeTitleColor = Color.Transparent,
-                            scrollBehavior = scrollBehavior,
-                            navigationIcon = {
-                                IconButton(
-                                    onClick = onDismiss,
-                                    modifier = Modifier.padding(start = 0.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Back,
-                                        contentDescription = "Back",
-                                        tint = MiuixTheme.colorScheme.onBackground,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                        )
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.padding(start = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = "Back",
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
-            ) { innerPadding ->
+            ) { contentPaddingTop ->
                 CreditsBody(
-                    topPadding = innerPadding.calculateTopPadding(),
+                    topPadding = contentPaddingTop,
                     scrollState = scrollState,
                     scrollModifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
                     isZh = isZh,
@@ -200,24 +192,6 @@ fun CreditsPage(
                     onOpen = { uriHandler.openUri(it) }
                 )
             }
-        }
-
-        if (!useMonet && !LocalOs4Style.current) {
-            val collapsedFraction by remember { derivedStateOf { scrollBehavior.state.collapsedFraction } }
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 52.dp, start = 26.dp)
-                    .graphicsLayer {
-                        val fraction = collapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
-                    }
-            )
         }
     }
 }
@@ -233,15 +207,17 @@ private fun CreditsBody(
     entries: List<CreditEntry>,
     onOpen: (String) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize().padding(top = topPadding)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .then(scrollModifier)
+                .then(if (!useMonet) Modifier.overScrollVertical() else Modifier)
                 .then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier)
+                .then(scrollModifier)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
         ) {
+            Spacer(Modifier.height(topPadding))
             Spacer(Modifier.height(8.dp))
             SmallTitle(
                 text = if (isZh) "温控模块" else "Thermal Module",

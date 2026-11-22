@@ -251,8 +251,6 @@ fun HomeScreen(
 
     var externalConfig by rememberSaveable { mutableStateOf<Map<String, String>>(emptyMap()) }
     LaunchedEffect(reloadTrigger) {
-
-        // 一次 su 拿到「是否安装 / 版本 / 配置」，原来这里是 4 次串行 root 进程。
         val snapshot = ModuleDetector.readModuleSnapshot()
         moduleInstalled = snapshot.installed
         moduleVersion = snapshot.version
@@ -285,14 +283,12 @@ fun HomeScreen(
         syncSwitch("当电流低于阈值执行停充", switch12, { switch12 = it }, "switch12")
         syncSwitch("自定义阶梯模式", switch13, { switch13 = it }, "switch13")
 
-        // 全局旁路与分应用旁路互斥：配置异常导致两者同时为 true 时只保留全局旁路
         if (switch17 && switch18) {
             switch17 = false
             editor.putBoolean("switch17", false)
             ModuleDetector.updateConfig("分应用旁路", false)
         }
 
-        // 温控模式互斥：配置异常导致互斥项同时开启时，按卡片顺序只保留一项（游戏均衡可与还原项共存）
         if (switch3) {
             if (switch6) { switch6 = false; editor.putBoolean("switch6", false); ModuleDetector.updateConfig("还原性能模式温控", false) }
             if (switch7) { switch7 = false; editor.putBoolean("switch7", false); ModuleDetector.updateConfig("游戏均衡式性能温控", false) }
@@ -308,7 +304,6 @@ fun HomeScreen(
             ModuleDetector.updateConfig("还原性能模式温控", false)
         }
 
-        // 默认温控强制高刷仅在任一性能温控恢复项开启时可用
         if (!switch6 && !switch7 && !switch14 && !switch15 && switch19) {
             switch19 = false
             editor.putBoolean("switch19", false)
@@ -342,7 +337,6 @@ fun HomeScreen(
         }
         editor.apply()
 
-        // 网络检查放到配置同步之后，不再串在首屏可见状态的路径上，也不再额外拉起一次 su 读版本号。
         hasUpdate = ModuleDetector.checkUpdate(snapshot.localVersionCode)
     }
 
@@ -353,7 +347,7 @@ fun HomeScreen(
     } }
     val updateText = remember(scope, prefs) { { prefKey: String, configKey: String, newValue: String, setter: (String) -> Unit ->
         setter(newValue); prefs.edit().putString(prefKey, newValue).apply()
-        // 文本/滑块连续输入时会被合并成一次 su，避免每个字符都拉起一次 root 进程。
+
         ConfigWriter.submit(configKey, newValue)
         Unit
     } }
@@ -386,8 +380,6 @@ fun HomeScreen(
         scope.launch { ModuleDetector.writeBypassConfig(config) }
     } }
 
-    // 旁路参数变化后统一去抖落盘：原来两个 LaunchedEffect 会在首屏就各写一次文件，
-    // 且拖动滑块时每个数值都触发一次 root 写入。
     LaunchedEffect(Unit) {
         snapshotFlow {
             listOf(
@@ -402,8 +394,6 @@ fun HomeScreen(
             .collect { writeBypassConfigFile() }
     }
 
-    // 排他状态只是给各卡片内的开关做可用性判断，延迟到 item 作用域读取，
-    // 避免任意一个开关变化就重组整个 HomeScreen。
     val exclusives = remember {
         derivedStateOf {
             Exclusives(
@@ -423,8 +413,7 @@ fun HomeScreen(
         if (exceptKey != "switch17" && switch17) updateSwitch("switch17", "分应用旁路", false) { switch17 = false }
         if (exceptKey != "switch18" && switch18) updateSwitch("switch18", "全局旁路", false) { switch18 = false }
     }
-    // 温控模式互斥规则：空挂载、系统均衡与其余全部互斥；还原均衡与还原性能互斥；
-    // 还原均衡、还原性能都可以与游戏均衡式性能温控同时开启
+
     val turnOffOtherThermalModes: (String) -> Unit = { exceptKey ->
         val keepGame = exceptKey == "switch7" || exceptKey == "switch6" || exceptKey == "switch15"
         if (exceptKey != "switch3" && switch3) updateSwitch("switch3", "温控空挂载模式", false) { switch3 = false }
@@ -1160,7 +1149,6 @@ fun HomeScreen(
         if (floatingNavBar) {
             item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(60.dp)) }
         }
-
     }
 
         VerticalScrollBar(
@@ -1183,8 +1171,6 @@ fun HomeScreen(
             onDismissStart = { dialogDismissStarted = true; onDialogVisibilityChange(false) }
         )
     }
-
 }
 
-/** 互斥开关状态：由 [derivedStateOf] 缓存，只在 item 作用域内读取。 */
 private data class Exclusives(val home: Boolean, val speed: Boolean)

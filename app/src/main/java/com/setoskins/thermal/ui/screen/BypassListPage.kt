@@ -11,6 +11,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,7 +33,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,10 +63,11 @@ import com.setoskins.thermal.ui.component.ThemedOptionCard
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.LocalOs4Style
 import com.setoskins.thermal.ui.component.Os4BackButton
-import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import com.setoskins.thermal.ui.component.PageTopBarScaffold
 
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,7 +76,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -98,7 +97,6 @@ fun BypassListPage(
     val scrollBehavior = MiuixScrollBehavior()
 
     val materialScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-    val collapsedFraction by remember(scrollBehavior) { derivedStateOf { scrollBehavior.state.collapsedFraction } }
     val bgColor = if (useMonet) MaterialTheme.colorScheme.surfaceContainer else if (isDark) Color.Black else MiuixTheme.colorScheme.surface
     var isLoading by remember { mutableStateOf(true) }
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
@@ -133,58 +131,7 @@ fun BypassListPage(
         scope.launch { ModuleDetector.writeBypassListPackages(newSet) }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                val transitionProgress = progressProvider()
-                translationX = (1f - transitionProgress) * size.width
-            }
-            .background(bgColor)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            if (useMonet) {
-
-                MaterialLargeTopBar(
-                    title = title,
-                    scrollBehavior = materialScrollBehavior,
-                    navigationIcon = {
-                        MaterialTopBarBackButton(
-                            onClick = onBack,
-                            contentDescription = if (isZh) "返回" else "Back",
-                        )
-                    }
-                )
-            } else {
-                if (LocalOs4Style.current) {
-                    GlassTopAppBar(
-                        title = title,
-                        scrollBehavior = scrollBehavior,
-                        navigationIcon = { Os4BackButton(onClick = onBack, contentDescription = if (isZh) "返回" else "Back") }
-                    )
-                } else {
-                    TopAppBar(
-                        title = title,
-                        largeTitle = title,
-                        largeTitleColor = Color.Transparent,
-                        scrollBehavior = scrollBehavior,
-                        navigationIcon = {
-                            IconButton(
-                                onClick = onBack,
-                                modifier = Modifier.padding(start = 0.dp)
-                            ) {
-                                Icon(
-                                    imageVector = MiuixIcons.Back,
-                                    contentDescription = if (isZh) "返回" else "Back",
-                                    tint = MiuixTheme.colorScheme.onBackground,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-                    )
-                }
-            }
-
+    val pageBody: @Composable ColumnScope.() -> Unit = {
             SearchBar(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
@@ -209,11 +156,12 @@ fun BypassListPage(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .then(if (!useMonet) Modifier.overScrollVertical() else Modifier)
+                            .then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier)
                             .then(
                                 if (useMonet) Modifier.nestedScroll(materialScrollBehavior.nestedScrollConnection)
                                 else Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                             )
-                            .then(if (!useMonet) Modifier.scrollEndHaptic() else Modifier)
                             .verticalScroll(scrollState)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
@@ -311,23 +259,63 @@ fun BypassListPage(
                     )
                 }
             }
-        }
+    }
 
-        if (!useMonet && !LocalOs4Style.current) {
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(top = 52.dp, start = 26.dp)
-                    .graphicsLayer {
-                        val fraction = collapsedFraction.coerceIn(0f, 1f)
-                        alpha = (1f - fraction * 3f).coerceIn(0f, 1f)
-                        translationY = -fraction * 45.dp.toPx()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                val transitionProgress = progressProvider()
+                translationX = (1f - transitionProgress) * size.width
+            }
+            .background(bgColor)
+    ) {
+        if (useMonet) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                MaterialLargeTopBar(
+                    title = title,
+                    scrollBehavior = materialScrollBehavior,
+                    navigationIcon = {
+                        MaterialTopBarBackButton(
+                            onClick = onBack,
+                            contentDescription = if (isZh) "返回" else "Back",
+                        )
                     }
-            )
+                )
+                pageBody()
+            }
+        } else {
+            val os4 = LocalOs4Style.current
+            PageTopBarScaffold(
+                title = title,
+                scrollBehavior = scrollBehavior,
+                blurEnabled = true,
+                os4 = os4,
+                navigationIcon = {
+                    if (os4) {
+                        Os4BackButton(
+                            onClick = onBack,
+                            contentDescription = if (isZh) "返回" else "Back",
+                        )
+                    } else {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.padding(start = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = if (isZh) "返回" else "Back",
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            ) { contentPaddingTop ->
+                Column(modifier = Modifier.fillMaxSize().padding(top = contentPaddingTop)) {
+                    pageBody()
+                }
+            }
         }
     }
 }

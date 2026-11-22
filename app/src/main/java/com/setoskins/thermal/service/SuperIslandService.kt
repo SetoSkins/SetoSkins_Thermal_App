@@ -28,7 +28,6 @@ import com.setoskins.thermal.R
 import com.setoskins.thermal.data.BatteryMonitor
 
 class SuperIslandService : Service() {
-
     private val CHANNEL_ID = "super_island_channel"
     private val NOTIFICATION_ID = 1001
     private val UPDATE_INTERVAL_MS = 2000L

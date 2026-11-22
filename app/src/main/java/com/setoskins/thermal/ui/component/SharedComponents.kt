@@ -68,11 +68,7 @@ fun DeviceInfoItem(value: String, label: String) {
 
 @Composable
 fun MiuixCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    if (LocalOs4Style.current) {
-        Os4GlassCard(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
-    } else {
-        Card(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
-    }
+    Card(modifier = modifier.fillMaxWidth(), cornerRadius = 16.dp) { content() }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -129,25 +125,14 @@ fun ThemedOptionCard(
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) { content() }
     } else {
-        if (LocalOs4Style.current && miuixGlass) {
-            Os4GlassCard(
-                modifier = modifier.fillMaxWidth(),
-                cornerRadius = miuixCornerRadius,
-                colors = CardDefaults.defaultColors(
-                    color = miuixColor,
-                    contentColor = MiuixTheme.colorScheme.onSurface,
-                ),
-            ) { content() }
-        } else {
-            Card(
-                modifier = modifier.fillMaxWidth(),
-                cornerRadius = miuixCornerRadius,
-                colors = CardDefaults.defaultColors(
-                    color = miuixColor,
-                    contentColor = MiuixTheme.colorScheme.onSurface,
-                ),
-            ) { content() }
-        }
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            cornerRadius = miuixCornerRadius,
+            colors = CardDefaults.defaultColors(
+                color = miuixColor,
+                contentColor = MiuixTheme.colorScheme.onSurface,
+            ),
+        ) { content() }
     }
 }
 
@@ -173,25 +158,14 @@ fun ThemedSegmentedOptionCard(
                 items.forEach { item -> item() }
             }
         }
-        if (LocalOs4Style.current) {
-            Os4GlassCard(
-                modifier = modifier.fillMaxWidth(),
-                cornerRadius = miuixCornerRadius,
-                colors = CardDefaults.defaultColors(
-                    color = miuixColor,
-                    contentColor = MiuixTheme.colorScheme.onSurface,
-                ),
-            ) { cardContent() }
-        } else {
-            Card(
-                modifier = modifier.fillMaxWidth(),
-                cornerRadius = miuixCornerRadius,
-                colors = CardDefaults.defaultColors(
-                    color = miuixColor,
-                    contentColor = MiuixTheme.colorScheme.onSurface,
-                ),
-            ) { cardContent() }
-        }
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            cornerRadius = miuixCornerRadius,
+            colors = CardDefaults.defaultColors(
+                color = miuixColor,
+                contentColor = MiuixTheme.colorScheme.onSurface,
+            ),
+        ) { cardContent() }
     }
 }
 

@@ -1,0 +1,626 @@
+﻿Compiled from "GlassTopAppBar.kt"
+public final class top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults {
+  public static final top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults INSTANCE;
+
+  private static final float HorizontalPadding;
+
+  private static final float RampStart;
+
+  private static final float RampDistance;
+
+  private static final float TitleBlurRadius;
+
+  private static final float ButtonSize;
+
+  private static final float ProgressiveBlurRadius;
+
+  private static final float ProgressiveBlurRampDistance;
+
+  private static final float PressedContentAlpha;
+
+  private static final float BandOverhang;
+
+  public static final int $stable;
+
+  private top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults();
+    Code:
+       0: aload_0
+       1: invokespecial #8                  // Method java/lang/Object."<init>":()V
+       4: return
+
+  public final float getHorizontalPadding-D9Ej5fM();
+    Code:
+       0: getstatic     #16                 // Field HorizontalPadding:F
+       3: freturn
+
+  public final float getRampStart-D9Ej5fM();
+    Code:
+       0: getstatic     #20                 // Field RampStart:F
+       3: freturn
+
+  public final float getRampDistance-D9Ej5fM();
+    Code:
+       0: getstatic     #24                 // Field RampDistance:F
+       3: freturn
+
+  public final float getTitleBlurRadius-D9Ej5fM();
+    Code:
+       0: getstatic     #28                 // Field TitleBlurRadius:F
+       3: freturn
+
+  public final float getButtonSize-D9Ej5fM();
+    Code:
+       0: getstatic     #32                 // Field ButtonSize:F
+       3: freturn
+
+  public final float getProgressiveBlurRadius-D9Ej5fM();
+    Code:
+       0: getstatic     #36                 // Field ProgressiveBlurRadius:F
+       3: freturn
+
+  public final float getProgressiveBlurRampDistance-D9Ej5fM();
+    Code:
+       0: getstatic     #40                 // Field ProgressiveBlurRampDistance:F
+       3: freturn
+
+  public final float getPressedContentAlpha();
+    Code:
+       0: getstatic     #44                 // Field PressedContentAlpha:F
+       3: freturn
+
+  public final androidx.compose.runtime.State<java.lang.Float> collapseRamp(top.yukonga.miuix.kmp.basic.ScrollBehavior, kotlin.jvm.functions.Function0<java.lang.Float>, androidx.compose.runtime.Composer, int, int);
+    Code:
+       0: aload_3
+       1: ldc           #51                 // int -1272469584
+       3: ldc           #59                 // String C(collapseRamp)N(scrollBehavior,visualContentOffset)113@4887L7,116@5040L41,117@5097L288:GlassTopAppBar.kt#8hvud3
+       5: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+       8: iload         5
+      10: iconst_2
+      11: iand
+      12: ifeq          17
+      15: aconst_null
+      16: astore_2
+      17: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      20: ifeq          33
+      23: ldc           #51                 // int -1272469584
+      25: iload         4
+      27: iconst_m1
+      28: ldc           #71                 // String top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.collapseRamp (GlassTopAppBar.kt:112)
+      30: invokestatic  #75                 // Method androidx/compose/runtime/ComposerKt.traceEventStart:(IIILjava/lang/String;)V
+      33: invokestatic  #81                 // Method androidx/compose/ui/platform/CompositionLocalsKt.getLocalDensity:()Landroidx/compose/runtime/ProvidableCompositionLocal;
+      36: checkcast     #83                 // class androidx/compose/runtime/CompositionLocal
+      39: astore        7
+      41: aload_3
+      42: astore        8
+      44: iconst_0
+      45: istore        9
+      47: iconst_0
+      48: istore        10
+      50: aload         8
+      52: ldc           #84                 // int 2023513938
+      54: ldc           #86                 // String CC(<get-current>):CompositionLocal.kt#9igjgp
+      56: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+      59: aload         8
+      61: aload         7
+      63: invokeinterface #92,  2           // InterfaceMethod androidx/compose/runtime/Composer.consume:(Landroidx/compose/runtime/CompositionLocal;)Ljava/lang/Object;
+      68: astore        11
+      70: aload         8
+      72: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+      75: aload         11
+      77: checkcast     #98                 // class androidx/compose/ui/unit/Density
+      80: astore        6
+      82: aload         6
+      84: astore        8
+      86: iconst_0
+      87: istore        9
+      89: aload         8
+      91: getstatic     #101                // Field INSTANCE:Ltop/yukonga/miuix/kmp/glass/GlassTopAppBarDefaults;
+      94: pop
+      95: getstatic     #20                 // Field RampStart:F
+      98: invokeinterface #105,  2          // InterfaceMethod androidx/compose/ui/unit/Density."toPx-0680j_4":(F)F
+     103: nop
+     104: fstore        7
+     106: aload         6
+     108: astore        9
+     110: iconst_0
+     111: istore        10
+     113: aload         9
+     115: getstatic     #101                // Field INSTANCE:Ltop/yukonga/miuix/kmp/glass/GlassTopAppBarDefaults;
+     118: pop
+     119: getstatic     #24                 // Field RampDistance:F
+     122: invokeinterface #105,  2          // InterfaceMethod androidx/compose/ui/unit/Density."toPx-0680j_4":(F)F
+     127: nop
+     128: fstore        8
+     130: aload_2
+     131: aload_3
+     132: bipush        14
+     134: iload         4
+     136: iconst_3
+     137: ishr
+     138: iand
+     139: invokestatic  #111                // Method androidx/compose/runtime/SnapshotStateKt.rememberUpdatedState:(Ljava/lang/Object;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/State;
+     142: astore        9
+     144: aload_3
+     145: ldc           #112                // int 1222421520
+     147: ldc           #114                // String CC(remember):GlassTopAppBar.kt#9igjgp
+     149: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+     152: aload_3
+     153: astore        12
+     155: iload         4
+     157: bipush        14
+     159: iand
+     160: bipush        6
+     162: ixor
+     163: iconst_4
+     164: if_icmple     177
+     167: aload_3
+     168: aload_1
+     169: invokeinterface #118,  2          // InterfaceMethod androidx/compose/runtime/Composer.changed:(Ljava/lang/Object;)Z
+     174: ifne          186
+     177: iload         4
+     179: bipush        6
+     181: iand
+     182: iconst_4
+     183: if_icmpne     190
+     186: iconst_1
+     187: goto          191
+     190: iconst_0
+     191: aload_3
+     192: fload         7
+     194: invokeinterface #121,  2          // InterfaceMethod androidx/compose/runtime/Composer.changed:(F)Z
+     199: ior
+     200: aload_3
+     201: fload         8
+     203: invokeinterface #121,  2          // InterfaceMethod androidx/compose/runtime/Composer.changed:(F)Z
+     208: ior
+     209: istore        13
+     211: iconst_0
+     212: istore        14
+     214: aload         12
+     216: invokeinterface #125,  1          // InterfaceMethod androidx/compose/runtime/Composer.rememberedValue:()Ljava/lang/Object;
+     221: astore        15
+     223: iconst_0
+     224: istore        16
+     226: iload         13
+     228: ifne          242
+     231: aload         15
+     233: getstatic     #129                // Field androidx/compose/runtime/Composer.Companion:Landroidx/compose/runtime/Composer$Companion;
+     236: invokevirtual #134                // Method androidx/compose/runtime/Composer$Companion.getEmpty:()Ljava/lang/Object;
+     239: if_acmpne     280
+     242: iconst_0
+     243: istore        17
+     245: aconst_null
+     246: aload_1
+     247: fload         7
+     249: fload         8
+     251: aload         9
+     253: invokedynamic #153,  0            // InvokeDynamic #0:invoke:(Ltop/yukonga/miuix/kmp/basic/ScrollBehavior;FFLandroidx/compose/runtime/State;)Lkotlin/jvm/functions/Function0;
+     258: iconst_1
+     259: aconst_null
+     260: invokestatic  #159                // Method androidx/compose/runtime/ComputedStateKt.computedStateOf$default:(Landroidx/compose/runtime/SnapshotMutationPolicy;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)Landroidx/compose/runtime/State;
+     263: nop
+     264: astore        18
+     266: aload         12
+     268: aload         18
+     270: invokeinterface #163,  2          // InterfaceMethod androidx/compose/runtime/Composer.updateRememberedValue:(Ljava/lang/Object;)V
+     275: aload         18
+     277: goto          282
+     280: aload         15
+     282: nop
+     283: nop
+     284: checkcast     #165                // class androidx/compose/runtime/State
+     287: astore        11
+     289: aload_3
+     290: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+     293: aload         11
+     295: astore        10
+     297: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+     300: ifeq          306
+     303: invokestatic  #168                // Method androidx/compose/runtime/ComposerKt.traceEventEnd:()V
+     306: aload_3
+     307: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+     310: aload         10
+     312: areturn
+
+  public final long buttonFill-WaAFU9c(androidx.compose.runtime.Composer, int);
+    Code:
+       0: aload_1
+       1: ldc           #208                // int -1517949855
+       3: ldc           #212                // String C(buttonFill):GlassTopAppBar.kt#8hvud3
+       5: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+       8: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      11: ifeq          23
+      14: ldc           #208                // int -1517949855
+      16: iload_2
+      17: iconst_m1
+      18: ldc           #214                // String top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.buttonFill (GlassTopAppBar.kt:128)
+      20: invokestatic  #75                 // Method androidx/compose/runtime/ComposerKt.traceEventStart:(IIILjava/lang/String;)V
+      23: aload_1
+      24: ldc           #215                // int 1539070981
+      26: invokeinterface #219,  2          // InterfaceMethod androidx/compose/runtime/Composer.startReplaceGroup:(I)V
+      31: aload_1
+      32: ldc           #221                // String 129@5560L14,130@5630L13
+      34: invokestatic  #225                // Method androidx/compose/runtime/ComposerKt.sourceInformation:(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+      37: getstatic     #230                // Field top/yukonga/miuix/kmp/theme/MiuixTheme.INSTANCE:Ltop/yukonga/miuix/kmp/theme/MiuixTheme;
+      40: aload_1
+      41: bipush        6
+      43: invokevirtual #234                // Method top/yukonga/miuix/kmp/theme/MiuixTheme.isDynamicColor:(Landroidx/compose/runtime/Composer;I)Z
+      46: ifeq          88
+      49: aload_1
+      50: ldc           #235                // int 1539072981
+      52: invokeinterface #219,  2          // InterfaceMethod androidx/compose/runtime/Composer.startReplaceGroup:(I)V
+      57: aload_1
+      58: ldc           #237                // String 129@5589L11
+      60: invokestatic  #225                // Method androidx/compose/runtime/ComposerKt.sourceInformation:(Landroidx/compose/runtime/Composer;Ljava/lang/String;)V
+      63: getstatic     #230                // Field top/yukonga/miuix/kmp/theme/MiuixTheme.INSTANCE:Ltop/yukonga/miuix/kmp/theme/MiuixTheme;
+      66: aload_1
+      67: bipush        6
+      69: invokevirtual #241                // Method top/yukonga/miuix/kmp/theme/MiuixTheme.getColorScheme:(Landroidx/compose/runtime/Composer;I)Ltop/yukonga/miuix/kmp/theme/Colors;
+      72: invokevirtual #247                // Method top/yukonga/miuix/kmp/theme/Colors."getSurfaceContainerHigh-0d7_KjU":()J
+      75: lstore        7
+      77: aload_1
+      78: invokeinterface #250,  1          // InterfaceMethod androidx/compose/runtime/Composer.endReplaceGroup:()V
+      83: lload         7
+      85: goto          144
+      88: aload_0
+      89: aload_1
+      90: bipush        14
+      92: iload_2
+      93: iand
+      94: invokespecial #253                // Method isDarkTheme:(Landroidx/compose/runtime/Composer;I)Z
+      97: ifeq          123
+     100: aload_1
+     101: ldc           #254                // int 1539074450
+     103: invokeinterface #219,  2          // InterfaceMethod androidx/compose/runtime/Composer.startReplaceGroup:(I)V
+     108: aload_1
+     109: invokeinterface #250,  1          // InterfaceMethod androidx/compose/runtime/Composer.endReplaceGroup:()V
+     114: ldc2_w        #255                // long 4281084972l
+     117: invokestatic  #262                // Method androidx/compose/ui/graphics/ColorKt.Color:(J)J
+     120: goto          144
+     123: aload_1
+     124: ldc_w         #263                // int 1539075718
+     127: invokeinterface #219,  2          // InterfaceMethod androidx/compose/runtime/Composer.startReplaceGroup:(I)V
+     132: aload_1
+     133: invokeinterface #250,  1          // InterfaceMethod androidx/compose/runtime/Composer.endReplaceGroup:()V
+     138: getstatic     #268                // Field androidx/compose/ui/graphics/Color.Companion:Landroidx/compose/ui/graphics/Color$Companion;
+     141: invokevirtual #273                // Method androidx/compose/ui/graphics/Color$Companion."getWhite-0d7_KjU":()J
+     144: lstore        5
+     146: aload_1
+     147: invokeinterface #250,  1          // InterfaceMethod androidx/compose/runtime/Composer.endReplaceGroup:()V
+     152: lload         5
+     154: lstore_3
+     155: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+     158: ifeq          164
+     161: invokestatic  #168                // Method androidx/compose/runtime/ComposerKt.traceEventEnd:()V
+     164: aload_1
+     165: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+     168: lload_3
+     169: lreturn
+
+  public final top.yukonga.miuix.kmp.material.GlassMaterial buttonMaterial(androidx.compose.runtime.Composer, int);
+    Code:
+       0: aload_1
+       1: ldc_w         #276                // int 298124189
+       4: ldc_w         #280                // String C(buttonMaterial)136@5861L13,136@5810L66:GlassTopAppBar.kt#8hvud3
+       7: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+      10: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      13: ifeq          27
+      16: ldc_w         #276                // int 298124189
+      19: iload_2
+      20: iconst_m1
+      21: ldc_w         #282                // String top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.buttonMaterial (GlassTopAppBar.kt:136)
+      24: invokestatic  #75                 // Method androidx/compose/runtime/ComposerKt.traceEventStart:(IIILjava/lang/String;)V
+      27: getstatic     #287                // Field top/yukonga/miuix/kmp/material/GlassMaterials.INSTANCE:Ltop/yukonga/miuix/kmp/material/GlassMaterials;
+      30: aload_0
+      31: aload_1
+      32: bipush        14
+      34: iload_2
+      35: iand
+      36: invokespecial #253                // Method isDarkTheme:(Landroidx/compose/runtime/Composer;I)Z
+      39: invokevirtual #291                // Method top/yukonga/miuix/kmp/material/GlassMaterials.puredThinGlass:(Z)Ltop/yukonga/miuix/kmp/material/GlassMaterial;
+      42: lconst_0
+      43: fconst_0
+      44: aload_1
+      45: iconst_0
+      46: bipush        6
+      48: invokestatic  #297                // Method top/yukonga/miuix/kmp/glass/GlassKt."dynamicGlassMaterial-3IgeMak":(Ltop/yukonga/miuix/kmp/material/GlassMaterial;JFLandroidx/compose/runtime/Composer;II)Ltop/yukonga/miuix/kmp/material/GlassMaterial;
+      51: astore_3
+      52: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      55: ifeq          61
+      58: invokestatic  #168                // Method androidx/compose/runtime/ComposerKt.traceEventEnd:()V
+      61: aload_1
+      62: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+      65: aload_3
+      66: areturn
+
+  public final top.yukonga.miuix.kmp.material.GlassMaterial actionBarUnderlayMaterial$top_yukonga_miuix_kmp_miuix_glass(androidx.compose.runtime.Composer, int);
+    Code:
+       0: aload_1
+       1: ldc_w         #301                // int -326474782
+       4: ldc_w         #305                // String C(actionBarUnderlayMaterial)141@6069L13:GlassTopAppBar.kt#8hvud3
+       7: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+      10: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      13: ifeq          27
+      16: ldc_w         #301                // int -326474782
+      19: iload_2
+      20: iconst_m1
+      21: ldc_w         #307                // String top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.actionBarUnderlayMaterial (GlassTopAppBar.kt:141)
+      24: invokestatic  #75                 // Method androidx/compose/runtime/ComposerKt.traceEventStart:(IIILjava/lang/String;)V
+      27: getstatic     #287                // Field top/yukonga/miuix/kmp/material/GlassMaterials.INSTANCE:Ltop/yukonga/miuix/kmp/material/GlassMaterials;
+      30: aload_0
+      31: aload_1
+      32: bipush        14
+      34: iload_2
+      35: iand
+      36: invokespecial #253                // Method isDarkTheme:(Landroidx/compose/runtime/Composer;I)Z
+      39: invokevirtual #310                // Method top/yukonga/miuix/kmp/material/GlassMaterials.actionBarMask:(Z)Ltop/yukonga/miuix/kmp/material/GlassMaterial;
+      42: astore_3
+      43: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      46: ifeq          52
+      49: invokestatic  #168                // Method androidx/compose/runtime/ComposerKt.traceEventEnd:()V
+      52: aload_1
+      53: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+      56: aload_3
+      57: areturn
+
+  public final top.yukonga.miuix.kmp.material.EdgeStroke buttonStroke(androidx.compose.runtime.Composer, int);
+    Code:
+       0: aload_1
+       1: ldc_w         #313                // int -1030155760
+       4: ldc_w         #317                // String C(buttonStroke)147@6270L13:GlassTopAppBar.kt#8hvud3
+       7: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+      10: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      13: ifeq          27
+      16: ldc_w         #313                // int -1030155760
+      19: iload_2
+      20: iconst_m1
+      21: ldc_w         #319                // String top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.buttonStroke (GlassTopAppBar.kt:146)
+      24: invokestatic  #75                 // Method androidx/compose/runtime/ComposerKt.traceEventStart:(IIILjava/lang/String;)V
+      27: getstatic     #324                // Field top/yukonga/miuix/kmp/material/GlassEdgeStrokes.INSTANCE:Ltop/yukonga/miuix/kmp/material/GlassEdgeStrokes;
+      30: aload_0
+      31: aload_1
+      32: bipush        14
+      34: iload_2
+      35: iand
+      36: invokespecial #253                // Method isDarkTheme:(Landroidx/compose/runtime/Composer;I)Z
+      39: getstatic     #324                // Field top/yukonga/miuix/kmp/material/GlassEdgeStrokes.INSTANCE:Ltop/yukonga/miuix/kmp/material/GlassEdgeStrokes;
+      42: invokevirtual #328                // Method top/yukonga/miuix/kmp/material/GlassEdgeStrokes.getSmallLight:()Ltop/yukonga/miuix/kmp/material/EdgeStroke;
+      45: getstatic     #324                // Field top/yukonga/miuix/kmp/material/GlassEdgeStrokes.INSTANCE:Ltop/yukonga/miuix/kmp/material/GlassEdgeStrokes;
+      48: invokevirtual #331                // Method top/yukonga/miuix/kmp/material/GlassEdgeStrokes.getSmallDark:()Ltop/yukonga/miuix/kmp/material/EdgeStroke;
+      51: invokevirtual #335                // Method top/yukonga/miuix/kmp/material/GlassEdgeStrokes.forTheme:(ZLtop/yukonga/miuix/kmp/material/EdgeStroke;Ltop/yukonga/miuix/kmp/material/EdgeStroke;)Ltop/yukonga/miuix/kmp/material/EdgeStroke;
+      54: astore_3
+      55: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      58: ifeq          64
+      61: invokestatic  #168                // Method androidx/compose/runtime/ComposerKt.traceEventEnd:()V
+      64: aload_1
+      65: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+      68: aload_3
+      69: areturn
+
+  public final long buttonPressedOverlay-WaAFU9c(androidx.compose.runtime.Composer, int);
+    Code:
+       0: aload_1
+       1: ldc_w         #339                // int -399641290
+       4: ldc_w         #343                // String C(buttonPressedOverlay)155@6532L13:GlassTopAppBar.kt#8hvud3
+       7: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+      10: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      13: ifeq          27
+      16: ldc_w         #339                // int -399641290
+      19: iload_2
+      20: iconst_m1
+      21: ldc_w         #345                // String top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.buttonPressedOverlay (GlassTopAppBar.kt:155)
+      24: invokestatic  #75                 // Method androidx/compose/runtime/ComposerKt.traceEventStart:(IIILjava/lang/String;)V
+      27: aload_0
+      28: aload_1
+      29: bipush        14
+      31: iload_2
+      32: iand
+      33: invokespecial #253                // Method isDarkTheme:(Landroidx/compose/runtime/Composer;I)Z
+      36: ifeq          60
+      39: getstatic     #268                // Field androidx/compose/ui/graphics/Color.Companion:Landroidx/compose/ui/graphics/Color$Companion;
+      42: invokevirtual #273                // Method androidx/compose/ui/graphics/Color$Companion."getWhite-0d7_KjU":()J
+      45: ldc_w         #346                // float 0.14f
+      48: fconst_0
+      49: fconst_0
+      50: fconst_0
+      51: bipush        14
+      53: aconst_null
+      54: invokestatic  #350                // Method androidx/compose/ui/graphics/Color."copy-wmQWz5c$default":(JFFFFILjava/lang/Object;)J
+      57: goto          78
+      60: getstatic     #268                // Field androidx/compose/ui/graphics/Color.Companion:Landroidx/compose/ui/graphics/Color$Companion;
+      63: invokevirtual #353                // Method androidx/compose/ui/graphics/Color$Companion."getBlack-0d7_KjU":()J
+      66: ldc_w         #354                // float 0.1f
+      69: fconst_0
+      70: fconst_0
+      71: fconst_0
+      72: bipush        14
+      74: aconst_null
+      75: invokestatic  #350                // Method androidx/compose/ui/graphics/Color."copy-wmQWz5c$default":(JFFFFILjava/lang/Object;)J
+      78: lstore_3
+      79: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      82: ifeq          88
+      85: invokestatic  #168                // Method androidx/compose/runtime/ComposerKt.traceEventEnd:()V
+      88: aload_1
+      89: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+      92: lload_3
+      93: lreturn
+
+  public final androidx.compose.ui.graphics.Brush bandBrush-8_81llA(long);
+    Code:
+       0: new           #359                // class top/yukonga/miuix/kmp/glass/TopAppBarBandBrush
+       3: dup
+       4: lload_1
+       5: aconst_null
+       6: invokespecial #362                // Method top/yukonga/miuix/kmp/glass/TopAppBarBandBrush."<init>":(JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+       9: checkcast     #364                // class androidx/compose/ui/graphics/Brush
+      12: areturn
+
+  public final float getBandOverhang-D9Ej5fM();
+    Code:
+       0: getstatic     #370                // Field BandOverhang:F
+       3: freturn
+
+  private final boolean isDarkTheme(androidx.compose.runtime.Composer, int);
+    Code:
+       0: aload_1
+       1: ldc_w         #371                // int 818171630
+       4: ldc_w         #375                // String C(isDarkTheme)173@7038L11:GlassTopAppBar.kt#8hvud3
+       7: invokestatic  #65                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerStart:(Landroidx/compose/runtime/Composer;ILjava/lang/String;)V
+      10: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      13: ifeq          27
+      16: ldc_w         #371                // int 818171630
+      19: iload_2
+      20: iconst_m1
+      21: ldc_w         #377                // String top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.isDarkTheme (GlassTopAppBar.kt:173)
+      24: invokestatic  #75                 // Method androidx/compose/runtime/ComposerKt.traceEventStart:(IIILjava/lang/String;)V
+      27: getstatic     #230                // Field top/yukonga/miuix/kmp/theme/MiuixTheme.INSTANCE:Ltop/yukonga/miuix/kmp/theme/MiuixTheme;
+      30: aload_1
+      31: bipush        6
+      33: invokevirtual #241                // Method top/yukonga/miuix/kmp/theme/MiuixTheme.getColorScheme:(Landroidx/compose/runtime/Composer;I)Ltop/yukonga/miuix/kmp/theme/Colors;
+      36: invokevirtual #380                // Method top/yukonga/miuix/kmp/theme/Colors."getBackground-0d7_KjU":()J
+      39: invokestatic  #384                // Method androidx/compose/ui/graphics/ColorKt."luminance-8_81llA":(J)F
+      42: ldc_w         #385                // float 0.5f
+      45: fcmpg
+      46: ifge          53
+      49: iconst_1
+      50: goto          54
+      53: iconst_0
+      54: istore_3
+      55: invokestatic  #69                 // Method androidx/compose/runtime/ComposerKt.isTraceInProgress:()Z
+      58: ifeq          64
+      61: invokestatic  #168                // Method androidx/compose/runtime/ComposerKt.traceEventEnd:()V
+      64: aload_1
+      65: invokestatic  #96                 // Method androidx/compose/runtime/ComposerKt.sourceInformationMarkerEnd:(Landroidx/compose/runtime/Composer;)V
+      68: iload_3
+      69: ireturn
+
+  private static final kotlin.jvm.functions.Function0<java.lang.Float> collapseRamp$lambda$2(androidx.compose.runtime.State<? extends kotlin.jvm.functions.Function0<java.lang.Float>>);
+    Code:
+       0: aload_0
+       1: astore_1
+       2: aconst_null
+       3: astore_2
+       4: aconst_null
+       5: astore_3
+       6: iconst_0
+       7: istore        4
+       9: aload_1
+      10: invokeinterface #391,  1          // InterfaceMethod androidx/compose/runtime/State.getValue:()Ljava/lang/Object;
+      15: checkcast     #204                // class kotlin/jvm/functions/Function0
+      18: areturn
+
+  private static final float collapseRamp$lambda$3$0(top.yukonga.miuix.kmp.basic.ScrollBehavior, float, float, androidx.compose.runtime.State);
+    Code:
+       0: aload_3
+       1: invokestatic  #399                // Method collapseRamp$lambda$2:(Landroidx/compose/runtime/State;)Lkotlin/jvm/functions/Function0;
+       4: dup
+       5: ifnull        25
+       8: invokeinterface #401,  1          // InterfaceMethod kotlin/jvm/functions/Function0.invoke:()Ljava/lang/Object;
+      13: checkcast     #403                // class java/lang/Number
+      16: invokevirtual #406                // Method java/lang/Number.floatValue:()F
+      19: invokestatic  #412                // Method java/lang/Float.valueOf:(F)Ljava/lang/Float;
+      22: goto          51
+      25: pop
+      26: aload_0
+      27: dup
+      28: ifnull        49
+      31: invokeinterface #416,  1          // InterfaceMethod top/yukonga/miuix/kmp/basic/ScrollBehavior.getState:()Ltop/yukonga/miuix/kmp/basic/TopAppBarState;
+      36: dup
+      37: ifnull        49
+      40: invokevirtual #421                // Method top/yukonga/miuix/kmp/basic/TopAppBarState.getVisualContentOffset:()F
+      43: invokestatic  #412                // Method java/lang/Float.valueOf:(F)Ljava/lang/Float;
+      46: goto          51
+      49: pop
+      50: aconst_null
+      51: astore        4
+      53: aload         4
+      55: dup
+      56: ifnonnull     64
+      59: pop
+      60: fconst_1
+      61: goto          77
+      64: invokevirtual #422                // Method java/lang/Float.floatValue:()F
+      67: fneg
+      68: fload_1
+      69: fsub
+      70: fload_2
+      71: fdiv
+      72: fconst_0
+      73: fconst_1
+      74: invokestatic  #428                // Method kotlin/ranges/RangesKt.coerceIn:(FFF)F
+      77: freturn
+
+  static {};
+    Code:
+       0: new           #2                  // class top/yukonga/miuix/kmp/glass/GlassTopAppBarDefaults
+       3: dup
+       4: invokespecial #435                // Method "<init>":()V
+       7: putstatic     #101                // Field INSTANCE:Ltop/yukonga/miuix/kmp/glass/GlassTopAppBarDefaults;
+      10: bipush        12
+      12: istore_0
+      13: iconst_0
+      14: istore_1
+      15: iload_0
+      16: i2f
+      17: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+      20: putstatic     #16                 // Field HorizontalPadding:F
+      23: iconst_0
+      24: istore_0
+      25: iconst_0
+      26: istore_1
+      27: iload_0
+      28: i2f
+      29: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+      32: putstatic     #20                 // Field RampStart:F
+      35: bipush        32
+      37: istore_0
+      38: iconst_0
+      39: istore_1
+      40: iload_0
+      41: i2f
+      42: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+      45: putstatic     #24                 // Field RampDistance:F
+      48: bipush        8
+      50: istore_0
+      51: iconst_0
+      52: istore_1
+      53: iload_0
+      54: i2f
+      55: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+      58: putstatic     #28                 // Field TitleBlurRadius:F
+      61: bipush        44
+      63: istore_0
+      64: iconst_0
+      65: istore_1
+      66: iload_0
+      67: i2f
+      68: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+      71: putstatic     #32                 // Field ButtonSize:F
+      74: bipush        80
+      76: istore_0
+      77: iconst_0
+      78: istore_1
+      79: iload_0
+      80: i2f
+      81: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+      84: putstatic     #36                 // Field ProgressiveBlurRadius:F
+      87: bipush        48
+      89: istore_0
+      90: iconst_0
+      91: istore_1
+      92: iload_0
+      93: i2f
+      94: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+      97: putstatic     #40                 // Field ProgressiveBlurRampDistance:F
+     100: ldc_w         #441                // float 0.6f
+     103: putstatic     #44                 // Field PressedContentAlpha:F
+     106: bipush        36
+     108: istore_0
+     109: iconst_0
+     110: istore_1
+     111: iload_0
+     112: i2f
+     113: invokestatic  #440                // Method androidx/compose/ui/unit/Dp."constructor-impl":(F)F
+     116: putstatic     #370                // Field BandOverhang:F
+     119: return
+}

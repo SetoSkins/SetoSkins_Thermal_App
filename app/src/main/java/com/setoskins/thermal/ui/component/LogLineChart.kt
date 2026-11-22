@@ -137,7 +137,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
 
     val chartData = rememberChartData(points, maxWatt, maxTemp, minTemp)
 
-    // 复用曲线 Path，避免每帧重新分配；标签字符串只随数据变化计算一次。
     val curvePath = remember { Path() }
     val fillPath = remember { Path() }
     val wattLabels = remember(points) { points.map { "%.1fW".format(it.watt) } }
@@ -262,7 +261,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-
         run {
             val animatedIndexValue = animatedTouchIndex.value
             val isAnimatingTouch = animatedIndexValue >= 0f
@@ -408,7 +406,6 @@ fun LogLineChart(points: List<ModuleDetector.LogDataPoint>, isZh: Boolean, showW
         )
 
         Row(modifier = Modifier.fillMaxWidth().height(220.dp).padding(start = yAxisLeftPadding, end = 28.dp)) {
-
             val yAxisPaint = remember { Paint().apply { textSize = 24f; textAlign = Paint.Align.RIGHT } }
             Canvas(modifier = Modifier.width(yAxisWidth).fillMaxSize()) {
                 val h = size.height
