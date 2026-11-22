@@ -87,7 +87,7 @@ import com.setoskins.thermal.ui.component.SliderRow
 import com.setoskins.thermal.ui.component.ThemedSwitch
 import com.setoskins.thermal.ui.component.ThemedTextField
 import com.setoskins.thermal.ui.component.UpdateWarningCard
-import com.setoskins.thermal.ui.component.compactSmallTitle
+import com.setoskins.thermal.ui.component.miuixSmallTitle
 import top.yukonga.miuix.kmp.basic.VerticalScrollBar
 import androidx.compose.ui.Alignment
 import top.yukonga.miuix.kmp.basic.rememberScrollBarAdapter
@@ -434,7 +434,8 @@ fun HomeScreen(
 
                     .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 46.dp + bottomContentInset),
-                verticalArrangement = Arrangement.spacedBy(11.dp)
+                // miuix 卡片之间是 12dp；SmallTitle 的上 8dp 叠加后正好是 20dp
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
         item(key = "status_card") {
             val cardMode = when {
@@ -486,7 +487,7 @@ fun HomeScreen(
             }
         }
         item(key = "config_title") {
-            SmallTitle(text = if (isZh) "配置" else "Configuration", modifier = Modifier.offset(x = (-12).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); layout(placeable.width, placeable.height - 10.dp.roundToPx()) { placeable.place(0, 0) } })
+            SmallTitle(text = if (isZh) "配置" else "Configuration", modifier = Modifier.miuixSmallTitle())
         }
         item(key = "config_card") {
             if (useMonet) {
@@ -529,8 +530,7 @@ fun HomeScreen(
             }
         }
         item(key = "thermal_title") {
-            Spacer(modifier = Modifier.height(12.dp))
-            SmallTitle(text = if (isZh) "温控" else "Thermal control", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } })
+            SmallTitle(text = if (isZh) "温控" else "Thermal control", modifier = Modifier.miuixSmallTitle())
         }
         item(key = "thermal_card") {
             if (useMonet) {
@@ -707,8 +707,7 @@ fun HomeScreen(
             }
         }
         item(key = "speed_title") {
-            Spacer(modifier = Modifier.height(12.dp))
-            SmallTitle(text = if (isZh) "调速 (填写单位为微安）（开关重启生效)" else "Speed control (unit: μA, switch restart required)", modifier = Modifier.compactSmallTitle())
+            SmallTitle(text = if (isZh) "调速 (填写单位为微安）（开关重启生效)" else "Speed control (unit: μA, switch restart required)", modifier = Modifier.miuixSmallTitle())
         }
         item(key = "speed_control") {
             SpeedControlSection(
@@ -760,8 +759,7 @@ fun HomeScreen(
         }
 
         item(key = "bypass_charge_title") {
-            Spacer(modifier = Modifier.height(12.dp))
-            SmallTitle(text = if (isZh) "旁路充电" else "Bypass charging", modifier = Modifier.padding(start = 4.dp).offset(x = (-13).dp, y = (11).dp).layout { measurable, constraints -> val placeable = measurable.measure(constraints); val reduce = 24.dp.roundToPx(); layout(placeable.width, (placeable.height - reduce).coerceAtLeast(1)) { placeable.place(0, -reduce) } })
+            SmallTitle(text = if (isZh) "旁路充电" else "Bypass charging", modifier = Modifier.miuixSmallTitle())
         }
 
         item(key = "bypass_charge_card") {
