@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -418,10 +419,8 @@ fun MyApplicationApp(
                                                     }
                                                 ) {
                                                     Icon(
-                                                        painter = painterResource(R.drawable.restart),
+                                                        imageVector = Icons.Rounded.Refresh,
                                                         contentDescription = if (isZh) "重启" else "Restart",
-
-                                                        modifier = Modifier.size(32.dp)
                                                     )
                                                 }
                                             }
