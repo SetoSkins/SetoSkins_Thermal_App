@@ -434,7 +434,6 @@ fun HomeScreen(
 
                     .then(if (materialScrollConnection != null) Modifier.nestedScroll(materialScrollConnection) else Modifier),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentPaddingTop, bottom = 46.dp + bottomContentInset),
-                // miuix 卡片之间是 12dp；SmallTitle 的上 8dp 叠加后正好是 20dp
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
         item(key = "status_card") {

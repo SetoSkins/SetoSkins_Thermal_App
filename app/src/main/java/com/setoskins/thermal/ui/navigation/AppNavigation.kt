@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.pager.HorizontalPager
@@ -72,6 +74,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -89,6 +92,9 @@ import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.glass.GlassNavigationBar
+import top.yukonga.miuix.kmp.glass.GlassNavigationItem
+import top.yukonga.miuix.kmp.material.GlassDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import com.setoskins.thermal.ui.component.Os4GlassTopAppBar
@@ -110,6 +116,7 @@ import com.setoskins.thermal.ui.component.RootCheckDialog
 import com.setoskins.thermal.ui.component.UpdateDialog
 import com.setoskins.thermal.ui.component.liquid.NavTab
 import com.setoskins.thermal.ui.component.liquid.Os4FloatingNavigationBar
+import com.setoskins.thermal.ui.component.liquid.glassNavBarWidth
 import com.setoskins.thermal.ui.component.BlurredBar
 import com.setoskins.thermal.ui.component.BlurredMaterialBar
 import com.setoskins.thermal.ui.component.BlurredTopBar
@@ -140,6 +147,30 @@ private val PagerFlingSpec = tween<Float>(390, easing = PagerEase)
 private val OverlayEnterSpec = tween<Float>(480, easing = OverlayEase)
 private val OverlayExitSpec = tween<Float>(320, easing = OverlayEase)
 private val OverlayBackCancelSpec = tween<Float>(400, easing = OverlayEase)
+private val StandardBarEnterSpec = tween<Float>(300, easing = OverlayEase)
+
+@Composable
+private fun StandardNavBarSlot(
+    visible: Boolean,
+    content: @Composable () -> Unit,
+) {
+    var barHeightPx by remember { mutableIntStateOf(0) }
+    val shown by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = StandardBarEnterSpec,
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { barHeightPx = it.height }
+            .graphicsLayer {
+                alpha = shown
+                translationY = (1f - shown) * barHeightPx
+            }
+    ) {
+        content()
+    }
+}
 
 @Stable
 private class OverlayPageState {
@@ -329,6 +360,12 @@ fun MyApplicationApp(
     val contentRecorded = effectiveFloatingNavBar && backdrop != null
     val normalBlur = !effectiveFloatingNavBar && showBlur
     val os4Active = os4Style && !useMonet
+    val standardBarBackdrop = remember(backdrop, effectiveFloatingNavBar) {
+        if (backdrop != null && !effectiveFloatingNavBar) backdrop else null
+    }
+    val floatingBarBackdrop = remember(backdrop, effectiveFloatingNavBar) {
+        if (backdrop != null && effectiveFloatingNavBar) backdrop else null
+    }
     val os4GlassBackdrop = rememberLayerBackdrop {
         drawRect(pageSurface)
         drawContent()
@@ -370,24 +407,28 @@ fun MyApplicationApp(
             ) {
                 Scaffold(
                     containerColor = Color.Transparent,
-                    bottomBar = if (effectiveFloatingNavBar) ({}) else ({
-                        ThemedNavigationBar(
-                            currentDestination = currentDestination,
-                            pagerState = pagerState,
-                            onDestinationSelected = { dest ->
-                                scope.launch {
-                                    pagerState.animateScrollToPage(
-                                        AppDestinations.entries.indexOf(dest),
-                                        animationSpec = PagerSettleSpec
-                                    )
-                                }
-                            },
-                            useMonet = useMonet,
-                            backdrop = backdrop,
-                            showBlur = showBlur,
-                            floatingNavBar = false
-                        )
-                    })
+                    bottomBar = {
+                        StandardNavBarSlot(
+                            visible = !effectiveFloatingNavBar,
+                        ) {
+                            ThemedNavigationBar(
+                                currentDestination = currentDestination,
+                                pagerState = pagerState,
+                                onDestinationSelected = { dest ->
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(
+                                            AppDestinations.entries.indexOf(dest),
+                                            animationSpec = PagerSettleSpec
+                                        )
+                                    }
+                                },
+                                useMonet = useMonet,
+                                backdrop = standardBarBackdrop,
+                                showBlur = showBlur,
+                                floatingNavBar = false
+                            )
+                        }
+                    }
                 ) { innerPadding ->
 
                     val bottomContentPadding = if (effectiveFloatingNavBar || normalBlur) 0.dp else innerPadding.calculateBottomPadding()
@@ -642,7 +683,9 @@ fun MyApplicationApp(
                 visible = effectiveFloatingNavBar && barVisible && dialogCount == 0,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
             ) {
                 ThemedNavigationBar(
                     currentDestination = currentDestination,
@@ -656,7 +699,7 @@ fun MyApplicationApp(
                                 }
                             },
                             useMonet = useMonet,
-                            backdrop = backdrop,
+                            backdrop = floatingBarBackdrop,
                             showBlur = showBlur,
                             floatingNavBar = true
                 )
@@ -755,35 +798,71 @@ fun ThemedNavigationBar(
                     )
                 }
             }
-            Os4FloatingNavigationBar(
-                tabs = tabs,
-                selectedIndex = selectedIndex,
-                backdrop = backdrop,
-                showIcons = true,
-                showLabels = true,
+            val tabCount = AppDestinations.entries.size
+            if (LocalOs4Style.current) {
+                val glassItems = remember(tabs) {
+                    tabs.map { GlassNavigationItem(icon = it.icon, label = it.label) }
+                }
+                Box(
+                    modifier = modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    GlassNavigationBar(
+                        items = glassItems,
+                        selectedIndex = selectedIndex.intValue,
+                        onSelect = { index ->
+                            if (selectedIndex.intValue != index) {
+                                selectedIndex.intValue = index
+                                navigating = true
+                                scope.launch {
+                                    try {
+                                        pagerState?.animateScrollToPage(
+                                            index,
+                                            animationSpec = PagerSettleSpec
+                                        )
+                                    } finally {
+                                        navigating = false
+                                        pagerState?.let { selectedIndex.intValue = it.currentPage }
+                                    }
+                                }
+                            }
+                        },
+                        backdrop = backdrop,
+                        modifier = Modifier.width(glassNavBarWidth(tabCount)),
+                        style = GlassDefaults.style(isDark),
+                    )
+                }
+            } else {
+                Os4FloatingNavigationBar(
+                    tabs = tabs,
+                    selectedIndex = selectedIndex,
+                    backdrop = backdrop,
+                    showIcons = true,
+                    showLabels = true,
 
-                advancedMaterial = true,
-                isDarkTheme = isDark,
-                onTabSelected = { index ->
+                    advancedMaterial = true,
+                    isDarkTheme = isDark,
+                    onTabSelected = { index ->
 
-                    if (selectedIndex.intValue == index) return@Os4FloatingNavigationBar
-                    selectedIndex.intValue = index
-                    navigating = true
-                    scope.launch {
-                        try {
-                            pagerState?.animateScrollToPage(
-                                index,
-                                animationSpec = PagerSettleSpec
-                            )
-                        } finally {
-                            navigating = false
+                        if (selectedIndex.intValue == index) return@Os4FloatingNavigationBar
+                        selectedIndex.intValue = index
+                        navigating = true
+                        scope.launch {
+                            try {
+                                pagerState?.animateScrollToPage(
+                                    index,
+                                    animationSpec = PagerSettleSpec
+                                )
+                            } finally {
+                                navigating = false
 
-                            pagerState?.let { selectedIndex.intValue = it.currentPage }
+                                pagerState?.let { selectedIndex.intValue = it.currentPage }
+                            }
                         }
-                    }
-                },
-                modifier = modifier,
-            )
+                    },
+                    modifier = modifier,
+                )
+            }
         }
         return
     }

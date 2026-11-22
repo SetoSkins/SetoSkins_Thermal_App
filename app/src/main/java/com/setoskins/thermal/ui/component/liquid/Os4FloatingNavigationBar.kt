@@ -1,11 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 btm_m
-//
-// Ported from HyperChanger v1.1.3 (https://github.com/ColdP/HyperChanger, Apache-2.0):
-// HyperFloatingNavigationBar in app/src/main/java/btm/m/liquidglass/hook/GlassNavigation.kt.
-// Do not drop the version number (verified 2026-11-02): v1.1.3 is Apache-2.0, while upstream
-// later switched to AGPL-3.0-or-later; Apache-2.0 grants are irrevocable, so this file is
-// used under the v1.1.3 license.
 package com.setoskins.thermal.ui.component.liquid
 
 import android.util.Log
@@ -24,14 +18,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +63,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.shapes.Capsule
@@ -74,6 +73,7 @@ import top.yukonga.miuix.kmp.material.EdgeLightSource
 import top.yukonga.miuix.kmp.material.EdgeStroke
 import top.yukonga.miuix.kmp.material.edgeStroke
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -93,7 +93,26 @@ internal data class NavTab(
 )
 
 internal val NavBarBottomGap = 26.dp
-internal val NavBarPillHeight = 56.7.dp
+internal val NavBarPillHeight = 54.dp
+
+internal fun glassNavBarWidth(tabCount: Int): Dp = (tabCount * 84).dp + 16.dp
+
+@Composable
+private fun glassNavBarBottomGap(): Dp {
+    val density = LocalDensity.current
+    val systemBottomPx = WindowInsets.navigationBars.getBottom(density)
+    val captionBottomPx = WindowInsets.captionBar.getBottom(density)
+    return with(density) {
+        val systemBottom = systemBottomPx.toDp()
+        val captionBottom = captionBottomPx.toDp()
+        val gap = when {
+            systemBottom <= 16.dp -> 20.dp
+            systemBottom >= 28.dp -> systemBottom
+            else -> 12.dp + systemBottom
+        }
+        gap.coerceAtLeast(captionBottom)
+    }
+}
 
 private val NavIconBox = 24.dp
 private val NavLabelSize = 11.sp
@@ -630,8 +649,17 @@ internal fun Os4FloatingNavigationBar(
             }
         }
     }
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
-    val selectedContentColor = accentColorOverride ?: contentColor
+    val monetActive = MiuixTheme.isDynamicColor
+    val monetPrimary = MiuixTheme.colorScheme.primary
+    val contentColor = if (monetActive) {
+        MiuixTheme.colorScheme.onBackground
+    } else if (isDarkTheme) {
+        Color.White
+    } else {
+        Color.Black
+    }
+    val selectedContentColor = accentColorOverride
+        ?: if (monetActive) monetPrimary else contentColor
 
     val pressedContentColor = if (isDarkTheme) Color(0xFFB4B4B4) else Color(0xFF434343)
     val pressedIndex = if (dragAnimation.pressProgress > 0.001f) {
@@ -639,13 +667,17 @@ internal fun Os4FloatingNavigationBar(
     } else {
         -1
     }
-    val selectedSurface = if (isDarkTheme) {
+    val selectedSurface = if (monetActive) {
+        monetPrimary.copy(alpha = if (isDarkTheme) 0.12f else 0.06f)
+    } else if (isDarkTheme) {
         Color.White.copy(alpha = 0.18f)
     } else {
         Color.Black.copy(alpha = 0.08f)
     }
 
-    val selectedSurfacePressed = if (isDarkTheme) {
+    val selectedSurfacePressed = if (monetActive) {
+        monetPrimary.copy(alpha = if (isDarkTheme) 0.26f else 0.16f)
+    } else if (isDarkTheme) {
         Color.White.copy(alpha = 0.30f)
     } else {
         Color.Black.copy(alpha = 0.19f)
@@ -677,8 +709,10 @@ internal fun Os4FloatingNavigationBar(
         BoxWithConstraints(
             Modifier
                 .fillMaxWidth(effectiveWidthFraction)
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .width(glassNavBarWidth(tabCount))
 
-                .padding(bottom = NavBarBottomGap)
+                .padding(bottom = glassNavBarBottomGap())
                 .height(NavBarPillHeight),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -826,8 +860,10 @@ internal fun Os4FloatingNavigationBar(
                         val pressedProgress =
                             if (pressedIndex == index) dragAnimation.pressProgress else 0f
 
+                        val baseColor =
+                            if (index == selectedIndex.intValue) selectedContentColor else contentColor
                         val color = lerp(
-                            selectedContentColor,
+                            baseColor,
                             pressedContentColor,
                             pressedProgress.coerceIn(0f, 1f),
                         )

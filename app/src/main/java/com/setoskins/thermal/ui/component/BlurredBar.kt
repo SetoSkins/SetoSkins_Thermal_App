@@ -25,7 +25,6 @@ private const val MiuixTopBarBlurRadius = 25f
 
 private const val MiuixTopBarTintAlpha = 0.8f
 
-// HyperCeiler OS3 顶栏使用系统 actionBar 模糊，视觉上是强模糊 + 深色遮罩
 private const val HyperCeilerTopBarBlurRadius = 80f
 
 @Composable
@@ -165,12 +164,6 @@ fun BlurredTopBar(
     }
 }
 
-/**
- * HyperCeiler 风格的 OS3 顶栏模糊。
- *
- * 强模糊把内容揉成色块，再用近不透明的底色压暗，形成 HyperCeiler 那种
- * “内容滑到标题下面时被整块磨砂遮住”的效果。无模糊能力时用不透明底色兜底。
- */
 @Composable
 fun HyperCeilerTopBarBlur(
     backdrop: LayerBackdrop?,

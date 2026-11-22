@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="floatingNavBar" value="true" />
+    <int name="miuixStyleVersion" value="0" />
+    <boolean name="miuixMonet" value="true" />
+</map>
