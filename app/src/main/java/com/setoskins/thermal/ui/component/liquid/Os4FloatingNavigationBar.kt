@@ -3,9 +3,11 @@
 package com.setoskins.thermal.ui.component.liquid
 
 import android.util.Log
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -54,7 +56,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
@@ -74,6 +75,8 @@ import top.yukonga.miuix.kmp.material.EdgeStroke
 import top.yukonga.miuix.kmp.material.edgeStroke
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.glass.GlassMotion
+import top.yukonga.miuix.kmp.glass.GlassNavigationBarDefaults
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -661,7 +664,6 @@ internal fun Os4FloatingNavigationBar(
     val selectedContentColor = accentColorOverride
         ?: if (monetActive) monetPrimary else contentColor
 
-    val pressedContentColor = if (isDarkTheme) Color(0xFFB4B4B4) else Color(0xFF434343)
     val pressedIndex = if (dragAnimation.pressProgress > 0.001f) {
         dragAnimation.value.roundToInt().coerceIn(0, tabCount - 1)
     } else {
@@ -682,10 +684,15 @@ internal fun Os4FloatingNavigationBar(
     } else {
         Color.Black.copy(alpha = 0.19f)
     }
-    val selectedSurfaceNow = lerp(
-        selectedSurface,
-        selectedSurfacePressed,
-        dragAnimation.pressProgress.coerceIn(0f, 1f),
+    val isChipPressed = pressedIndex >= 0
+    val selectedSurfaceNow by animateColorAsState(
+        targetValue = if (isChipPressed) selectedSurfacePressed else selectedSurface,
+        animationSpec = if (isChipPressed) {
+            GlassMotion.navPressEnter()
+        } else {
+            GlassMotion.navPressExit()
+        },
+        label = "os3NavIndicatorFill",
     )
 
     val containerSurface = if (isDarkTheme) {
@@ -857,15 +864,23 @@ internal fun Os4FloatingNavigationBar(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     tabs.forEachIndexed { index, tab ->
-                        val pressedProgress =
-                            if (pressedIndex == index) dragAnimation.pressProgress else 0f
-
-                        val baseColor =
-                            if (index == selectedIndex.intValue) selectedContentColor else contentColor
-                        val color = lerp(
-                            baseColor,
-                            pressedContentColor,
-                            pressedProgress.coerceIn(0f, 1f),
+                        val color by animateColorAsState(
+                            targetValue = if (index == selectedIndex.intValue) {
+                                selectedContentColor
+                            } else {
+                                contentColor
+                            },
+                            animationSpec = GlassMotion.navContent(),
+                            label = "os3NavContentTint",
+                        )
+                        val pressAlpha by animateFloatAsState(
+                            targetValue = if (index == pressedIndex) {
+                                GlassNavigationBarDefaults.PressedAlpha
+                            } else {
+                                1f
+                            },
+                            animationSpec = GlassMotion.navContentFloat(),
+                            label = "os3NavPressAlpha",
                         )
 
                         val tabInteraction = remember(index) { MutableInteractionSource() }
@@ -894,11 +909,10 @@ internal fun Os4FloatingNavigationBar(
                             }
                         }
                         Column(
-
                             Modifier
                                 .weight(cellWidthsPx[index])
                                 .fillMaxHeight()
-
+                                .graphicsLayer { alpha = pressAlpha }
                                 .clickable(
                                     interactionSource = tabInteraction,
                                     indication = null,
