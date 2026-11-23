@@ -356,7 +356,7 @@ fun MyApplicationApp(
         MiuixTheme.colorScheme.surface
     }
 
-    val effectiveFloatingNavBar = floatingNavBar && !useMonet
+    val effectiveFloatingNavBar = floatingNavBar
     val contentRecorded = effectiveFloatingNavBar && backdrop != null
     val normalBlur = !effectiveFloatingNavBar && showBlur
     val os4Active = os4Style && !useMonet
@@ -770,99 +770,97 @@ fun ThemedNavigationBar(
 ) {
     val isZh = LocalConfiguration.current.locales.get(0).language == "zh"
     if (floatingNavBar) {
-        if (!useMonet) {
-            val isDark = isSystemInDarkTheme()
-            val selectedIndex = remember {
-                mutableIntStateOf(pagerState?.currentPage ?: AppDestinations.entries.indexOf(currentDestination))
-            }
+        val isDark = isSystemInDarkTheme()
+        val selectedIndex = remember {
+            mutableIntStateOf(pagerState?.currentPage ?: AppDestinations.entries.indexOf(currentDestination))
+        }
 
-            var navigating by remember { mutableStateOf(false) }
-            val scope = rememberCoroutineScope()
-            LaunchedEffect(pagerState) {
-                val ps = pagerState ?: return@LaunchedEffect
+        var navigating by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
+        LaunchedEffect(pagerState) {
+            val ps = pagerState ?: return@LaunchedEffect
 
-                snapshotFlow { ps.currentPage }
-                    .collect { page ->
-                        if (!navigating && selectedIndex.intValue != page) {
-                            selectedIndex.intValue = page
-                        }
+            snapshotFlow { ps.currentPage }
+                .collect { page ->
+                    if (!navigating && selectedIndex.intValue != page) {
+                        selectedIndex.intValue = page
                     }
-            }
-            val tabs = remember(isZh) {
-                AppDestinations.entries.map { dest ->
-                    NavTab(
-                        label = if (isZh) dest.label else dest.labelEn,
+                }
+        }
+        val tabs = remember(isZh) {
+            AppDestinations.entries.map { dest ->
+                NavTab(
+                    label = if (isZh) dest.label else dest.labelEn,
 
-                        icon = if (dest == AppDestinations.HOME) MiuixIcons.Home else dest.filledIcon,
-                        onClick = {},
-                    )
-                }
+                    icon = if (dest == AppDestinations.HOME) MiuixIcons.Home else dest.filledIcon,
+                    onClick = {},
+                )
             }
-            val tabCount = AppDestinations.entries.size
-            if (LocalOs4Style.current) {
-                val glassItems = remember(tabs) {
-                    tabs.map { GlassNavigationItem(icon = it.icon, label = it.label) }
-                }
-                Box(
-                    modifier = modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    GlassNavigationBar(
-                        items = glassItems,
-                        selectedIndex = selectedIndex.intValue,
-                        onSelect = { index ->
-                            if (selectedIndex.intValue != index) {
-                                selectedIndex.intValue = index
-                                navigating = true
-                                scope.launch {
-                                    try {
-                                        pagerState?.animateScrollToPage(
-                                            index,
-                                            animationSpec = PagerSettleSpec
-                                        )
-                                    } finally {
-                                        navigating = false
-                                        pagerState?.let { selectedIndex.intValue = it.currentPage }
-                                    }
+        }
+        val tabCount = AppDestinations.entries.size
+        if (LocalOs4Style.current) {
+            val glassItems = remember(tabs) {
+                tabs.map { GlassNavigationItem(icon = it.icon, label = it.label) }
+            }
+            Box(
+                modifier = modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                GlassNavigationBar(
+                    items = glassItems,
+                    selectedIndex = selectedIndex.intValue,
+                    onSelect = { index ->
+                        if (selectedIndex.intValue != index) {
+                            selectedIndex.intValue = index
+                            navigating = true
+                            scope.launch {
+                                try {
+                                    pagerState?.animateScrollToPage(
+                                        index,
+                                        animationSpec = PagerSettleSpec
+                                    )
+                                } finally {
+                                    navigating = false
+                                    pagerState?.let { selectedIndex.intValue = it.currentPage }
                                 }
-                            }
-                        },
-                        backdrop = backdrop,
-                        modifier = Modifier.width(glassNavBarWidth(tabCount)),
-                        style = GlassDefaults.style(isDark),
-                    )
-                }
-            } else {
-                Os4FloatingNavigationBar(
-                    tabs = tabs,
-                    selectedIndex = selectedIndex,
-                    backdrop = backdrop,
-                    showIcons = true,
-                    showLabels = true,
-
-                    advancedMaterial = true,
-                    isDarkTheme = isDark,
-                    onTabSelected = { index ->
-
-                        if (selectedIndex.intValue == index) return@Os4FloatingNavigationBar
-                        selectedIndex.intValue = index
-                        navigating = true
-                        scope.launch {
-                            try {
-                                pagerState?.animateScrollToPage(
-                                    index,
-                                    animationSpec = PagerSettleSpec
-                                )
-                            } finally {
-                                navigating = false
-
-                                pagerState?.let { selectedIndex.intValue = it.currentPage }
                             }
                         }
                     },
-                    modifier = modifier,
+                    backdrop = backdrop,
+                    modifier = Modifier.width(glassNavBarWidth(tabCount)),
+                    style = GlassDefaults.style(isDark),
                 )
             }
+        } else {
+            Os4FloatingNavigationBar(
+                tabs = tabs,
+                selectedIndex = selectedIndex,
+                backdrop = backdrop,
+                showIcons = true,
+                showLabels = true,
+                useMonet = useMonet,
+                advancedMaterial = true,
+                isDarkTheme = isDark,
+                onTabSelected = { index ->
+
+                    if (selectedIndex.intValue == index) return@Os4FloatingNavigationBar
+                    selectedIndex.intValue = index
+                    navigating = true
+                    scope.launch {
+                        try {
+                            pagerState?.animateScrollToPage(
+                                index,
+                                animationSpec = PagerSettleSpec
+                            )
+                        } finally {
+                            navigating = false
+
+                            pagerState?.let { selectedIndex.intValue = it.currentPage }
+                        }
+                    }
+                },
+                modifier = modifier,
+            )
         }
         return
     }

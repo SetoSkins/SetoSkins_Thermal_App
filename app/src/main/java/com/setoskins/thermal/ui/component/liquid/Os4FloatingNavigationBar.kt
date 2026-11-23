@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.shapes.Capsule
+import androidx.compose.material3.MaterialTheme
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.material.EdgeLightSource
@@ -228,6 +229,7 @@ internal fun Os4FloatingNavigationBar(
     showLabels: Boolean = true,
     advancedMaterial: Boolean = true,
     isDarkTheme: Boolean = false,
+    useMonet: Boolean = false,
     accentColorOverride: Color? = null,
 
     widthFraction: Float? = null,
@@ -652,10 +654,10 @@ internal fun Os4FloatingNavigationBar(
             }
         }
     }
-    val monetActive = MiuixTheme.isDynamicColor
-    val monetPrimary = MiuixTheme.colorScheme.primary
+    val monetActive = useMonet || MiuixTheme.isDynamicColor
+    val monetPrimary = if (useMonet) MaterialTheme.colorScheme.primary else MiuixTheme.colorScheme.primary
     val contentColor = if (monetActive) {
-        MiuixTheme.colorScheme.onBackground
+        if (useMonet) MaterialTheme.colorScheme.onSurfaceVariant else MiuixTheme.colorScheme.onBackground
     } else if (isDarkTheme) {
         Color.White
     } else {
@@ -670,7 +672,7 @@ internal fun Os4FloatingNavigationBar(
         -1
     }
     val selectedSurface = if (monetActive) {
-        monetPrimary.copy(alpha = if (isDarkTheme) 0.12f else 0.06f)
+        monetPrimary.copy(alpha = if (isDarkTheme) 0.16f else 0.10f)
     } else if (isDarkTheme) {
         Color.White.copy(alpha = 0.18f)
     } else {
@@ -678,7 +680,7 @@ internal fun Os4FloatingNavigationBar(
     }
 
     val selectedSurfacePressed = if (monetActive) {
-        monetPrimary.copy(alpha = if (isDarkTheme) 0.26f else 0.16f)
+        monetPrimary.copy(alpha = if (isDarkTheme) 0.30f else 0.20f)
     } else if (isDarkTheme) {
         Color.White.copy(alpha = 0.30f)
     } else {
@@ -695,12 +697,16 @@ internal fun Os4FloatingNavigationBar(
         label = "os3NavIndicatorFill",
     )
 
-    val containerSurface = if (isDarkTheme) {
+    val containerSurface = if (monetActive && useMonet) {
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (isDarkTheme) 0.65f else 0.75f)
+    } else if (isDarkTheme) {
         Color(0xFF252525).copy(alpha = 0.5f)
     } else {
         Color.White.copy(alpha = 0.625f)
     }
-    val fallbackSurface = if (isDarkTheme) {
+    val fallbackSurface = if (monetActive && useMonet) {
+        MaterialTheme.colorScheme.surfaceContainer
+    } else if (isDarkTheme) {
         Color(0xFF242424).copy(alpha = 0.88f)
     } else {
         Color.White.copy(alpha = 0.82f)
